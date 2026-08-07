@@ -68,6 +68,10 @@
     pointer-events:none;visibility:hidden;
   }
   .glc.on{visibility:visible;}
+  /* once the turning sheet's depth crosses behind the pad, its layer has to
+     duck behind the pad too — otherwise it stays visibly on top for the
+     rest of the turn no matter what the 3D math says */
+  .glc.behind{z-index:0;}
   /* cardboard backing of the pad — a real element so Safari depth-sorts it */
   .board{
     position:absolute;left:2px;top:2.5px;right:-4px;bottom:-7px;
@@ -514,10 +518,6 @@ function buildBinding(){
       <stop offset=".5"  stop-color="#cdcbc7"/>
       <stop offset="1"   stop-color="#e6e5e2"/>
     </linearGradient>
-    <linearGradient id="bnd-under" gradientUnits="userSpaceOnUse" x1="0" y1="98" x2="0" y2="126">
-      <stop offset="0" stop-color="#231f20" stop-opacity=".12"/>
-      <stop offset="1" stop-color="#231f20" stop-opacity="0"/>
-    </linearGradient>
     <filter id="bnd-blur" x="-20%" y="-40%" width="140%" height="200%">
       <feGaussianBlur stdDeviation="2.1"/>
     </filter>
@@ -535,7 +535,6 @@ function buildBinding(){
 
   <!-- the sheet itself -->
   <rect x="0" y="3" width="${W}" height="115" fill="url(#bnd-paper)"/>
-  <rect x="0" y="98" width="${W}" height="28" fill="url(#bnd-under)"/>
 
   <!-- punched holes -->
   <g fill="url(#bnd-hole)" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holes}</g>
@@ -831,7 +830,13 @@ function shapeSheet(i, e){
 function glTick(now){
   if(!glRun) return;
   const t = Math.min(1, (now - glRun.t0) / FLIP_MS);
-  shapeSheet(glRun.i, glRun.dir > 0 ? glEase(t) : 1 - glEase(t));
+  const prog = glRun.dir > 0 ? glEase(t) : 1 - glEase(t);
+  shapeSheet(glRun.i, prog);
+  /* the canvas is one flat layer, so it can only be entirely above or
+     entirely below the pad — swap it the instant the sheet's own depth
+     (same smoothstep as shapeSheet's z) has crossed the midpoint, instead
+     of leaving it on top for the whole animation */
+  glc.classList.toggle('behind', smoothstep(.45, .62, prog) > .5);
   glR.render(glScene, glCam);
   if(t < 1) requestAnimationFrame(glTick);
   else glSettle();
@@ -840,7 +845,7 @@ function glSettle(){
   if(!glRun) return;
   const done = glRun.done;
   glRun = null;
-  glc.classList.remove('on');
+  glc.classList.remove('on', 'behind');
   done();
 }
 function glFlip(i, dir, done){
@@ -849,7 +854,9 @@ function glFlip(i, dir, done){
   mFront.material.map = tex;
   mFront.material.needsUpdate = true;
   glRun = {i, dir, t0: performance.now(), done};
-  shapeSheet(i, dir > 0 ? 0 : 1);
+  const prog0 = dir > 0 ? 0 : 1;
+  shapeSheet(i, prog0);
+  glc.classList.toggle('behind', smoothstep(.45, .62, prog0) > .5);
   glR.render(glScene, glCam);
   glc.classList.add('on');
   requestAnimationFrame(glTick);
