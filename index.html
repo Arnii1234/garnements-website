@@ -534,7 +534,11 @@ function buildBinding(){
   ${wire(back, 'bnd-mb')}
 
   <!-- the sheet itself -->
-  <rect x="0" y="3" width="${W}" height="115" fill="url(#bnd-paper)"/>
+  <!-- only tall enough to hide the wire's rear loops + their shadow — a
+       taller matte here would sit as a mismatched flat patch over whatever
+       is actually happening on the page below (resting art or a flipping
+       sheet), rather than blending with it -->
+  <rect x="0" y="3" width="${W}" height="42" fill="url(#bnd-paper)"/>
 
   <!-- punched holes -->
   <g fill="url(#bnd-hole)" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holes}</g>
