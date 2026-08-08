@@ -408,7 +408,7 @@ const PAGES = [
 /* Y sits one coil radius below the helix axis, so it moves with the coil
    radius: Y − r must stay at 5, the axis the sheets hinge on (see .leaf's
    transform-origin and glBox.hy). */
-const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:30.2, RX:4.8, RY:5.8};
+const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:35.24, RX:4.8, RY:5.8};
 HOLE.P = (HOLE.X1 - HOLE.X0) / HOLE.N;
 const holeXs = Array.from({length:HOLE.N}, (_, i) => HOLE.X0 + i*HOLE.P + HOLE.P/2);
 const holeEllipses = holeXs.map(h =>
@@ -481,7 +481,7 @@ function buildBinding(){
   /* coil radius — also half the coil's height on screen, so this is the knob
      for how tall the binding reads. HOLE.Y tracks it so the axis below stays
      at y=5, where the sheets actually hinge. */
-  const r  = 25.2;
+  const r  = 30.24;
   const yH = HOLE.Y;           /* punch-hole centre        */
   const yc = yH - r;           /* helix axis — the sheet pivots here */
   const top = yc - r;          /* highest point of a turn  */
