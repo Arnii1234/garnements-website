@@ -423,7 +423,10 @@ const PAGES = [
    the holes identically on every sheet and on the wire that threads them.
    Each sheet carries its own copy, which is what makes the holes travel around
    the coil as the sheet turns instead of sitting still. */
-const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:26, RX:4.8, RY:5.8};
+/* Y sits one coil radius below the helix axis, so it moves with the coil
+   radius: Y − r must stay at 5, the axis the sheets hinge on (see .leaf's
+   transform-origin and glBox.hy). */
+const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:30.2, RX:4.8, RY:5.8};
 HOLE.P = (HOLE.X1 - HOLE.X0) / HOLE.N;
 const holeXs = Array.from({length:HOLE.N}, (_, i) => HOLE.X0 + i*HOLE.P + HOLE.P/2);
 const holeEllipses = holeXs.map(h =>
@@ -493,7 +496,10 @@ function buildBinding(){
   /* one turn per hole, threaded through the holes the sheets carry */
   const N = HOLE.N, X0 = HOLE.X0, X1 = HOLE.X1;
   const p  = HOLE.P;           /* pitch                    */
-  const r  = 21;               /* coil radius              */
+  /* coil radius — also half the coil's height on screen, so this is the knob
+     for how tall the binding reads. HOLE.Y tracks it so the axis below stays
+     at y=5, where the sheets actually hinge. */
+  const r  = 25.2;
   const yH = HOLE.Y;           /* punch-hole centre        */
   const yc = yH - r;           /* helix axis — the sheet pivots here */
   const top = yc - r;          /* highest point of a turn  */
@@ -515,13 +521,15 @@ function buildBinding(){
   /* the wire is one continuous piece: both halves get identical shading so the
      apex joins seamlessly. Only the opaque sheet between them says which is which. */
   const wire = (d, mask) => `
-  <path d="${d}" fill="none" stroke="#2f3236" stroke-width="6.6" stroke-linecap="round" opacity=".5"/>
+  <path d="${d}" fill="none" stroke="#0a0b0c" stroke-width="6.6" stroke-linecap="round" opacity=".5"/>
   <path d="${d}" fill="none" stroke="url(#bnd-wire)" stroke-width="5.6" stroke-linecap="round"/>
   <g mask="url(#${mask})">
-    <path d="${d}" fill="none" stroke="#1b1d1f" stroke-width="2.4" stroke-linecap="round"
-          opacity=".4" transform="translate(1.2 1.7)"/>
+    <path d="${d}" fill="none" stroke="#000000" stroke-width="2.4" stroke-linecap="round"
+          opacity=".45" transform="translate(1.2 1.7)"/>
+    <!-- kept dim: on black wire a bright specular reads as grey paint rather
+         than a sheen -->
     <path d="${d}" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"
-          opacity=".5" transform="translate(-1.1 -1.5)"/>
+          opacity=".3" transform="translate(-1.1 -1.5)"/>
   </g>`;
 
   const el = document.createElement('div');
@@ -529,12 +537,14 @@ function buildBinding(){
   el.innerHTML = `
 <svg viewBox="0 -40 ${W} 165" preserveAspectRatio="none" aria-hidden="true">
   <defs>
+    <!-- black wire: same light-to-dark roll around the coil as a metal one,
+         just pitched far darker so it reads as black rather than silver -->
     <linearGradient id="bnd-wire" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${yH}">
-      <stop offset="0"   stop-color="#e6e9eb"/>
-      <stop offset=".16" stop-color="#b6bbbf"/>
-      <stop offset=".44" stop-color="#7d8286"/>
-      <stop offset=".74" stop-color="#43464a"/>
-      <stop offset="1"   stop-color="#707478"/>
+      <stop offset="0"   stop-color="#55585c"/>
+      <stop offset=".16" stop-color="#2e3134"/>
+      <stop offset=".44" stop-color="#17191b"/>
+      <stop offset=".74" stop-color="#08090a"/>
+      <stop offset="1"   stop-color="#26292c"/>
     </linearGradient>
     <linearGradient id="bnd-hole" gradientUnits="userSpaceOnUse" x1="0" y1="${yH-7}" x2="0" y2="${yH+7}">
       <stop offset="0"   stop-color="#a5a39f"/>
