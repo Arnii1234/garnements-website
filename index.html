@@ -83,25 +83,29 @@
     transform:translateZ(0);
     --stack:1;   /* fraction of pages still unread — set from JS in updateNav() */
   }
-  /* stacked sheet edges along the bottom — anchored flush with the actual
-     page edge (.board itself overhangs 7px past .calendar, so the anchor
-     has to account for that or a strip of bare board color shows between
-     the page and the stacked lines) so the strip grows/shrinks downward
-     with the remaining page count instead of leaving a gap under the pad */
+  /* The pad's bottom lip, filling the whole 7px .board overhangs past the page
+     so no bare board is left showing. The cut edges of the sheets still on the
+     front of the pad are painted from the page edge down, as deep as --stack;
+     the rest of the lip is the backing card's own edge. Sizing one background
+     rather than the box keeps the lip's outer edge fixed while the paper in it
+     grows and shrinks — the board does not get thinner as you read. */
   .board::after{
-    content:'';position:absolute;left:-2px;right:0;top:calc(100% - 9px);
-    height:calc(2px + 5px*var(--stack));
-    background:repeating-linear-gradient(to bottom,
+    content:'';position:absolute;left:-2px;right:0;top:calc(100% - 7px);height:7px;
+    background-color:#b7b3ae;
+    background-image:repeating-linear-gradient(to bottom,
       #efeeeb 0 .5px, #dcdad7 .5px 1px, #cbc9c5 1px 1.5px);
+    background-repeat:no-repeat;
+    background-size:100% calc(7px * var(--stack));
     box-shadow:0 1px 1px rgba(35,31,32,.18);
   }
-  /* stacked sheet edges down the right-hand side — anchored at the left for
-     the same reason (.board overhangs 4px past .calendar on this side) */
+  /* same along the right-hand lip, where .board overhangs by 4px */
   .board::before{
-    content:'';position:absolute;top:-1px;bottom:0;left:calc(100% - 5px);
-    width:calc(1px + 4px*var(--stack));
-    background:repeating-linear-gradient(to right,
+    content:'';position:absolute;top:-1px;bottom:0;left:calc(100% - 4px);width:4px;
+    background-color:#b7b3ae;
+    background-image:repeating-linear-gradient(to right,
       #efeeeb 0 .5px, #dcdad7 .5px 1px, #cbc9c5 1px 1.5px);
+    background-repeat:no-repeat;
+    background-size:calc(4px * var(--stack)) 100%;
   }
   .leaf{
     position:absolute;inset:0;
