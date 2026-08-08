@@ -505,32 +505,24 @@ function buildBinding(){
   const top = yc - r;          /* highest point of a turn  */
   const RX = HOLE.RX, RY = HOLE.RY;
 
-  let front = '', back = '', lips = '';
+  /* `coil` is the whole binding as ONE continuous path — apex, down to a hole,
+     back up to the next apex, and so on. Every join has a horizontal tangent,
+     so it is smooth throughout and there is no butt-joint anywhere to leave a
+     seam. `front` is only the halves that pass in front of the sheet; it is
+     not drawn on its own, it just tells the mask below what stays visible once
+     the coil dives behind the paper, and casts the shadow. */
+  let coil = '', front = '', lips = '';
   for(let i = 0; i < N; i++){
     const x = X0 + i * p, h = x + p / 2;
-    /* each half runs 4 units past the apex, so the round caps end up buried
-       inside the other half and the peak reads as one unbroken wire */
-    front += `M${(x-2.5).toFixed(2)},${top}L${x.toFixed(2)},${top}C${(x+p/6).toFixed(2)},${top} ${(x+p/3).toFixed(2)},${yH} ${h.toFixed(2)},${yH}`;
+    if(i === 0) coil += `M${x.toFixed(2)},${top}`;
+    coil += `C${(x+p/6).toFixed(2)},${top} ${(x+p/3).toFixed(2)},${yH} ${h.toFixed(2)},${yH}`;
     /* the last turn has no apex to climb back to, so it just ends in its hole */
     if(i < N - 1)
-      back += `M${h.toFixed(2)},${yH}C${(x+2*p/3).toFixed(2)},${yH} ${(x+5*p/6).toFixed(2)},${top} ${(x+p).toFixed(2)},${top}L${(x+p+2.5).toFixed(2)},${top}`;
+      coil += `C${(x+2*p/3).toFixed(2)},${yH} ${(x+5*p/6).toFixed(2)},${top} ${(x+p).toFixed(2)},${top}`;
+    front += `M${x.toFixed(2)},${top}C${(x+p/6).toFixed(2)},${top} ${(x+p/3).toFixed(2)},${yH} ${h.toFixed(2)},${yH}`;
     /* thin front lip of the hole, painted over the wire so it plunges in */
     lips  += `M${(h-RX).toFixed(2)},${yH}A${RX},${RY} 0 0 0 ${(h+RX).toFixed(2)},${yH}Q${h.toFixed(2)},${(yH+RY*.42).toFixed(2)} ${(h-RX).toFixed(2)},${yH}Z`;
   }
-
-  /* the wire is one continuous piece: both halves get identical shading so the
-     apex joins seamlessly. Only the opaque sheet between them says which is which. */
-  const wire = (d, mask) => `
-  <path d="${d}" fill="none" stroke="#0a0b0c" stroke-width="6.6" stroke-linecap="round" opacity=".5"/>
-  <path d="${d}" fill="none" stroke="url(#bnd-wire)" stroke-width="5.6" stroke-linecap="round"/>
-  <g mask="url(#${mask})">
-    <path d="${d}" fill="none" stroke="#000000" stroke-width="2.4" stroke-linecap="round"
-          opacity=".45" transform="translate(1.2 1.7)"/>
-    <!-- kept dim: on black wire a bright specular reads as grey paint rather
-         than a sheen -->
-    <path d="${d}" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"
-          opacity=".3" transform="translate(-1.1 -1.5)"/>
-  </g>`;
 
   const el = document.createElement('div');
   el.className = 'binding';
@@ -555,33 +547,37 @@ function buildBinding(){
       <feGaussianBlur stdDeviation="2.1"/>
     </filter>
     <!-- confine the specular + contact shading to the body of the wire -->
-    <mask id="bnd-mf">
-      <path d="${front}" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round"/>
+    <mask id="bnd-body">
+      <path d="${coil}" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round"/>
     </mask>
-    <mask id="bnd-mb">
-      <path d="${back}" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round"/>
-    </mask>
-    <!-- Where the rear half of the wire may show. There is no painted paper
-         here any more, so instead of a matte hiding the rear loops the real
-         sheet does it: the wire is revealed only above the pad's top edge
-         (viewBox y=0), and below that it is simply not drawn, leaving the page
-         to show through. (Letting it through the punched holes as well reads
-         as a black blob at each coil foot — the stroke is nearly as wide as a
-         hole — so the holes stay opaque.) -->
-    <mask id="bnd-behind">
+    <!-- How much of the coil escapes the paper. There is no painted matte here
+         any more — the real sheet does the hiding — so the coil is revealed
+         above the pad's top edge (viewBox y=0) and along the halves that pass
+         in front of the sheet; the halves running behind it simply are not
+         painted below that edge, and the page shows through instead. -->
+    <mask id="bnd-coil">
       <rect x="0" y="-40" width="${W}" height="40" fill="#fff"/>
+      <path d="${front}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
     </mask>
   </defs>
-
-  <!-- the half of each turn that runs behind the sheet -->
-  <g mask="url(#bnd-behind)">${wire(back, 'bnd-mb')}</g>
 
   <!-- wire shadow cast on the paper -->
   <path d="${front}" fill="none" stroke="#231f20" stroke-opacity=".28" stroke-width="6.4"
         stroke-linecap="round" filter="url(#bnd-blur)" transform="translate(1.6 4.2)"/>
 
-  <!-- the half of each turn that runs in front -->
-  ${wire(front, 'bnd-mf')}
+  <!-- the coil, drawn once as a single stroke so the apexes have no seam -->
+  <g mask="url(#bnd-coil)">
+    <path d="${coil}" fill="none" stroke="#0a0b0c" stroke-width="6.6" stroke-linecap="round" opacity=".5"/>
+    <path d="${coil}" fill="none" stroke="url(#bnd-wire)" stroke-width="5.6" stroke-linecap="round"/>
+    <g mask="url(#bnd-body)">
+      <path d="${coil}" fill="none" stroke="#000000" stroke-width="2.4" stroke-linecap="round"
+            opacity=".45" transform="translate(1.2 1.7)"/>
+      <!-- kept dim: on black wire a bright specular reads as grey paint rather
+           than a sheen -->
+      <path d="${coil}" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"
+            opacity=".3" transform="translate(-1.1 -1.5)"/>
+    </g>
+  </g>
 
   <!-- hole lips, over the wire tips, so the wire plunges into the paper -->
   <path d="${lips}" fill="url(#bnd-hole)" fill-opacity=".92"
