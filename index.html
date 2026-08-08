@@ -118,6 +118,37 @@
     content:'';position:absolute;inset:0;
     background:linear-gradient(to bottom, rgba(35,31,32,.10), transparent 30%);
   }
+  /* ---------- the cover ----------
+     The first sheet is heavy card, not paper: warmer and deeper in tone, a
+     coarser tooth, and a real cut edge the inner sheets do not have. Its
+     stiffness is handled in the flip itself (see bendFor/flipMs). */
+  .leaf.cover .leaf-face{
+    background:
+      radial-gradient(128% 92% at 50% 10%, #efeae1 0%, #e5dfd4 44%, #d8d1c4 100%);
+  }
+  .leaf.cover .leaf-face.rear{
+    background:linear-gradient(#ddd7cc 0%, #d5cec2 55%, #cbc4b7 100%);
+  }
+  /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
+     tile) and a little more of it than the inner sheets carry */
+  .leaf.cover .leaf-face::before{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:180px 180px;
+    opacity:.09;
+  }
+  /* The cover's cut edge. Fixed depth — unlike the page-stack lip this was
+     modelled on, there is nothing here that has to grow or shrink as you
+     read, which is what made that one hard to get right. */
+  .cover-edge{
+    position:absolute;left:0;right:-2.2px;top:100%;height:2.6px;
+    background:linear-gradient(to bottom,#e7e1d6 0 .7px,#a8a296 .7px 100%);
+    box-shadow:0 1px 1.5px rgba(35,31,32,.22);
+  }
+  .cover-edge.side{
+    left:100%;right:auto;top:0;bottom:-2.6px;height:auto;width:2.2px;
+    background:linear-gradient(to right,#e7e1d6 0 .7px,#a8a296 .7px 100%);
+    box-shadow:1px 0 1.5px rgba(35,31,32,.18);
+  }
   /* punched holes — drawn on the sheet itself rather than on the binding, so
      they orbit the coil with the sheet instead of sitting still while it turns */
   .punch{
@@ -455,9 +486,14 @@ PAGES.forEach((p, i) => {
       </div>
       ${clickable ? '<div class="plus">+</div>' : ''}`;
   }
+  /* the title sheet is the cover: heavier stock, so it gets its own tone,
+     tooth, cut edge and a stiffer turn */
+  const isCover = p.type === 'title';
+  if(isCover) leaf.classList.add('cover');
   leaf.innerHTML = `
     <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
-    <div class="leaf-face rear">${punchSVG}</div>`;
+    <div class="leaf-face rear">${punchSVG}</div>
+    ${isCover ? '<div class="cover-edge"></div><div class="cover-edge side"></div>' : ''}`;
   cal.appendChild(leaf);
 });
 
@@ -585,6 +621,8 @@ addEventListener('resize', layoutOverlays);
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FLIP_MS = REDUCED ? 1 : 1250;
+/* the cover is board rather than paper, so it takes longer to come over */
+const flipMs = i => REDUCED ? 1 : (PAGES[i].type === 'title' ? 1600 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 
@@ -613,10 +651,10 @@ function flipKeyframes(i){
 function reverseKeyframes(kf){
   return kf.map(k => ({ transform:k.transform, offset:+(1 - k.offset).toFixed(4) })).reverse();
 }
-function animateShade(leafBelow, from, to){
+function animateShade(leafBelow, from, to, ms){
   if(!leafBelow) return;
   const sh = leafBelow.querySelector('.shade');
-  if(sh) sh.animate([{opacity:from},{opacity:to}], {duration:FLIP_MS*.62, easing:'ease-out', fill:'forwards'});
+  if(sh) sh.animate([{opacity:from},{opacity:to}], {duration:(ms||FLIP_MS)*.62, easing:'ease-out', fill:'forwards'});
 }
 /* ============================================================
    CURVED PAPER (WebGL)
@@ -645,6 +683,9 @@ function animateShade(leafBelow, from, to){
 const PERSP = 2000;      /* must match the .stage perspective */
 const ROWS  = 72;        /* strip subdivisions along the sheet */
 const BEND  = 1.15;      /* radians of trailing turn at peak bend */
+/* Heavy board barely curls. This is the strongest cue that the cover is a
+   different material: it comes over nearly rigid while paper ripples. */
+const bendFor = i => PAGES[i].type === 'title' ? 0.3 : BEND;
 const glc = document.getElementById('glc');
 let glOK = false, glR, glScene, glCam, mFront, mBack, gFront, gBack, glBox = null;
 let glRun = null;
@@ -708,13 +749,14 @@ function drawHoles(x, s){
 /* reverse of a sheet: plain paper, but it carries the same punched holes, so
    they stay with the sheet as it comes over the top. Needs the page's real
    proportions now (a 2px-wide gradient strip could not hold the hole row). */
-function paperTexture(){
+function paperTexture(stops){
   const TW = 512, TH = Math.round(TW * 1398.35 / 966.24);
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
   const x = c.getContext('2d');
+  const s = stops || ['#e3e2e0', '#dcdbd8', '#d5d4d1'];
   const g = x.createLinearGradient(0, 0, 0, TH);
-  g.addColorStop(0, '#e3e2e0'); g.addColorStop(.55, '#dcdbd8'); g.addColorStop(1, '#d5d4d1');
+  g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
   x.fillStyle = g; x.fillRect(0, 0, TW, TH);
   drawHoles(x, TW / 966.24);
   const t = new THREE.CanvasTexture(c);
@@ -722,6 +764,9 @@ function paperTexture(){
   t.generateMipmaps = false;
   return t;
 }
+/* the reverse of each stock, so the back of the cover matches its front —
+   built once and swapped in per flip, since only one back face is on screen */
+let texPaperBack = null, texCoverBack = null;
 function initGL(){
   if(!window.THREE) return false;
   try{
@@ -734,8 +779,10 @@ function initGL(){
     gFront = makeStrip(); gBack = makeStrip();
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
+    texPaperBack = paperTexture();
+    texCoverBack = paperTexture(['#ddd7cc', '#d5cec2', '#cbc4b7']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
-      vertexColors:true, side:THREE.BackSide, map:paperTexture() }));
+      vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
     return true;
   }catch(e){ return false; }
@@ -786,7 +833,11 @@ function pageTexture(i){
   x.translate(TW*.5, TH*.10);
   x.scale(1, (TH*.92) / (TW*1.28));
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
-  g.addColorStop(0, '#f1f0ee'); g.addColorStop(.44, '#eae9e7'); g.addColorStop(1, '#e1e0dd');
+  /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
+  const st = p.type === 'title'
+    ? ['#efeae1', '#e5dfd4', '#d8d1c4']
+    : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
+  g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
   x.restore();
 
@@ -831,7 +882,7 @@ function pageTexture(i){
 /* write the sheet's shape and shading for a progress value e ∈ [0,1] */
 function shapeSheet(i, e){
   const A = e * Math.PI * 2;
-  const C = -BEND * Math.sin(Math.PI * e);
+  const C = -bendFor(i) * Math.sin(Math.PI * e);
   const H = glBox.ph, W = glBox.pw, c = C / H;
   const z = leafZ(i) + (backZ(i) - leafZ(i)) * smoothstep(.45, .62, e);
   const x0 = glBox.hx - glBox.ox, y0 = glBox.hy - glBox.oy;
@@ -864,7 +915,7 @@ function shapeSheet(i, e){
 }
 function glTick(now){
   if(!glRun) return;
-  const t = Math.min(1, (now - glRun.t0) / FLIP_MS);
+  const t = Math.min(1, (now - glRun.t0) / glRun.ms);
   const prog = glRun.dir > 0 ? glEase(t) : 1 - glEase(t);
   shapeSheet(glRun.i, prog);
   /* the canvas is one flat layer, so it can only be entirely above or
@@ -888,7 +939,13 @@ function glFlip(i, dir, done){
   if(!tex) return false;
   mFront.material.map = tex;
   mFront.material.needsUpdate = true;
-  glRun = {i, dir, t0: performance.now(), done};
+  /* the sheet's reverse has to be the same stock as its face */
+  const back = PAGES[i].type === 'title' ? texCoverBack : texPaperBack;
+  if(mBack.material.map !== back){
+    mBack.material.map = back;
+    mBack.material.needsUpdate = true;
+  }
+  glRun = {i, dir, t0: performance.now(), ms: flipMs(i), done};
   const prog0 = dir > 0 ? 0 : 1;
   shapeSheet(i, prog0);
   glc.classList.toggle('behind', smoothstep(.45, .62, prog0) > .5);
@@ -917,13 +974,13 @@ function flipLeaf(i, dir){
   }
   const kf = flipKeyframes(i);
   leaf.animate(dir > 0 ? kf : reverseKeyframes(kf),
-               {duration:FLIP_MS, easing:EASE, fill:'forwards'});
+               {duration:flipMs(i), easing:EASE, fill:'forwards'});
 }
 function next(){
   if(cur >= PAGES.length - 1) return;
   glSettle();
   flipLeaf(cur, 1);
-  animateShade(leaves[cur+1], .45, 0);
+  animateShade(leaves[cur+1], .45, 0, flipMs(cur));
   cur++; updateNav();
 }
 function prev(){
@@ -931,7 +988,7 @@ function prev(){
   glSettle();
   cur--;
   flipLeaf(cur, -1);
-  animateShade(leaves[cur+1], 0, .45);
+  animateShade(leaves[cur+1], 0, .45, flipMs(cur));
   updateNav();
 }
 glOK = initGL();
