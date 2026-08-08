@@ -140,14 +140,18 @@
      modelled on, there is nothing here that has to grow or shrink as you
      read, which is what made that one hard to get right. */
   .cover-edge{
-    position:absolute;left:0;right:-2.2px;top:100%;height:2.6px;
-    background:linear-gradient(to bottom,#e7e1d6 0 .7px,#a8a296 .7px 100%);
-    box-shadow:0 1px 1.5px rgba(35,31,32,.22);
+    position:absolute;left:0;right:-4px;top:100%;height:5px;
+    /* thin light line where the printed face wraps the edge, then the board's
+       own core shading below it, so the depth reads as material and not a rule */
+    background:linear-gradient(to bottom,
+      #efeae1 0 .9px, #bdb7ab .9px, #9c9589 65%, #ada699 100%);
+    box-shadow:0 1.5px 2px rgba(35,31,32,.24);
   }
   .cover-edge.side{
-    left:100%;right:auto;top:0;bottom:-2.6px;height:auto;width:2.2px;
-    background:linear-gradient(to right,#e7e1d6 0 .7px,#a8a296 .7px 100%);
-    box-shadow:1px 0 1.5px rgba(35,31,32,.18);
+    left:100%;right:auto;top:0;bottom:-5px;height:auto;width:4px;
+    background:linear-gradient(to right,
+      #efeae1 0 .9px, #bdb7ab .9px, #9c9589 65%, #ada699 100%);
+    box-shadow:1.5px 0 2px rgba(35,31,32,.2);
   }
   /* punched holes — drawn on the sheet itself rather than on the binding, so
      they orbit the coil with the sheet instead of sitting still while it turns */
@@ -621,8 +625,10 @@ addEventListener('resize', layoutOverlays);
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FLIP_MS = REDUCED ? 1 : 1250;
-/* the cover is board rather than paper, so it takes longer to come over */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].type === 'title' ? 1600 : FLIP_MS);
+/* Opening the cover is its own moment — heavy board, taken deliberately — so
+   it runs far slower than the pages behind it. The contrast is the point: the
+   slow one is getting into the book, the quick ones are the drawings. */
+const flipMs = i => REDUCED ? 1 : (PAGES[i].type === 'title' ? 2600 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 
