@@ -81,17 +81,23 @@
       0 10px 20px -8px rgba(35,31,32,.20),
       0 44px 76px -24px rgba(35,31,32,.42);
     transform:translateZ(0);
+    --stack:1;   /* fraction of pages still unread — set from JS in updateNav() */
   }
-  /* stacked sheet edges along the bottom */
+  /* stacked sheet edges along the bottom — anchored at the top so the strip
+     grows/shrinks downward with the remaining page count instead of leaving
+     a gap under the pad */
   .board::after{
-    content:'';position:absolute;left:-2px;right:0;bottom:-3px;height:5px;
+    content:'';position:absolute;left:-2px;right:0;top:calc(100% - 2px);
+    height:calc(2px + 5px*var(--stack));
     background:repeating-linear-gradient(to bottom,
       #efeeeb 0 .5px, #dcdad7 .5px 1px, #cbc9c5 1px 1.5px);
     box-shadow:0 1px 1px rgba(35,31,32,.18);
   }
-  /* stacked sheet edges down the right-hand side */
+  /* stacked sheet edges down the right-hand side — anchored at the left for
+     the same reason */
   .board::before{
-    content:'';position:absolute;top:-1px;bottom:0;right:-3px;width:4px;
+    content:'';position:absolute;top:-1px;bottom:0;left:calc(100% - 1px);
+    width:calc(1px + 4px*var(--stack));
     background:repeating-linear-gradient(to right,
       #efeeeb 0 .5px, #dcdad7 .5px 1px, #cbc9c5 1px 1.5px);
   }
@@ -581,6 +587,9 @@ function updateNav(){
   document.getElementById('prevBtn').disabled = cur === 0;
   document.getElementById('nextBtn').disabled = cur === PAGES.length - 1;
   document.getElementById('counter').textContent = (cur+1) + ' / ' + PAGES.length;
+  /* the pad's edge decoration thins out as fewer pages remain unread */
+  const remaining = (PAGES.length - 1 - cur) / (PAGES.length - 1);
+  document.querySelector('.board').style.setProperty('--stack', (0.15 + 0.85*remaining).toFixed(3));
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
    passes over the top, then keeps going down the *back* of the pad: one full
