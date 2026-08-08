@@ -136,6 +136,12 @@
     content:'';position:absolute;inset:0;
     background:linear-gradient(to bottom, rgba(35,31,32,.10), transparent 30%);
   }
+  /* punched holes — drawn on the sheet itself rather than on the binding, so
+     they orbit the coil with the sheet instead of sitting still while it turns */
+  .punch{
+    position:absolute;inset:0;width:100%;height:100%;
+    pointer-events:none;z-index:2;
+  }
   /* shadow cast on the page below while one flips over it */
   .leaf .shade{
     position:absolute;inset:0;pointer-events:none;
@@ -394,7 +400,10 @@ const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
    is unreliable — and the WebGL flip needs it to fit the art the same way
    CSS object-fit:contain does. */
 const PAGES = [
-  {type:"title", img:"assets/title.svg", ar:0.6910},
+  /* title.svg is a mockup of the whole pad and carries its own printed spiral
+     down to y=76.4; its viewBox is cropped past that so the pad's real coils
+     are the only binding on screen. ar follows the cropped box. */
+  {type:"title", img:"assets/title.svg", ar:0.7313},
   {type:"colophon"},
   {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
   {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
@@ -407,6 +416,21 @@ const PAGES = [
   {type:"art", img:"assets/page9.svg",  ar:0.7046, products:["jorts"]},
   {type:"art", img:"assets/page10.svg", ar:0.7892, products:["white-tee"]}
 ];
+
+/* Punch-hole geometry, in page artwork units with y=0 at the sheet's top edge.
+   The binding's SVG uses the same coordinate system (its viewBox y=0 sits on
+   the pad's top edge and its units match the artwork), so these numbers place
+   the holes identically on every sheet and on the wire that threads them.
+   Each sheet carries its own copy, which is what makes the holes travel around
+   the coil as the sheet turns instead of sitting still. */
+const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:26, RX:4.8, RY:5.8};
+HOLE.P = (HOLE.X1 - HOLE.X0) / HOLE.N;
+const holeXs = Array.from({length:HOLE.N}, (_, i) => HOLE.X0 + i*HOLE.P + HOLE.P/2);
+const holeEllipses = holeXs.map(h =>
+  `<ellipse cx="${h.toFixed(2)}" cy="${HOLE.Y}" rx="${HOLE.RX}" ry="${HOLE.RY}"/>`).join('');
+const punchSVG =
+  `<svg class="punch" viewBox="0 0 966.24 1398.35" preserveAspectRatio="none" aria-hidden="true">` +
+  `<g fill="#cfcdc9" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holeEllipses}</g></svg>`;
 
 /* ---------- build calendar leaves ---------- */
 const cal = document.getElementById('calendar');
@@ -447,8 +471,8 @@ PAGES.forEach((p, i) => {
       ${clickable ? '<div class="plus">+</div>' : ''}`;
   }
   leaf.innerHTML = `
-    <div class="leaf-face">${inner}<div class="shade"></div></div>
-    <div class="leaf-face rear"></div>`;
+    <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
+    <div class="leaf-face rear">${punchSVG}</div>`;
   cal.appendChild(leaf);
 });
 
@@ -466,16 +490,16 @@ const leaves = [...cal.querySelectorAll('.leaf')];
    ============================================================ */
 function buildBinding(){
   const W = 966.24;            /* artwork width of a page  */
-  const N = 29;                /* number of turns          */
-  const X0 = 24, X1 = W - 24;
-  const p  = (X1 - X0) / N;    /* pitch                    */
+  /* one turn per hole, threaded through the holes the sheets carry */
+  const N = HOLE.N, X0 = HOLE.X0, X1 = HOLE.X1;
+  const p  = HOLE.P;           /* pitch                    */
   const r  = 21;               /* coil radius              */
-  const yH = 26;               /* punch-hole centre        */
+  const yH = HOLE.Y;           /* punch-hole centre        */
   const yc = yH - r;           /* helix axis — the sheet pivots here */
   const top = yc - r;          /* highest point of a turn  */
-  const RX = 4.8, RY = 5.8;    /* punch-hole size          */
+  const RX = HOLE.RX, RY = HOLE.RY;
 
-  let front = '', back = '', holes = '', lips = '';
+  let front = '', back = '', lips = '';
   for(let i = 0; i < N; i++){
     const x = X0 + i * p, h = x + p / 2;
     /* each half runs 4 units past the apex, so the round caps end up buried
@@ -484,7 +508,6 @@ function buildBinding(){
     /* the last turn has no apex to climb back to, so it just ends in its hole */
     if(i < N - 1)
       back += `M${h.toFixed(2)},${yH}C${(x+2*p/3).toFixed(2)},${yH} ${(x+5*p/6).toFixed(2)},${top} ${(x+p).toFixed(2)},${top}L${(x+p+2.5).toFixed(2)},${top}`;
-    holes += `<ellipse cx="${h.toFixed(2)}" cy="${yH}" rx="${RX}" ry="${RY}"/>`;
     /* thin front lip of the hole, painted over the wire so it plunges in */
     lips  += `M${(h-RX).toFixed(2)},${yH}A${RX},${RY} 0 0 0 ${(h+RX).toFixed(2)},${yH}Q${h.toFixed(2)},${(yH+RY*.42).toFixed(2)} ${(h-RX).toFixed(2)},${yH}Z`;
   }
@@ -506,14 +529,6 @@ function buildBinding(){
   el.innerHTML = `
 <svg viewBox="0 -40 ${W} 165" preserveAspectRatio="none" aria-hidden="true">
   <defs>
-    <!-- matches the paper gradient of the sheet underneath, so there is no seam -->
-    <radialGradient id="bnd-paper" gradientUnits="userSpaceOnUse"
-      cx="483.12" cy="139.8" r="1286"
-      gradientTransform="translate(483.12 139.8) scale(.961 1) translate(-483.12 -139.8)">
-      <stop offset="0"   stop-color="#f1f0ee"/>
-      <stop offset=".44" stop-color="#eae9e7"/>
-      <stop offset="1"   stop-color="#e1e0dd"/>
-    </radialGradient>
     <linearGradient id="bnd-wire" gradientUnits="userSpaceOnUse" x1="0" y1="${top}" x2="0" y2="${yH}">
       <stop offset="0"   stop-color="#e6e9eb"/>
       <stop offset=".16" stop-color="#b6bbbf"/>
@@ -536,20 +551,20 @@ function buildBinding(){
     <mask id="bnd-mb">
       <path d="${back}" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round"/>
     </mask>
+    <!-- Where the rear half of the wire may show. There is no painted paper
+         here any more, so instead of a matte hiding the rear loops the real
+         sheet does it: the wire is revealed only above the pad's top edge
+         (viewBox y=0), and below that it is simply not drawn, leaving the page
+         to show through. (Letting it through the punched holes as well reads
+         as a black blob at each coil foot — the stroke is nearly as wide as a
+         hole — so the holes stay opaque.) -->
+    <mask id="bnd-behind">
+      <rect x="0" y="-40" width="${W}" height="40" fill="#fff"/>
+    </mask>
   </defs>
 
   <!-- the half of each turn that runs behind the sheet -->
-  ${wire(back, 'bnd-mb')}
-
-  <!-- the sheet itself -->
-  <!-- only tall enough to hide the wire's rear loops + their shadow — a
-       taller matte here would sit as a mismatched flat patch over whatever
-       is actually happening on the page below (resting art or a flipping
-       sheet), rather than blending with it -->
-  <rect x="0" y="3" width="${W}" height="42" fill="url(#bnd-paper)"/>
-
-  <!-- punched holes -->
-  <g fill="url(#bnd-hole)" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holes}</g>
+  <g mask="url(#bnd-behind)">${wire(back, 'bnd-mb')}</g>
 
   <!-- wire shadow cast on the paper -->
   <path d="${front}" fill="none" stroke="#231f20" stroke-opacity=".28" stroke-width="6.4"
@@ -692,13 +707,31 @@ function makeStrip(){
   }
   return g;
 }
+/* the sheet's punched holes, painted into a page texture. `s` scales artwork
+   units to texture pixels — the same on both axes, since the texture keeps the
+   page's aspect ratio. */
+function drawHoles(x, s){
+  x.fillStyle = '#cfcdc9';
+  x.strokeStyle = 'rgba(35,31,32,.2)';
+  x.lineWidth = Math.max(1, .7 * s);
+  holeXs.forEach(hx => {
+    x.beginPath();
+    x.ellipse(hx * s, HOLE.Y * s, HOLE.RX * s, HOLE.RY * s, 0, 0, Math.PI * 2);
+    x.fill(); x.stroke();
+  });
+}
+/* reverse of a sheet: plain paper, but it carries the same punched holes, so
+   they stay with the sheet as it comes over the top. Needs the page's real
+   proportions now (a 2px-wide gradient strip could not hold the hole row). */
 function paperTexture(){
+  const TW = 512, TH = Math.round(TW * 1398.35 / 966.24);
   const c = document.createElement('canvas');
-  c.width = 2; c.height = 256;
+  c.width = TW; c.height = TH;
   const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 256);
+  const g = x.createLinearGradient(0, 0, 0, TH);
   g.addColorStop(0, '#e3e2e0'); g.addColorStop(.55, '#dcdbd8'); g.addColorStop(1, '#d5d4d1');
-  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  x.fillStyle = g; x.fillRect(0, 0, TW, TH);
+  drawHoles(x, TW / 966.24);
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
@@ -796,6 +829,8 @@ function pageTexture(i){
       x.drawImage(img, bx + (bw-dw)/2, by + (bh-dh)/2, dw, dh);
     }
   }
+  /* punched last: the holes go through whatever is printed on the sheet */
+  drawHoles(x, TW / 966.24);
   /* a file:// page taints the canvas the moment an image is drawn on it, and
      WebGL refuses tainted textures. Detect it here and fall back for good. */
   try{ x.getImageData(0, 0, 1, 1); }
