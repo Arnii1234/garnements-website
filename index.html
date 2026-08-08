@@ -139,6 +139,14 @@
   /* The cover's cut edge. Fixed depth — unlike the page-stack lip this was
      modelled on, there is nothing here that has to grow or shrink as you
      read, which is what made that one hard to get right. */
+  /* the cover's art is pressed into the board, not printed on top of it —
+     highlight on the far wall of the recess, shadow on the near one. Matches
+     the same two rims baked into the flip texture in pageTexture(). */
+  .leaf.cover .title-art img{
+    filter:
+      drop-shadow(.9px .9px 0 rgba(255,255,255,.55))
+      drop-shadow(-.75px -.75px 0 rgba(35,31,32,.3));
+  }
   .cover-edge{
     position:absolute;left:0;right:-4px;top:100%;height:5px;
     /* thin light line where the printed face wraps the edge, then the board's
@@ -420,7 +428,9 @@ const PAGES = [
   /* title.svg is now just the drawing on a transparent ground — no printed
      spiral and no paper of its own — so it needs no cropping and the sheet's
      own paper shows through behind it. */
-  {type:"title", img:"assets/title.svg", ar:0.6910},
+  /* `board` marks the heavy stock — the two covers. Everything that makes a
+     sheet read as card rather than paper keys off this flag, not the type. */
+  {type:"title", img:"assets/title.svg", ar:0.6910, board:true},
   {type:"colophon"},
   {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
   {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
@@ -431,7 +441,9 @@ const PAGES = [
   {type:"art", img:"assets/page7.svg",  ar:0.3262, products:["walker-jeans"]},
   {type:"art", img:"assets/page8.svg",  ar:0.8519, products:["rose-tee"]},
   {type:"art", img:"assets/page9.svg",  ar:0.7046, products:["jorts"]},
-  {type:"art", img:"assets/page10.svg", ar:0.7892, products:["white-tee"]}
+  {type:"art", img:"assets/page10.svg", ar:0.7892, products:["white-tee"]},
+  /* back cover — the same board as the title, carrying nothing */
+  {type:"back", board:true}
 ];
 
 /* Punch-hole geometry, in page artwork units with y=0 at the sheet's top edge.
@@ -482,6 +494,8 @@ PAGES.forEach((p, i) => {
           <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a>
         </p>
       </div>`;
+  } else if(p.type === 'back'){
+    inner = '';                       /* bare board, nothing printed on it */
   } else {
     const clickable = p.products && p.products.length;
     inner = `
@@ -490,9 +504,9 @@ PAGES.forEach((p, i) => {
       </div>
       ${clickable ? '<div class="plus">+</div>' : ''}`;
   }
-  /* the title sheet is the cover: heavier stock, so it gets its own tone,
-     tooth, cut edge and a stiffer turn */
-  const isCover = p.type === 'title';
+  /* the covers are heavier stock, so they get their own tone, tooth, cut edge
+     and a stiffer, slower turn */
+  const isCover = !!p.board;
   if(isCover) leaf.classList.add('cover');
   leaf.innerHTML = `
     <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
@@ -628,7 +642,7 @@ const FLIP_MS = REDUCED ? 1 : 1250;
 /* Opening the cover is its own moment — heavy board, taken deliberately — so
    it runs far slower than the pages behind it. The contrast is the point: the
    slow one is getting into the book, the quick ones are the drawings. */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].type === 'title' ? 2600 : FLIP_MS);
+const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 2600 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 
@@ -691,7 +705,7 @@ const ROWS  = 72;        /* strip subdivisions along the sheet */
 const BEND  = 1.15;      /* radians of trailing turn at peak bend */
 /* Heavy board barely curls. This is the strongest cue that the cover is a
    different material: it comes over nearly rigid while paper ripples. */
-const bendFor = i => PAGES[i].type === 'title' ? 0.3 : BEND;
+const bendFor = i => PAGES[i].board ? 0.3 : BEND;
 const glc = document.getElementById('glc');
 let glOK = false, glR, glScene, glCam, mFront, mBack, gFront, gBack, glBox = null;
 let glRun = null;
@@ -840,7 +854,7 @@ function pageTexture(i){
   x.scale(1, (TH*.92) / (TW*1.28));
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
-  const st = p.type === 'title'
+  const st = p.board
     ? ['#efeae1', '#e5dfd4', '#d8d1c4']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
@@ -859,10 +873,25 @@ function pageTexture(i){
      '200–300 GSM','','@GARNEMENTS.DE'].forEach((line, k) => {
       x.fillText(line, TW/2, TH*.475 + k*TH*.0335);
     });
-  }else{
+  }else if(p.type !== 'back'){                      /* the back cover is bare */
     const img = leaves[i].querySelector('img');
     if(!img || !img.complete) return null;          /* try again next flip */
     if(p.type === 'title'){
+      /* Pressed into the board rather than printed on it. Light reads from the
+         top left, so the far wall of the recess catches it (highlight down-
+         right) and the near wall falls into shadow (dark up-left). Canvas
+         shadows paint behind the image, so two offset passes lay the rims down
+         and a clean pass covers the middle. */
+      const d = TW * 0.0016;
+      x.shadowBlur = 0;
+      x.shadowColor = 'rgba(255,255,255,.55)';
+      x.shadowOffsetX = d; x.shadowOffsetY = d;
+      x.drawImage(img, 0, 0, TW, TH);
+      x.shadowColor = 'rgba(35,31,32,.3)';
+      x.shadowOffsetX = -d*.85; x.shadowOffsetY = -d*.85;
+      x.drawImage(img, 0, 0, TW, TH);
+      x.shadowColor = 'transparent';
+      x.shadowOffsetX = x.shadowOffsetY = 0;
       x.drawImage(img, 0, 0, TW, TH);               /* cover: same aspect as the page */
     }else{
       const bx = TW*.06, bw = TW*.88, by = TH*.092, bh = TH*.858;
@@ -946,7 +975,7 @@ function glFlip(i, dir, done){
   mFront.material.map = tex;
   mFront.material.needsUpdate = true;
   /* the sheet's reverse has to be the same stock as its face */
-  const back = PAGES[i].type === 'title' ? texCoverBack : texPaperBack;
+  const back = PAGES[i].board ? texCoverBack : texPaperBack;
   if(mBack.material.map !== back){
     mBack.material.map = back;
     mBack.material.needsUpdate = true;
