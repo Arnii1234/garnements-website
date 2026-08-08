@@ -382,10 +382,10 @@ const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
    is unreliable — and the WebGL flip needs it to fit the art the same way
    CSS object-fit:contain does. */
 const PAGES = [
-  /* title.svg is a mockup of the whole pad and carries its own printed spiral
-     down to y=76.4; its viewBox is cropped past that so the pad's real coils
-     are the only binding on screen. ar follows the cropped box. */
-  {type:"title", img:"assets/title.svg", ar:0.7313},
+  /* title.svg is now just the drawing on a transparent ground — no printed
+     spiral and no paper of its own — so it needs no cropping and the sheet's
+     own paper shows through behind it. */
+  {type:"title", img:"assets/title.svg", ar:0.6910},
   {type:"colophon"},
   {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
   {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
