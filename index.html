@@ -126,11 +126,11 @@
      outline you see around an inner page is the back cover genuinely showing
      past it. Stiffness is handled in the flip itself (see bendFor/flipMs). */
   .leaf.cover{
-    --board-face:radial-gradient(128% 92% at 50% 10%, #c5bfb3 0%, #bdb7ab 44%, #b3ada1 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d0cabe 0%, #c8c2b6 44%, #beb8ac 100%);
   }
   .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#b6b0a4 0%, #b0aa9e 55%, #a9a397 100%);
+    background:linear-gradient(#c1bbaf 0%, #bbb5a9 55%, #b4aea2 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
      so the two read as one piece of card rather than a border around it. */
@@ -423,7 +423,7 @@ const PAGES = [
      own paper shows through behind it. */
   /* `board` marks the heavy stock — the two covers. Everything that makes a
      sheet read as card rather than paper keys off this flag, not the type. */
-  {type:"title", img:"assets/title.svg", ar:0.6910, board:true},
+  {type:"title", img:"assets/title-2.svg", ar:0.6910, board:true},
   {type:"colophon"},
   {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
   {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
@@ -817,7 +817,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#b6b0a4', '#b0aa9e', '#a9a397']);
+    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -872,7 +872,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#c5bfb3', '#bdb7ab', '#b3ada1']
+    ? ['#d0cabe', '#c8c2b6', '#beb8ac']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
