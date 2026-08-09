@@ -72,12 +72,13 @@
      duck behind the pad too — otherwise it stays visibly on top for the
      rest of the turn no matter what the 3D math says */
   .glc.behind{z-index:0;}
-  /* cardboard backing of the pad — a real element so Safari depth-sorts it */
-  /* Flush with the page on every side: with no painted stack edge, any overhang
-     would just read as a bare grey lip. The board is here for the pad's drop
-     shadow and so Safari has a real element to depth-sort the sheets against. */
+  /* Cardboard backing of the pad — a real element so Safari depth-sorts the
+     sheets against it, and what casts the pad's drop shadow. Sized to the
+     covers rather than the sheets so the shadow falls at the pad's true outer
+     edge; the back cover sits in front of it and hides it completely. */
   .board{
-    position:absolute;inset:0;
+    position:absolute;
+    inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:linear-gradient(160deg,#dedcd9 0%, #d4d2cf 55%, #c9c7c3 100%);
     box-shadow:
       0 1px 2px rgba(35,31,32,.10),
@@ -118,16 +119,25 @@
     content:'';position:absolute;inset:0;
     background:linear-gradient(to bottom, rgba(35,31,32,.10), transparent 30%);
   }
-  /* ---------- the cover ----------
-     The first sheet is heavy card, not paper: warmer and deeper in tone, a
-     coarser tooth, and a real cut edge the inner sheets do not have. Its
-     stiffness is handled in the flip itself (see bendFor/flipMs). */
-  .leaf.cover .leaf-face{
-    background:
-      radial-gradient(128% 92% at 50% 10%, #efeae1 0%, #e5dfd4 44%, #d8d1c4 100%);
+  /* ---------- the covers ----------
+     Board, not paper: a flat matte grey-beige, a coarser tooth, and physically
+     larger than the sheets on every edge (--over-x/--over-y, set from JS so the
+     one number lives in script). Nothing here paints an "edge" — the darker
+     outline you see around an inner page is the back cover genuinely showing
+     past it. Stiffness is handled in the flip itself (see bendFor/flipMs). */
+  .leaf.cover{
+    --board-face:radial-gradient(128% 92% at 50% 10%, #c5bfb3 0%, #bdb7ab 44%, #b3ada1 100%);
   }
+  .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#ddd7cc 0%, #d5cec2 55%, #cbc4b7 100%);
+    background:linear-gradient(#b6b0a4 0%, #b0aa9e 55%, #a9a397 100%);
+  }
+  /* the part of the board that reaches past the sheets. Same fill as the face,
+     so the two read as one piece of card rather than a border around it. */
+  .board-over{
+    position:absolute;
+    inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
+    background:var(--board-face);
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
@@ -136,9 +146,6 @@
     background-size:180px 180px;
     opacity:.09;
   }
-  /* The cover's cut edge. Fixed depth — unlike the page-stack lip this was
-     modelled on, there is nothing here that has to grow or shrink as you
-     read, which is what made that one hard to get right. */
   /* the cover's art is pressed into the board, not printed on top of it —
      highlight on the far wall of the recess, shadow on the near one. Matches
      the same two rims baked into the flip texture in pageTexture(). */
@@ -146,20 +153,6 @@
     filter:
       drop-shadow(.9px .9px 0 rgba(255,255,255,.55))
       drop-shadow(-.75px -.75px 0 rgba(35,31,32,.3));
-  }
-  .cover-edge{
-    position:absolute;left:0;right:-4px;top:100%;height:5px;
-    /* thin light line where the printed face wraps the edge, then the board's
-       own core shading below it, so the depth reads as material and not a rule */
-    background:linear-gradient(to bottom,
-      #efeae1 0 .9px, #bdb7ab .9px, #9c9589 65%, #ada699 100%);
-    box-shadow:0 1.5px 2px rgba(35,31,32,.24);
-  }
-  .cover-edge.side{
-    left:100%;right:auto;top:0;bottom:-5px;height:auto;width:4px;
-    background:linear-gradient(to right,
-      #efeae1 0 .9px, #bdb7ab .9px, #9c9589 65%, #ada699 100%);
-    box-shadow:1.5px 0 2px rgba(35,31,32,.2);
   }
   /* punched holes — drawn on the sheet itself rather than on the binding, so
      they orbit the coil with the sheet instead of sitting still while it turns */
@@ -464,8 +457,17 @@ const punchSVG =
   `<svg class="punch" viewBox="0 0 966.24 1398.35" preserveAspectRatio="none" aria-hidden="true">` +
   `<g fill="#cfcdc9" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holeEllipses}</g></svg>`;
 
+/* How far the covers reach past the sheets, in the same page artwork units as
+   everything else, so it scales with the pad instead of being a pixel value
+   that drifts at other sizes. This is the only place the number lives: the CSS
+   reads it as --over-x/--over-y, and the binding's mask subtracts it so the
+   wire stops at the board's edge rather than the sheet's. */
+const BOARD_OVER = 6;
+
 /* ---------- build calendar leaves ---------- */
 const cal = document.getElementById('calendar');
+cal.style.setProperty('--over-x', (BOARD_OVER / 966.24 * 100).toFixed(4) + '%');
+cal.style.setProperty('--over-y', (BOARD_OVER / 1398.35 * 100).toFixed(4) + '%');
 const board = document.createElement('div');
 board.className = 'board';
 cal.appendChild(board);
@@ -511,7 +513,7 @@ PAGES.forEach((p, i) => {
   leaf.innerHTML = `
     <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
     <div class="leaf-face rear">${punchSVG}</div>
-    ${isCover ? '<div class="cover-edge"></div><div class="cover-edge side"></div>' : ''}`;
+    ${isCover ? '<div class="board-over"></div>' : ''}`;
   cal.appendChild(leaf);
 });
 
@@ -586,13 +588,15 @@ function buildBinding(){
     <mask id="bnd-body">
       <path d="${coil}" fill="none" stroke="#fff" stroke-width="5.6" stroke-linecap="round"/>
     </mask>
-    <!-- How much of the coil escapes the paper. There is no painted matte here
+    <!-- How much of the coil escapes the board. There is no painted matte here
          any more — the real sheet does the hiding — so the coil is revealed
-         above the pad's top edge (viewBox y=0) and along the halves that pass
-         in front of the sheet; the halves running behind it simply are not
-         painted below that edge, and the page shows through instead. -->
+         above the pad's top edge and along the halves that pass in front of the
+         sheet; the halves running behind it simply are not painted below that
+         edge, and the pad shows through instead. The covers reach BOARD_OVER
+         above the sheets, so the cut-off is there rather than at y=0 — else the
+         wire would be drawn over the board it should be passing behind. -->
     <mask id="bnd-coil">
-      <rect x="0" y="-40" width="${W}" height="40" fill="#fff"/>
+      <rect x="0" y="-40" width="${W}" height="${40 - BOARD_OVER}" fill="#fff"/>
       <path d="${front}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
     </mask>
   </defs>
@@ -813,7 +817,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#ddd7cc', '#d5cec2', '#cbc4b7']);
+    texCoverBack = paperTexture(['#b6b0a4', '#b0aa9e', '#a9a397']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -868,7 +872,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#efeae1', '#e5dfd4', '#d8d1c4']
+    ? ['#c5bfb3', '#bdb7ab', '#b3ada1']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
