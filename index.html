@@ -645,10 +645,23 @@ const FLIP_MS = REDUCED ? 1 : 1250;
 const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 2600 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
+/* A cover turn is the one flip that cannot be cut short. Ordinary pages stay
+   interruptible — a second click lands the running one and starts the next, so
+   flipping through stays quick — but doing that to the cover would throw away
+   the slow opening, which is the whole point of it. Time-based rather than
+   hooked to the animation, so it covers the WebGL path, the CSS fallback and
+   every input (buttons, arrow keys, swipe) with one check.
+   The clock alone is not enough: requestAnimationFrame pauses while the tab is
+   hidden, so a backgrounded flip can still be mid-turn long after its time is
+   up. Hence the second clause — a board flip that is genuinely still running
+   holds the lock regardless of the clock. */
+let lockedUntil = 0;
+const flipLocked = () =>
+  performance.now() < lockedUntil || !!(glRun && PAGES[glRun.i].board);
 
 function updateNav(){
-  document.getElementById('prevBtn').disabled = cur === 0;
-  document.getElementById('nextBtn').disabled = cur === PAGES.length - 1;
+  document.getElementById('prevBtn').disabled = flipLocked() || cur === 0;
+  document.getElementById('nextBtn').disabled = flipLocked() || cur === PAGES.length - 1;
   document.getElementById('counter').textContent = (cur+1) + ' / ' + PAGES.length;
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
@@ -964,10 +977,12 @@ function glTick(now){
 }
 function glSettle(){
   if(!glRun) return;
-  const done = glRun.done;
+  const done = glRun.done, wasBoard = PAGES[glRun.i].board;
   glRun = null;
   glc.classList.remove('on', 'behind');
   done();
+  /* the lock may have been held open by this run rather than by the clock */
+  if(wasBoard) updateNav();
 }
 function glFlip(i, dir, done){
   const tex = pageTexture(i);
@@ -1011,19 +1026,30 @@ function flipLeaf(i, dir){
   leaf.animate(dir > 0 ? kf : reverseKeyframes(kf),
                {duration:flipMs(i), easing:EASE, fill:'forwards'});
 }
+/* hold off every input until a board sheet has finished turning, and put the
+   nav buttons back once it lands */
+function lockIfBoard(i){
+  if(!PAGES[i].board) return;
+  const ms = flipMs(i);
+  lockedUntil = performance.now() + ms;
+  setTimeout(updateNav, ms);
+}
 function next(){
-  if(cur >= PAGES.length - 1) return;
+  if(flipLocked() || cur >= PAGES.length - 1) return;
+  const i = cur;
   glSettle();
-  flipLeaf(cur, 1);
-  animateShade(leaves[cur+1], .45, 0, flipMs(cur));
+  flipLeaf(i, 1);
+  animateShade(leaves[i+1], .45, 0, flipMs(i));
+  lockIfBoard(i);
   cur++; updateNav();
 }
 function prev(){
-  if(cur <= 0) return;
+  if(flipLocked() || cur <= 0) return;
   glSettle();
   cur--;
   flipLeaf(cur, -1);
   animateShade(leaves[cur+1], 0, .45, flipMs(cur));
+  lockIfBoard(cur);
   updateNav();
 }
 glOK = initGL();
