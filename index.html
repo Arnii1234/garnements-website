@@ -723,6 +723,14 @@ const BEND  = 1.15;      /* radians of trailing turn at peak bend */
 /* Heavy board barely curls. This is the strongest cue that the cover is a
    different material: it comes over nearly rigid while paper ripples. */
 const bendFor = i => PAGES[i].board ? 0.3 : BEND;
+/* How the turning sheet is lit. Matte paper, so: a narrow brightness range
+   that never reaches white (a band at full value is what reads as gloss), and
+   `wrap` instead of clamping the Lambert term at zero — paper is faintly
+   translucent and sits in bounced light, so it has no hard terminator. The
+   wrap also broadens the lit band, which reads duller than a sharp peak.
+   These five numbers are the whole look; they are safe to tune. */
+const LIT = {base:0.80, gain:0.16, backBase:0.76, backGain:0.15, wrap:0.6};
+const wrapLit = t => Math.max(0, (t + LIT.wrap) / (1 + LIT.wrap));
 const glc = document.getElementById('glc');
 let glOK = false, glR, glScene, glCam, mFront, mBack, gFront, gBack, glBox = null;
 let glRun = null;
@@ -950,8 +958,8 @@ function shapeSheet(i, e){
     const Y = -(y0 + py), Z = pz + z;
     /* surface normal is (0, −sinψ, cosψ); light sits above and in front */
     const lam = (0.287*Math.sin(psi) + 0.958*Math.cos(psi)) / 0.958;
-    const f = 0.58 + 0.42*Math.max(0, lam);
-    const b = 0.52 + 0.40*Math.max(0, -lam);
+    const f = LIT.base     + LIT.gain     * wrapLit(lam);
+    const b = LIT.backBase + LIT.backGain * wrapLit(-lam);
     for(let n = 0; n < 2; n++){
       const o = (j*2 + n) * 3;
       const X = x0 + (n ? W/2 : -W/2);
