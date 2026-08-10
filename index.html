@@ -12,6 +12,10 @@
 <meta property="og:description" content="Edition one. Hand-drawn embroidery from Berlin.">
 <meta property="og:image" content="assets/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
+<!-- The cover art is created by script, so its download would otherwise not
+     start until the whole script had run. Preloading fetches it in parallel
+     with the HTML, which is what actually gets the first page on screen. -->
+<link rel="preload" as="image" href="assets/title-2.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -391,8 +395,11 @@
   <p class="checkout-note">Online payment is coming soon. For now your order reaches us by e-mail and we reply with payment &amp; shipping details.</p>
 </div>
 
-<!-- Optional. If it fails to load the site falls back to the flat CSS flip. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Optional: if it fails to load the site falls back to the flat CSS flip.
+     Deferred, because without it this blocks parsing and nothing below runs —
+     the pad, and so the first page, waited on a CDN round trip before it could
+     even be built. See startGL() at the foot of the script. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
 <script>
 /* ============================================
    PRODUCTS — edit prices/names here
@@ -793,49 +800,10 @@ function drawHoles(x, s){
     x.fill(); x.stroke();
   });
 }
-/* Paper tooth for the baked textures. A resting sheet gets its grain from a CSS
-   overlay, which the flip cannot use — so without this the surface turns
-   perfectly smooth the instant it starts moving, which is a strong digital
-   tell. One tile, built once, tiled at the scale the CSS uses.
-   GRAIN_UNITS are page artwork units, so the tooth scales with the pad. */
-const GRAIN_N = 128;
-const GRAIN = {paper:{alpha:.05, units:282}, board:{alpha:.09, units:362}};
-let grainTile = null;
-function noiseTile(){
-  if(grainTile) return grainTile;
-  const c = document.createElement('canvas');
-  c.width = c.height = GRAIN_N;
-  const x = c.getContext('2d');
-  const img = x.createImageData(GRAIN_N, GRAIN_N);
-  const d = img.data;
-  for(let i = 0; i < d.length; i += 4){
-    /* Full range, and composited normally below — the same thing the CSS
-       overlay does to a resting page. Blending a mid-grey tile instead lands
-       under one quantisation level at these alphas and comes out perfectly
-       flat, which is the whole problem this is meant to fix. */
-    const v = Math.random() * 255;
-    d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
-  }
-  x.putImageData(img, 0, 0);
-  return (grainTile = c);
-}
-function drawGrain(x, TW, TH, board){
-  const pat = x.createPattern(noiseTile(), 'repeat');
-  if(!pat) return;
-  const g = board ? GRAIN.board : GRAIN.paper;
-  const k = (g.units / 966.24) * TW / GRAIN_N;
-  if(pat.setTransform && window.DOMMatrix)
-    pat.setTransform(new DOMMatrix([k, 0, 0, k, 0, 0]));
-  x.save();
-  x.globalAlpha = g.alpha;
-  x.fillStyle = pat;
-  x.fillRect(0, 0, TW, TH);
-  x.restore();
-}
 /* reverse of a sheet: plain paper, but it carries the same punched holes, so
    they stay with the sheet as it comes over the top. Needs the page's real
    proportions now (a 2px-wide gradient strip could not hold the hole row). */
-function paperTexture(stops, board){
+function paperTexture(stops){
   const TW = 512, TH = Math.round(TW * 1398.35 / 966.24);
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
@@ -844,7 +812,6 @@ function paperTexture(stops, board){
   const g = x.createLinearGradient(0, 0, 0, TH);
   g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
   x.fillStyle = g; x.fillRect(0, 0, TW, TH);
-  drawGrain(x, TW, TH, board);
   drawHoles(x, TW / 966.24);
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
@@ -867,7 +834,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2'], true);
+    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -967,8 +934,6 @@ function pageTexture(i){
       x.drawImage(img, bx + (bw-dw)/2, by + (bh-dh)/2, dw, dh);
     }
   }
-  /* tooth over the print, the way the CSS overlay sits over a resting page */
-  drawGrain(x, TW, TH, p.board);
   /* punched last: the holes go through whatever is printed on the sheet */
   drawHoles(x, TW / 966.24);
   /* a file:// page taints the canvas the moment an image is drawn on it, and
@@ -1108,8 +1073,19 @@ function prev(){
   lockIfBoard(cur);
   updateNav();
 }
-glOK = initGL();
+/* The pad is built and laid out immediately; three.js is deferred so a slow CDN
+   cannot hold the first page off the screen. Wire the curved flip up once it
+   turns up — until then, and if it never arrives at all, the flat CSS flip is
+   already the fallback. Deferred scripts run before DOMContentLoaded, so THREE
+   is guaranteed to exist by the time this fires. */
 layoutOverlays();
+function startGL(){
+  if(glOK || !window.THREE) return;
+  glOK = initGL();
+  if(glOK) layoutOverlays();
+}
+if(window.THREE) startGL();
+else addEventListener('DOMContentLoaded', startGL);
 document.getElementById('nextBtn').onclick = next;
 document.getElementById('prevBtn').onclick = prev;
 document.addEventListener('keydown', e => {
