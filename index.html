@@ -723,13 +723,15 @@ const BEND  = 1.15;      /* radians of trailing turn at peak bend */
 /* Heavy board barely curls. This is the strongest cue that the cover is a
    different material: it comes over nearly rigid while paper ripples. */
 const bendFor = i => PAGES[i].board ? 0.3 : BEND;
-/* How the turning sheet is lit. Matte paper, so: a narrow brightness range
-   that never reaches white (a band at full value is what reads as gloss), and
-   `wrap` instead of clamping the Lambert term at zero — paper is faintly
-   translucent and sits in bounced light, so it has no hard terminator. The
-   wrap also broadens the lit band, which reads duller than a sharp peak.
-   These five numbers are the whole look; they are safe to tune. */
-const LIT = {base:0.80, gain:0.16, backBase:0.76, backGain:0.15, wrap:0.6};
+/* How the turning sheet is lit. Matte paper, so: a narrow brightness range —
+   the gloss came from a 0.42 swing sweeping a bright band across the sheet, not
+   from its peak — and `wrap` instead of clamping the Lambert term at zero,
+   since paper is faintly translucent and sits in bounced light and so has no
+   hard terminator. base+gain must stay exactly 1: at e=0 and e=1 the sheet is
+   dead flat with lam=1 for every row, so that sum is what replaces the resting
+   page, and anything under 1 makes the page visibly dim the instant it moves.
+   These five numbers are the whole look; they are safe to tune in pairs. */
+const LIT = {base:0.84, gain:0.16, backBase:0.80, backGain:0.16, wrap:0.6};
 const wrapLit = t => Math.max(0, (t + LIT.wrap) / (1 + LIT.wrap));
 const glc = document.getElementById('glc');
 let glOK = false, glR, glScene, glCam, mFront, mBack, gFront, gBack, glBox = null;
@@ -791,10 +793,49 @@ function drawHoles(x, s){
     x.fill(); x.stroke();
   });
 }
+/* Paper tooth for the baked textures. A resting sheet gets its grain from a CSS
+   overlay, which the flip cannot use — so without this the surface turns
+   perfectly smooth the instant it starts moving, which is a strong digital
+   tell. One tile, built once, tiled at the scale the CSS uses.
+   GRAIN_UNITS are page artwork units, so the tooth scales with the pad. */
+const GRAIN_N = 128;
+const GRAIN = {paper:{alpha:.05, units:282}, board:{alpha:.09, units:362}};
+let grainTile = null;
+function noiseTile(){
+  if(grainTile) return grainTile;
+  const c = document.createElement('canvas');
+  c.width = c.height = GRAIN_N;
+  const x = c.getContext('2d');
+  const img = x.createImageData(GRAIN_N, GRAIN_N);
+  const d = img.data;
+  for(let i = 0; i < d.length; i += 4){
+    /* Full range, and composited normally below — the same thing the CSS
+       overlay does to a resting page. Blending a mid-grey tile instead lands
+       under one quantisation level at these alphas and comes out perfectly
+       flat, which is the whole problem this is meant to fix. */
+    const v = Math.random() * 255;
+    d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  return (grainTile = c);
+}
+function drawGrain(x, TW, TH, board){
+  const pat = x.createPattern(noiseTile(), 'repeat');
+  if(!pat) return;
+  const g = board ? GRAIN.board : GRAIN.paper;
+  const k = (g.units / 966.24) * TW / GRAIN_N;
+  if(pat.setTransform && window.DOMMatrix)
+    pat.setTransform(new DOMMatrix([k, 0, 0, k, 0, 0]));
+  x.save();
+  x.globalAlpha = g.alpha;
+  x.fillStyle = pat;
+  x.fillRect(0, 0, TW, TH);
+  x.restore();
+}
 /* reverse of a sheet: plain paper, but it carries the same punched holes, so
    they stay with the sheet as it comes over the top. Needs the page's real
    proportions now (a 2px-wide gradient strip could not hold the hole row). */
-function paperTexture(stops){
+function paperTexture(stops, board){
   const TW = 512, TH = Math.round(TW * 1398.35 / 966.24);
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
@@ -803,6 +844,7 @@ function paperTexture(stops){
   const g = x.createLinearGradient(0, 0, 0, TH);
   g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
   x.fillStyle = g; x.fillRect(0, 0, TW, TH);
+  drawGrain(x, TW, TH, board);
   drawHoles(x, TW / 966.24);
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
@@ -825,7 +867,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2']);
+    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2'], true);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -925,6 +967,8 @@ function pageTexture(i){
       x.drawImage(img, bx + (bw-dw)/2, by + (bh-dh)/2, dw, dh);
     }
   }
+  /* tooth over the print, the way the CSS overlay sits over a resting page */
+  drawGrain(x, TW, TH, p.board);
   /* punched last: the holes go through whatever is printed on the sheet */
   drawHoles(x, TW / 966.24);
   /* a file:// page taints the canvas the moment an image is drawn on it, and
