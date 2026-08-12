@@ -227,14 +227,29 @@
     padding:26px 0 8px;
   }
   .nav button{
-    font-size:22px;font-weight:300;width:44px;height:44px;
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
     transition:opacity .25s;
+  }
+  .nav button svg{
+    width:24px;height:24px;display:block;
+    fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;
   }
   .nav button:hover{opacity:.5;}
   .nav button:disabled{opacity:.15;cursor:default;}
-  .counter{
-    font-size:10.5px;letter-spacing:.3em;color:var(--grey);
-    min-width:64px;text-align:center;
+  /* One mark per sheet, evenly spaced the way the coils are — position read
+     as rhythm rather than as a number. The number itself stays for screen
+     readers in .sr-only below. */
+  .ticks{display:flex;align-items:center;gap:5px;height:44px;}
+  .ticks i{
+    display:block;width:1px;height:8px;background:var(--line);
+    transition:height .3s, background .3s;
+  }
+  .ticks i.done{background:var(--grey);}
+  .ticks i.now{height:14px;background:var(--ink);}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
   }
 
   footer{
@@ -361,9 +376,18 @@
 </div>
 
 <div class="nav">
-  <button id="prevBtn" aria-label="previous page">‹</button>
-  <span class="counter" id="counter"></span>
-  <button id="nextBtn" aria-label="next page">›</button>
+  <!-- Bowed rather than straight: this is the shape the sheet itself takes
+       mid-turn, and it hinges up over the coils rather than sliding sideways.
+       The two curves are deliberately not exact mirrors — nothing else on the
+       page is drawn with a ruler. -->
+  <button id="prevBtn" aria-label="previous page">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6,9.1 Q11.7,17.4 19.3,9.4"/></svg>
+  </button>
+  <div class="ticks" id="ticks" aria-hidden="true"></div>
+  <span class="sr-only" id="counter" role="status" aria-live="polite"></span>
+  <button id="nextBtn" aria-label="next page">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5,15.2 Q12.3,6.8 19.4,14.6"/></svg>
+  </button>
 </div>
 
 <footer>© garnements 2026 — Berlin · <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a></footer>
@@ -670,10 +694,18 @@ let lockedUntil = 0;
 const flipLocked = () =>
   performance.now() < lockedUntil || !!(glRun && PAGES[glRun.i].board);
 
+/* one tick per sheet, built once — updateNav only moves the state along */
+const ticksEl = document.getElementById('ticks');
+PAGES.forEach(() => ticksEl.appendChild(document.createElement('i')));
+
 function updateNav(){
   document.getElementById('prevBtn').disabled = flipLocked() || cur === 0;
   document.getElementById('nextBtn').disabled = flipLocked() || cur === PAGES.length - 1;
+  /* still the plain count, but only for screen readers now */
   document.getElementById('counter').textContent = (cur+1) + ' / ' + PAGES.length;
+  [...ticksEl.children].forEach((t, k) => {
+    t.className = k < cur ? 'done' : (k === cur ? 'now' : '');
+  });
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
    passes over the top, then keeps going down the *back* of the pad: one full
@@ -1090,8 +1122,15 @@ document.getElementById('nextBtn').onclick = next;
 document.getElementById('prevBtn').onclick = prev;
 document.addEventListener('keydown', e => {
   if(document.getElementById('overlay').classList.contains('open')) return;
-  if(e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
-  if(e.key === 'ArrowLeft'  || e.key === 'ArrowUp') prev();
+  /* Up is forward, because up is where the sheet actually goes — it lifts from
+     its bottom edge and travels over the coils. The swipe below already worked
+     this way; the keys used to say the opposite. Left/right stay on as the
+     familiar back/forward alias, which contradicts nothing. */
+  const fwd  = e.key === 'ArrowUp'   || e.key === 'ArrowRight';
+  const back = e.key === 'ArrowDown' || e.key === 'ArrowLeft';
+  if(!fwd && !back) return;
+  e.preventDefault();          /* the vertical keys would scroll the page */
+  fwd ? next() : prev();
 });
 /* touch swipe */
 let ty = null;
