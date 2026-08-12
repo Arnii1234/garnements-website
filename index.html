@@ -140,24 +140,8 @@
      so the two read as one piece of card rather than a border around it. */
   .board-over{
     position:absolute;
-    /* four separate edges, set per cover from BOARD_TRIM */
-    top:calc(-1 * var(--over-t));
-    right:calc(-1 * var(--over-r));
-    bottom:calc(-1 * var(--over-b));
-    left:calc(-1 * var(--over-l));
-    /* knocked corners, none of the four alike. Kept under the smallest
-       overhang so the square face behind never pokes out at a corner. */
-    border-radius:var(--board-rad, 2px);
-    /* A cut edge does not catch the light evenly along its length. This lifts
-       the top-left margin and drops the bottom-right one, so the four edges
-       read as four different tones rather than one flat colour. */
-    background:
-      linear-gradient(118deg,
-        rgba(255,255,255,.10) 0%,
-        rgba(255,255,255,0)   38%,
-        rgba(35,31,32,.05)    72%,
-        rgba(35,31,32,.10)    100%),
-      var(--board-face);
+    inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
+    background:var(--board-face);
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
@@ -522,7 +506,7 @@ const PAGES = [
 /* Y sits one coil radius below the helix axis, so it moves with the coil
    radius: Y − r must stay at 5, the axis the sheets hinge on (see .leaf's
    transform-origin and glBox.hy). */
-const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:35.24, RX:4.8, RY:5.8};
+const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:41.288, RX:4.8, RY:5.8};
 HOLE.P = (HOLE.X1 - HOLE.X0) / HOLE.N;
 const holeXs = Array.from({length:HOLE.N}, (_, i) => HOLE.X0 + i*HOLE.P + HOLE.P/2);
 const holeEllipses = holeXs.map(h =>
@@ -537,17 +521,6 @@ const punchSVG =
    reads it as --over-x/--over-y, and the binding's mask subtracts it so the
    wire stops at the board's edge rather than the sheet's. */
 const BOARD_OVER = 6;
-/* A trimmed board is not square to two decimal places, and no two boards match.
-   The uniform 6-a-side was the thing reading as machined, so each cover gets
-   its own four edges and its own knocked corners. TOP is deliberately left at
-   BOARD_OVER on both: it sits under the coils, and the binding mask cuts the
-   wire at exactly that line — varying it would need the mask to follow. */
-const BOARD_TRIM = {
-  title: {r:6.6, b:6.3, l:5.5, rad:'2.2px 1.4px 2.4px 1.8px'},
-  back:  {r:5.6, b:6.8, l:6.4, rad:'1.4px 2.4px 1.8px 2.2px'}
-};
-const pctX = u => (u / 966.24 * 100).toFixed(4) + '%';
-const pctY = u => (u / 1398.35 * 100).toFixed(4) + '%';
 
 /* ---------- build calendar leaves ---------- */
 const cal = document.getElementById('calendar');
@@ -594,15 +567,7 @@ PAGES.forEach((p, i) => {
   /* the covers are heavier stock, so they get their own tone, tooth, cut edge
      and a stiffer, slower turn */
   const isCover = !!p.board;
-  if(isCover){
-    leaf.classList.add('cover');
-    const t = BOARD_TRIM[p.type] || BOARD_TRIM.title;
-    leaf.style.setProperty('--over-t', pctY(BOARD_OVER));
-    leaf.style.setProperty('--over-r', pctX(t.r));
-    leaf.style.setProperty('--over-b', pctY(t.b));
-    leaf.style.setProperty('--over-l', pctX(t.l));
-    leaf.style.setProperty('--board-rad', t.rad);
-  }
+  if(isCover) leaf.classList.add('cover');
   /* a corner to take hold of — omitted on the last sheet, which has nowhere
      to turn to */
   const peel = i === PAGES.length - 1
@@ -634,7 +599,7 @@ function buildBinding(){
   /* coil radius — also half the coil's height on screen, so this is the knob
      for how tall the binding reads. HOLE.Y tracks it so the axis below stays
      at y=5, where the sheets actually hinge. */
-  const r  = 30.24;
+  const r  = 36.288;
   const yH = HOLE.Y;           /* punch-hole centre        */
   const yc = yH - r;           /* helix axis — the sheet pivots here */
   const top = yc - r;          /* highest point of a turn  */
