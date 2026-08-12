@@ -62,9 +62,15 @@
   }
   .calendar{
     position:relative;z-index:1;
-    width:min(480px, 92vw);
+    /* two pads plus the gap have to fit across, so each takes a little under
+       half the viewport; the cap keeps them from growing on wide screens */
+    width:min(440px, 42vw);
     aspect-ratio: 966 / 1398;
     transform-style:preserve-3d;
+  }
+  /* once a pair no longer fits they wrap, and each can use the full width */
+  @media (max-width: 940px){
+    .calendar{ width:min(480px, 92vw); }
   }
   /* the curved sheet renders here, above the pad but below the coils */
   .glc{
@@ -255,12 +261,13 @@
   }
   .colophon a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line);}
 
-  /* each sketchbook is a self-contained block: stage, pad, nav */
-  .book{ margin-bottom:34px; }
-  .book-title{
-    text-align:center;padding:6px 0 0;
-    font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--grey);
+  /* The two sketchbooks sit side by side, and wrap to stacked when there is no
+     longer room for a pair. Each is a self-contained block: stage, pad, nav. */
+  .books{
+    display:flex;align-items:flex-start;justify-content:center;
+    gap:40px;flex-wrap:wrap;
   }
+  .book{ margin-bottom:34px; }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -423,9 +430,12 @@
 </header>
 
 <!-- One mount per sketchbook; makeBook() builds the stage, pad and nav inside
-     each. Everything the pads share — products, modal, cart — stays global. -->
-<div class="book" id="book1"></div>
-<div class="book" id="book2"></div>
+     each. Everything the pads share — products, modal, cart — stays global.
+     No captions: the two covers tell them apart. -->
+<div class="books">
+  <div class="book" id="book1"></div>
+  <div class="book" id="book2"></div>
+</div>
 
 <footer>© garnements 2026 — Berlin · <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a></footer>
 
@@ -602,7 +612,7 @@ const BOARD_OVER = 6;
    and buys flipMs/bendFor closing over that book's own PAGES.
    Products, the modal and the cart stay global — one cart for both books.
    ============================================================ */
-function makeBook(mount, PAGES, opts){
+function makeBook(mount, PAGES){
 const stage = document.createElement('div');
 stage.className = 'stage';
 const cal = document.createElement('div');
@@ -622,12 +632,6 @@ nav.innerHTML =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5,15.2 Q12.3,6.8 19.4,14.6"/></svg>' +
   '</button>';
 mount.append(stage, nav);
-if(opts && opts.title){
-  const cap = document.createElement('div');
-  cap.className = 'book-title';
-  cap.textContent = opts.title;
-  mount.appendChild(cap);
-}
 const prevBtn  = nav.querySelector('.prev');
 const nextBtn  = nav.querySelector('.next');
 const ticksEl  = nav.querySelector('.ticks');
@@ -1296,8 +1300,8 @@ return api;
 /* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
 let activeBook = null;
 const books = [
-  makeBook(document.getElementById('book1'), BOOK1_PAGES, {title:'Photographed'}),
-  makeBook(document.getElementById('book2'), BOOK2_PAGES, {title:'Drawings'})
+  makeBook(document.getElementById('book1'), BOOK1_PAGES),
+  makeBook(document.getElementById('book2'), BOOK2_PAGES)
 ];
 activeBook = books[0];
 /* One listener for both pads — without routing, a single arrow key would turn
