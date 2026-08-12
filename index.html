@@ -1004,7 +1004,12 @@ function layoutGL(){
   const hw = Math.max(Math.abs(x0 - ox), Math.abs(x1 - ox));
   const hh = Math.max(Math.abs(y0 - oy), Math.abs(y1 - oy));
   const w = x1 - x0, h = y1 - y0;
-  glBox = {ox, oy, pw, ph, hx: cr.left + pw/2, hy: cr.top + ph*0.0036};
+  /* hOff: how far the hinge sits below the sheet's own top edge. The strip is
+     parametrised by arc length from the hinge, so it has to start this far
+     *above* it — otherwise the whole sheet renders hOff too low and jumps back
+     into place the moment the DOM leaf takes over at the end of a flip. */
+  glBox = {ox, oy, pw, ph, hx: cr.left + pw/2,
+           hy: cr.top + ph*0.0036, hOff: ph*0.0036};
   glc.style.left = (x0 - sr.left) + 'px';
   glc.style.top  = (y0 - sr.top)  + 'px';
   glc.style.width  = w + 'px';
@@ -1109,7 +1114,8 @@ function shapeSheet(i, e){
   const pf = gFront.attributes, pb = gBack.attributes;
   const sinA = Math.sin(A), cosA = Math.cos(A);
   for(let j = 0; j <= ROWS; j++){
-    const s = (j / ROWS) * H;
+    /* measured from the hinge, so the sheet's top edge is at a negative s */
+    const s = (j / ROWS) * H - glBox.hOff;
     const psi = A + c * s;
     let py, pz;
     if(Math.abs(c) < 1e-7){ py = s * cosA; pz = s * sinA; }
