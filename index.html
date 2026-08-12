@@ -140,8 +140,24 @@
      so the two read as one piece of card rather than a border around it. */
   .board-over{
     position:absolute;
-    inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
-    background:var(--board-face);
+    /* four separate edges, set per cover from BOARD_TRIM */
+    top:calc(-1 * var(--over-t));
+    right:calc(-1 * var(--over-r));
+    bottom:calc(-1 * var(--over-b));
+    left:calc(-1 * var(--over-l));
+    /* knocked corners, none of the four alike. Kept under the smallest
+       overhang so the square face behind never pokes out at a corner. */
+    border-radius:var(--board-rad, 2px);
+    /* A cut edge does not catch the light evenly along its length. This lifts
+       the top-left margin and drops the bottom-right one, so the four edges
+       read as four different tones rather than one flat colour. */
+    background:
+      linear-gradient(118deg,
+        rgba(255,255,255,.10) 0%,
+        rgba(255,255,255,0)   38%,
+        rgba(35,31,32,.05)    72%,
+        rgba(35,31,32,.10)    100%),
+      var(--board-face);
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
@@ -163,6 +179,33 @@
   .punch{
     position:absolute;inset:0;width:100%;height:100%;
     pointer-events:none;z-index:2;
+  }
+  /* The corner you take hold of, so turning a page can happen on the object
+     rather than only in the chrome below it. Bottom LEFT, not right: the "+"
+     that opens a product already lives in the right corner and the two would
+     fight. The outer box is a generous transparent hit area; the span is the
+     visible dog-ear, which grows on hover. Mouse-only by design — the nav
+     buttons remain the keyboard and screen-reader path, so this stays
+     aria-hidden rather than adding a second focusable "next page". */
+  .peel{
+    position:absolute;left:0;bottom:0;z-index:3;
+    width:76px;height:76px;cursor:pointer;
+  }
+  .peel span{
+    position:absolute;left:0;bottom:0;display:block;
+    width:19px;height:19px;
+    clip-path:polygon(0 0, 0 100%, 100% 100%);
+    background:linear-gradient(135deg,#f0eeea 0%, #e2dfda 55%, #cdcac4 100%);
+    filter:drop-shadow(2px -2px 2.5px rgba(35,31,32,.2));
+    transition:width .3s cubic-bezier(.34,.08,.24,1),
+               height .3s cubic-bezier(.34,.08,.24,1);
+  }
+  /* kept modest on purpose: the cover carries "200 - 300 gsm" in this corner,
+     so a large open peel sits on top of it */
+  .peel:hover span{ width:48px;height:48px; }
+  /* board folds differently from paper — its underside is the cover's own tone */
+  .leaf.cover .peel span{
+    background:linear-gradient(135deg,#c6c0b4 0%, #bbb5a9 55%, #aca69a 100%);
   }
   /* shadow cast on the page below while one flips over it */
   .leaf .shade{
@@ -494,6 +537,17 @@ const punchSVG =
    reads it as --over-x/--over-y, and the binding's mask subtracts it so the
    wire stops at the board's edge rather than the sheet's. */
 const BOARD_OVER = 6;
+/* A trimmed board is not square to two decimal places, and no two boards match.
+   The uniform 6-a-side was the thing reading as machined, so each cover gets
+   its own four edges and its own knocked corners. TOP is deliberately left at
+   BOARD_OVER on both: it sits under the coils, and the binding mask cuts the
+   wire at exactly that line — varying it would need the mask to follow. */
+const BOARD_TRIM = {
+  title: {r:6.6, b:6.3, l:5.5, rad:'2.2px 1.4px 2.4px 1.8px'},
+  back:  {r:5.6, b:6.8, l:6.4, rad:'1.4px 2.4px 1.8px 2.2px'}
+};
+const pctX = u => (u / 966.24 * 100).toFixed(4) + '%';
+const pctY = u => (u / 1398.35 * 100).toFixed(4) + '%';
 
 /* ---------- build calendar leaves ---------- */
 const cal = document.getElementById('calendar');
@@ -540,9 +594,21 @@ PAGES.forEach((p, i) => {
   /* the covers are heavier stock, so they get their own tone, tooth, cut edge
      and a stiffer, slower turn */
   const isCover = !!p.board;
-  if(isCover) leaf.classList.add('cover');
+  if(isCover){
+    leaf.classList.add('cover');
+    const t = BOARD_TRIM[p.type] || BOARD_TRIM.title;
+    leaf.style.setProperty('--over-t', pctY(BOARD_OVER));
+    leaf.style.setProperty('--over-r', pctX(t.r));
+    leaf.style.setProperty('--over-b', pctY(t.b));
+    leaf.style.setProperty('--over-l', pctX(t.l));
+    leaf.style.setProperty('--board-rad', t.rad);
+  }
+  /* a corner to take hold of — omitted on the last sheet, which has nowhere
+     to turn to */
+  const peel = i === PAGES.length - 1
+    ? '' : '<div class="peel" aria-hidden="true"><span></span></div>';
   leaf.innerHTML = `
-    <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
+    <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}${peel}</div>
     <div class="leaf-face rear">${punchSVG}</div>
     ${isCover ? '<div class="board-over"></div>' : ''}`;
   cal.appendChild(leaf);
@@ -1146,6 +1212,8 @@ updateNav();
 /* ---------- product modal ---------- */
 let curItems = [], curIdx = 0, curSize = null;
 document.addEventListener('click', e => {
+  /* the corner turns the page; it sits over the art, so it has to win here */
+  if(e.target.closest('.peel')){ next(); return; }
   const t = e.target.closest('.page-art.clickable');
   if(t) openModal(PAGES[+t.dataset.page].products);
 });
