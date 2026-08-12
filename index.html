@@ -204,6 +204,13 @@
   .page-art img{
     width:100%;height:100%;object-fit:contain;display:block;
   }
+  /* a sheet waiting for its drawing — the piece's name, set like the colophon */
+  .page-label{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bodoni Moda',serif;font-size:23px;letter-spacing:.1em;
+    color:#4c4846;text-align:center;padding:0 12%;
+  }
   .page-art.clickable{cursor:pointer;transition:opacity .3s;}
   .page-art.clickable:hover{opacity:.82;}
   /* minimal plus marker on shoppable pages */
@@ -306,10 +313,22 @@
     .panel{grid-template-columns:1fr;overflow-y:auto;}
   }
   .panel-img{
-    background:#f7f7f6;display:flex;align-items:center;justify-content:center;
+    background:#f7f7f6;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;
     padding:34px;min-height:420px;
   }
-  .panel-img img{width:100%;height:100%;max-height:calc(92vh - 68px);object-fit:contain;}
+  .panel-img > img{width:100%;flex:1;min-height:0;
+    max-height:calc(92vh - 150px);object-fit:contain;}
+  /* drawing first, photographs after — one row, no carousel to get lost in */
+  .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  .panel-thumbs button{
+    width:46px;height:60px;padding:0;overflow:hidden;
+    border:1px solid transparent;background:#fff;
+    opacity:.55;transition:opacity .2s,border-color .2s;
+  }
+  .panel-thumbs button:hover{opacity:.85;}
+  .panel-thumbs button.on{opacity:1;border-color:var(--ink);}
+  .panel-thumbs img{width:100%;height:100%;object-fit:cover;display:block;}
   .panel-info{
     padding:52px 46px 40px;display:flex;flex-direction:column;
   }
@@ -423,7 +442,10 @@
 <div class="overlay" id="overlay">
   <div class="panel">
     <button class="close-x" onclick="closeModal()">×</button>
-    <div class="panel-img"><img id="pImg" src="" alt=""></div>
+    <div class="panel-img">
+      <img id="pImg" src="" alt="">
+      <div class="panel-thumbs" id="pThumbs"></div>
+    </div>
     <div class="panel-info">
       <div class="item-tabs" id="itemTabs"></div>
       <div class="p-name" id="pName"></div>
@@ -455,18 +477,59 @@
 /* ============================================
    PRODUCTS — edit prices/names here
    ============================================ */
+/* `img` is the digital drawing, `photos` the shot garment. Both are kept — the
+   modal shows the drawing first and the photographs after it.
+   Filenames carry spaces, so every path is run through encodeURI at the point
+   of use (see shotsOf/heroOf); do not hand-encode them here. */
 const PRODUCTS = {
-  "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg"},
+  "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg",
+                   photos:["assets/pink tee front.JPG","assets/pink tee back.JPG"]},
   "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg"},
-  "cream-hoodie": {name:"Cream Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg"},
-  "pink-hoodie":  {name:"Pink Hoodie",              price:95,  img:"assets/prod-pink-hoodie.svg"},
-  "black-tee":    {name:"Black Tee",                price:55,  img:"assets/prod-black-tee.svg"},
-  "rose-tee":     {name:"Rose Tee",                 price:55,  img:"assets/prod-rose-tee.svg"},
-  "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg"},
+  "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
+                   photos:["assets/beige hoodie front.JPG","assets/beige hoodie back.JPG"]},
+  "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
+                   photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG",
+                           "assets/pink hoodie right.JPG"]},
+  "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
+                   photos:["assets/black tee 1 front.JPG","assets/black tee 1 back.JPG"]},
+  "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
+                   photos:["assets/black tee 2 front.JPG","assets/black tee 2 back.JPG"]},
+  "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg",
+                   photos:["assets/black vest front.JPG","assets/black vest back.JPG"]},
   "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg"},
   "jorts":        {name:"Embroidered Jean Shorts",  price:95,  img:"assets/prod-jorts.svg"},
-  "white-tee":    {name:"White Tee",                price:55,  img:"assets/prod-white-tee.svg"}
+  /* was "White Tee" — the drawing in the sketchbook is not the tee that was
+     shot, so it keeps the drawing under a new name and the photographed white
+     tee becomes its own piece below */
+  "jumping-tee":  {name:"Jumping Tee",              price:55,  img:"assets/prod-white-tee.svg"},
+
+  /* ---- photographed but not yet drawn ----------------------------------
+     No `img` yet: these show their photographs until the drawings arrive, and
+     each has a labelled placeholder page in PAGES. PRICES ARE PLACEHOLDERS. */
+  "black-jeans":   {name:"Black Jeans",      price:140, photos:[
+    "assets/black jeans front.JPG","assets/black jeans back.JPG",
+    "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
+  "beige-jeans":   {name:"Beige Jeans",      price:140, photos:[
+    "assets/beige jeans front.JPG","assets/beige jeans left.JPG",
+    "assets/beige jeans right.JPG"]},
+  "beige-tee":     {name:"Beige Tee",        price:55,  photos:[
+    "assets/beige tee front.JPG","assets/beige tee back.JPG"]},
+  "white-tee":     {name:"White Tee",        price:55,  photos:[
+    "assets/white tee front.JPG","assets/white tee back.JPG"]},
+  "white-black-tee":{name:"White / Black Tee",price:55, photos:[
+    "assets/white-black tee front.JPG","assets/white-black tee back.JPG"]},
+  "pink-jorts":    {name:"Pink Jorts",       price:95,  photos:[
+    "assets/pink jorts front.JPG","assets/pink jorts back.JPG"]},
+  "beige-duffle":  {name:"Beige Duffle Bag", price:120, photos:[
+    "assets/beige duffle bag.JPG"]},
+  "black-backpack":{name:"Black Backpack",   price:110, photos:[
+    "assets/black backpack.JPG"]},
+  "brown-backpack":{name:"Brown Backpack",   price:110, photos:[
+    "assets/brown backpack.JPG"]}
 };
+/* every picture of a piece, drawing first; paths encoded for the spaces */
+const shotsOf = p => [p.img, ...(p.photos || [])].filter(Boolean).map(encodeURI);
+const heroOf  = p => shotsOf(p)[0] || '';
 const SIZES = ["XS","S","M","L","XL","XXL"];
 const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
 
@@ -492,7 +555,19 @@ const PAGES = [
   {type:"art", img:"assets/page7.svg",  ar:0.3262, products:["walker-jeans"]},
   {type:"art", img:"assets/page8.svg",  ar:0.8519, products:["rose-tee"]},
   {type:"art", img:"assets/page9.svg",  ar:0.7046, products:["jorts"]},
-  {type:"art", img:"assets/page10.svg", ar:0.7892, products:["white-tee"]},
+  {type:"art", img:"assets/page10.svg", ar:0.7892, products:["jumping-tee"]},
+  /* Placeholder sheets for the pieces that were photographed but not yet
+     drawn. They carry the name and open the product like any other page;
+     swap `type` to "art" and add img/ar once each drawing arrives. */
+  {type:"placeholder", label:"Black Jeans",        products:["black-jeans"]},
+  {type:"placeholder", label:"Beige Jeans",        products:["beige-jeans"]},
+  {type:"placeholder", label:"Beige Tee",          products:["beige-tee"]},
+  {type:"placeholder", label:"White Tee",          products:["white-tee"]},
+  {type:"placeholder", label:"White / Black Tee",  products:["white-black-tee"]},
+  {type:"placeholder", label:"Pink Jorts",         products:["pink-jorts"]},
+  {type:"placeholder", label:"Beige Duffle Bag",   products:["beige-duffle"]},
+  {type:"placeholder", label:"Black Backpack",     products:["black-backpack"]},
+  {type:"placeholder", label:"Brown Backpack",     products:["brown-backpack"]},
   /* back cover — the same board as the title, carrying nothing */
   {type:"back", board:true}
 ];
@@ -556,6 +631,13 @@ PAGES.forEach((p, i) => {
       </div>`;
   } else if(p.type === 'back'){
     inner = '';                       /* bare board, nothing printed on it */
+  } else if(p.type === 'placeholder'){
+    /* named, and clickable like any product page, until its drawing exists */
+    inner = `
+      <div class="page-art clickable" data-page="${i}">
+        <div class="page-label">${p.label}</div>
+      </div>
+      <div class="plus">+</div>`;
   } else {
     const clickable = p.products && p.products.length;
     inner = `
@@ -970,6 +1052,12 @@ function pageTexture(i){
      '200–300 GSM','','@GARNEMENTS.DE'].forEach((line, k) => {
       x.fillText(line, TW/2, TH*.475 + k*TH*.0335);
     });
+  }else if(p.type === 'placeholder'){
+    /* no drawing yet — carry the name through the flip, matching .page-label */
+    x.textAlign = 'center'; x.fillStyle = '#4c4846';
+    x.font = `400 ${TW*.048}px 'Bodoni Moda', Georgia, serif`;
+    try{ x.letterSpacing = (TW*.048*.1) + 'px'; }catch(e){}
+    x.fillText(p.label, TW/2, TH*.5);
   }else if(p.type !== 'back'){                      /* the back cover is bare */
     const img = leaves[i].querySelector('img');
     if(!img || !img.complete) return null;          /* try again next flip */
@@ -1191,7 +1279,27 @@ function openModal(ids){
 }
 function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
-  document.getElementById('pImg').src = p.img;
+  /* drawing first, then the photographs; pieces with no drawing yet simply
+     open on their first photograph */
+  const shots = shotsOf(p);
+  const main = document.getElementById('pImg');
+  main.src = shots[0] || '';
+  main.alt = p.name;
+  const thumbs = document.getElementById('pThumbs');
+  thumbs.innerHTML = '';
+  if(shots.length > 1){
+    shots.forEach((src, k) => {
+      const b = document.createElement('button');
+      b.className = k === 0 ? 'on' : '';
+      b.innerHTML = `<img src="${src}" alt="">`;
+      b.onclick = () => {
+        main.src = src;
+        [...thumbs.children].forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+      };
+      thumbs.appendChild(b);
+    });
+  }
   document.getElementById('pName').textContent = p.name;
   document.getElementById('pPrice').textContent = '€' + p.price + '  ·  incl. VAT';
   const tabs = document.getElementById('itemTabs');
@@ -1246,7 +1354,7 @@ function renderCart(){
     const p = PRODUCTS[it.id]; total += p.price;
     const d = document.createElement('div');
     d.className = 'cart-item';
-    d.innerHTML = `<img src="${p.img}" alt="">
+    d.innerHTML = `<img src="${heroOf(p)}" alt="">
       <div><div class="ci-name">${p.name}</div><div class="ci-size">Size ${it.size}</div></div>
       <div class="ci-price">€${p.price}</div>`;
     const rm = document.createElement('button');
