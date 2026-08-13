@@ -62,15 +62,9 @@
   }
   .calendar{
     position:relative;z-index:1;
-    /* two pads plus the gap have to fit across, so each takes a little under
-       half the viewport; the cap keeps them from growing on wide screens */
-    width:min(440px, 42vw);
+    width:min(480px, 92vw);
     aspect-ratio: 966 / 1398;
     transform-style:preserve-3d;
-  }
-  /* once a pair no longer fits they wrap, and each can use the full width */
-  @media (max-width: 940px){
-    .calendar{ width:min(480px, 92vw); }
   }
   /* the curved sheet renders here, above the pad but below the coils */
   .glc{
@@ -261,13 +255,34 @@
   }
   .colophon a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line);}
 
-  /* The two sketchbooks sit side by side, and wrap to stacked when there is no
-     longer room for a pair. Each is a self-contained block: stage, pad, nav. */
+  /* The sketchbooks sit on a rail; the one in use is slid to the centre and the
+     rest wait either side of it. Only ever TRANSLATED, never scaled: the coils
+     and the WebGL canvas are parked over each pad from bounding rects, and a
+     translate shifts every one of those equally so the differences that
+     actually position them are unchanged. A scale would not be — it would
+     desync the canvas from its pad and break the perspective match with
+     .stage. */
+  .rail{ position:relative; overflow:hidden; }
   .books{
-    display:flex;align-items:flex-start;justify-content:center;
-    gap:40px;flex-wrap:wrap;
+    display:flex;align-items:flex-start;gap:40px;width:max-content;
+    transition:transform .65s cubic-bezier(.34,.08,.24,1);
   }
-  .book{ margin-bottom:34px; }
+  /* The selected book stands at full size; the waiting ones sit back a little.
+     Only the WAITING books are scaled, never the active one — see layoutGL:
+     it parks the canvas from bounding rects and writes px sizes back inside
+     the same box, so measuring a scaled pad would double-apply the scale. A
+     scaled book is never flipped and its canvas is hidden, so its geometry
+     going stale costs nothing; it returns to scale 1 before it can be used. */
+  .book{
+    margin-bottom:34px;
+    transform-origin:50% 42%;
+    transition:transform .55s cubic-bezier(.34,.08,.24,1), opacity .5s;
+  }
+  /* a waiting book is a target to pick, not a pad to flip */
+  .book:not(.active){ cursor:pointer; opacity:.5; transform:scale(.84); }
+  .book:not(.active) .stage{ pointer-events:none; }
+  .book:not(.active) .nav{ opacity:0; pointer-events:none; }
+  .nav{ transition:opacity .4s; }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -432,9 +447,11 @@
 <!-- One mount per sketchbook; makeBook() builds the stage, pad and nav inside
      each. Everything the pads share — products, modal, cart — stays global.
      No captions: the two covers tell them apart. -->
-<div class="books">
-  <div class="book" id="book1"></div>
-  <div class="book" id="book2"></div>
+<div class="rail">
+  <div class="books">
+    <div class="book" id="book1"></div>
+    <div class="book" id="book2"></div>
+  </div>
 </div>
 
 <footer>© garnements 2026 — Berlin · <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a></footer>
@@ -819,7 +836,11 @@ function layoutOverlays(){
   bindEl.style.height = (h * 0.11801) + 'px';                   /* 165 tall      */
   layoutGL();
 }
-addEventListener('resize', layoutOverlays);
+/* Only while this book is the selected one. A waiting book is scaled down, and
+   measuring it in that state would feed the scale into glBox twice over. */
+addEventListener('resize', () => {
+  if(mount.classList.contains('active')) layoutOverlays();
+});
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FLIP_MS = REDUCED ? 1 : 1250;
@@ -1290,11 +1311,10 @@ cal.addEventListener('touchend', e => {
 }, {passive:true});
 updateNav();
 
-/* the keyboard is shared, so the page decides which book it is talking to */
-const api = {next, prev, mount, relayout: layoutOverlays};
-mount.addEventListener('pointerenter', () => activeBook = api);
-mount.addEventListener('pointerdown',  () => activeBook = api);
-return api;
+/* the keyboard is shared; the page decides which book it is talking to, and
+   that follows which book is centred rather than where the pointer happens
+   to be */
+return {next, prev, mount, relayout: layoutOverlays};
 }   /* ---- end makeBook ---------------------------------------------------- */
 
 /* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
@@ -1303,7 +1323,36 @@ const books = [
   makeBook(document.getElementById('book1'), BOOK1_PAGES),
   makeBook(document.getElementById('book2'), BOOK2_PAGES)
 ];
-activeBook = books[0];
+
+/* The roster. Books are never rebuilt when you switch — each keeps its own
+   `cur`, its own leaves and its own textures — so coming back to one finds it
+   exactly on the sheet you left it at. Switching only slides the rail. */
+const rail = document.querySelector('.books');
+let activeIndex = -1;
+function centreActive(){
+  const m = books[activeIndex].mount;
+  const railW = rail.parentElement.clientWidth;
+  /* offsetLeft is layout position, so it is not itself affected by the
+     translate we are about to apply — no feedback loop */
+  rail.style.transform =
+    'translateX(' + (railW/2 - (m.offsetLeft + m.offsetWidth/2)) + 'px)';
+}
+let settleT = 0;
+function setActive(i){
+  if(i === activeIndex) return;
+  activeIndex = i;
+  activeBook = books[i];
+  books.forEach((b, k) => b.mount.classList.toggle('active', k === i));
+  centreActive();
+  /* It grows back to full size across the transition, and its coils and canvas
+     are parked from bounding rects — so re-park them once it has stopped
+     moving, not while it is still on its way. */
+  clearTimeout(settleT);
+  settleT = setTimeout(() => books[activeIndex].relayout(), 620);
+}
+books.forEach((b, i) => b.mount.addEventListener('click', () => setActive(i)));
+addEventListener('resize', centreActive);
+setActive(0);
 /* One listener for both pads — without routing, a single arrow key would turn
    a page in each book at once. It drives whichever book the pointer last
    entered, falling back to the first. */
