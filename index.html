@@ -46,6 +46,17 @@
     font-family:'Bodoni Moda',serif;font-size:22px;font-weight:500;
     letter-spacing:.14em;
   }
+  /* Each letter takes a colour off the clothes. White is deliberately absent —
+     on this paper it would simply vanish, which is the same reason the beige,
+     pink and blue are pitched darker than the garments themselves: at their
+     true tint they measured 2.3–2.7 against the background and went soft.
+     These sit near 4:1, dark enough to hold and still plainly beige, pink and
+     blue. The five cycle, so ten letters read as two passes. */
+  .brand span:nth-child(5n+1){ color:#231f20; }   /* black      */
+  .brand span:nth-child(5n+2){ color:#8a7559; }   /* beige      */
+  .brand span:nth-child(5n+3){ color:#bb4f7d; }   /* pink       */
+  .brand span:nth-child(5n+4){ color:#6f5241; }   /* brown      */
+  .brand span:nth-child(5n+5){ color:#4a7a95; }   /* light blue */
   .cart-btn{
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
     padding-bottom:2px;border-bottom:1px solid transparent;
@@ -440,7 +451,9 @@
 <body>
 
 <header>
-  <div class="brand">garnements</div>
+  <!-- one letter per span so each can take its own colour; no whitespace
+       between them, so it is still read and selected as one word -->
+  <div class="brand"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
 
