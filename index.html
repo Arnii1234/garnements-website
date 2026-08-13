@@ -266,6 +266,12 @@
     color:#4c4846;line-height:2.5;font-weight:300;
   }
   .colophon a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line);}
+  /* One element per line, so the flip texture can measure each line's real
+     position instead of guessing it. The <br> version could not be measured,
+     and the guessed layout did not match the CSS one — which is what made the
+     page jump the instant the DOM took over at the end of a turn. */
+  .colophon .cline{ display:block; }
+  .colophon .cgap{ height:2.5em; }
 
   /* The sketchbooks sit on a rail; the one in use is slid to the centre and the
      rest wait either side of it. Only ever TRANSLATED, never scaled: the coils
@@ -689,12 +695,13 @@ PAGES.forEach((p, i) => {
       <div class="colophon">
         <div class="c-brand">garnements</div>
         <p>
-          2026 — edition one<br>
-          designed &amp; embroidered in berlin<br>
-          each piece begins as a one-line drawing<br>
-          embroidery — 100% cotton<br>
-          200–300 gsm<br><br>
-          <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a>
+          <span class="cline">2026 — edition one</span>
+          <span class="cline">designed &amp; embroidered in berlin</span>
+          <span class="cline">each piece begins as a one-line drawing</span>
+          <span class="cline">embroidery — 100% cotton</span>
+          <span class="cline">200–300 gsm</span>
+          <span class="cline cgap"></span>
+          <span class="cline"><a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a></span>
         </p>
       </div>`;
   } else if(p.type === 'back'){
@@ -1115,17 +1122,39 @@ function pageTexture(i){
   x.restore();
 
   if(p.type === 'colophon'){
-    x.textAlign = 'center'; x.fillStyle = '#231f20';
-    x.font = `500 ${TW*.054}px 'Bodoni Moda', Georgia, serif`;
-    x.fillText('garnements', TW/2, TH*.40);
-    x.fillStyle = '#4c4846';
-    x.font = `300 ${TW*.0218}px 'Inter', -apple-system, sans-serif`;
-    try{ x.letterSpacing = (TW*.0218*.2) + 'px'; }catch(e){}
-    ['2026 — EDITION ONE','DESIGNED & EMBROIDERED IN BERLIN',
-     'EACH PIECE BEGINS AS A ONE-LINE DRAWING','EMBROIDERY — 100% COTTON',
-     '200–300 GSM','','@GARNEMENTS.DE'].forEach((line, k) => {
-      x.fillText(line, TW/2, TH*.475 + k*TH*.0335);
+    /* Measured off the live sheet rather than guessed. This is the only page
+       whose content is laid out by CSS instead of being an image, so hardcoded
+       fractions here and flexbox there disagreed — and the text visibly jumped
+       the moment the DOM leaf took the sheet back at the end of a turn.
+       Positions are taken as fractions of the leaf's own box, so the slight
+       perspective scale on the resting sheet cancels out; sizes come from
+       offsetHeight, which is unscaled layout px like fontSize itself. */
+    const leaf = leaves[i];
+    const leafR = leaf.getBoundingClientRect();
+    const fx = TW / leafR.width, fy = TH / leafR.height;
+    const sizeScale = TH / leaf.offsetHeight;
+    x.textAlign = 'center';
+    x.textBaseline = 'middle';
+    leaf.querySelectorAll('.c-brand, .cline').forEach(el => {
+      const text = el.textContent.trim();
+      if(!text) return;                       /* the spacer line */
+      const cs = getComputedStyle(el);
+      const r  = el.getBoundingClientRect();
+      x.fillStyle = cs.color;
+      x.font = `${cs.fontStyle} ${cs.fontWeight} ` +
+               `${parseFloat(cs.fontSize) * sizeScale}px ${cs.fontFamily}`;
+      const ls = parseFloat(cs.letterSpacing);
+      try{ x.letterSpacing = (isNaN(ls) ? 0 : ls * sizeScale) + 'px'; }catch(e){}
+      /* letter-spacing adds a trailing gap the browser leaves off the last
+         glyph, so centred text sits half that gap left of centre */
+      const trail = (isNaN(ls) ? 0 : ls * sizeScale) / 2;
+      const out = cs.textTransform === 'uppercase' ? text.toUpperCase() : text;
+      x.fillText(out,
+        (r.left + r.width/2  - leafR.left) * fx - trail,
+        (r.top  + r.height/2 - leafR.top ) * fy);
     });
+    try{ x.letterSpacing = '0px'; }catch(e){}
+    x.textBaseline = 'alphabetic';
   }else if(p.type === 'placeholder'){
     /* no drawing yet — carry the name through the flip, matching .page-label */
     x.textAlign = 'center'; x.fillStyle = '#4c4846';
