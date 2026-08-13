@@ -395,6 +395,22 @@
   }
   .p-price{font-size:13px;letter-spacing:.12em;margin-bottom:34px;color:#4c4846;}
   .size-label{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--grey);margin-bottom:12px;}
+  /* colourways: the chosen one is named beside the label, the way a house
+     that sells one bag in two cloths does it */
+  .swatch-name{color:var(--ink);}
+  .swatches{display:flex;gap:9px;margin-bottom:32px;}
+  .swatches button{
+    width:30px;height:30px;padding:2px;border-radius:50%;
+    border:1px solid transparent;transition:border-color .2s;
+  }
+  .swatches button:hover{border-color:var(--line);}
+  .swatches button.sel{border-color:var(--ink);}
+  /* the disc carries the cloth colour; its hairline keeps a pale swatch from
+     dissolving into the white panel */
+  .swatches span{
+    display:block;width:100%;height:100%;border-radius:50%;
+    border:1px solid var(--line);
+  }
   .sizes{display:flex;gap:4px;margin-bottom:38px;flex-wrap:wrap;}
   .sizes button{
     font-size:12px;letter-spacing:.06em;width:44px;height:38px;
@@ -488,6 +504,11 @@
       <div class="item-tabs" id="itemTabs"></div>
       <div class="p-name" id="pName"></div>
       <div class="p-price" id="pPrice"></div>
+      <!-- only shown for a piece that comes in more than one colourway -->
+      <div id="pColourRow" hidden>
+        <div class="size-label">Colour — <span class="swatch-name" id="pColourName"></span></div>
+        <div class="swatches" id="pSwatches"></div>
+      </div>
       <div class="size-label">Size</div>
       <div class="sizes" id="pSizes"></div>
       <button class="add-btn" onclick="addToCart()">Add to Cart</button>
@@ -541,33 +562,62 @@ const PRODUCTS = {
      tee becomes its own piece below */
   "jumping-tee":  {name:"Jumping Tee",              price:55,  img:"assets/prod-white-tee.svg"},
 
-  /* ---- photographed but not yet drawn ----------------------------------
-     No `img` yet: these show their photographs until the drawings arrive, and
-     each has a labelled placeholder page in PAGES. PRICES ARE PLACEHOLDERS. */
-  "black-jeans":   {name:"Black Jeans",      price:140, photos:[
+  /* ---- photographed on a model, drawn later ----------------------------
+     PRICES ARE PLACEHOLDERS. `img` is the piece's own drawing. Two pieces
+     have none: Pink Jorts and Purple Jeans were drawn onto a sheet shared
+     with another garment, so there is no drawing that shows them alone and
+     they open on their photographs instead. Their sheet is still in the
+     book — it simply opens both pieces. */
+  "black-jeans":   {name:"Black Jeans",      price:140,
+                    img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front.JPG","assets/black jeans back.JPG",
     "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
-  "beige-jeans":   {name:"Beige Jeans",      price:140, photos:[
+  "beige-jeans":   {name:"Beige Jeans",      price:140,
+                    img:"assets/beige jeans drawing 1.svg", photos:[
     "assets/beige jeans front.JPG","assets/beige jeans left.JPG",
     "assets/beige jeans right.JPG"]},
-  "beige-tee":     {name:"Beige Tee",        price:55,  photos:[
+  "purple-jeans":  {name:"Purple Jeans",     price:140, photos:[
+    "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
+  "beige-tee":     {name:"Beige Tee",        price:55,
+                    img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front.JPG","assets/beige tee back.JPG"]},
-  "white-tee":     {name:"White Tee",        price:55,  photos:[
+  "white-tee":     {name:"White Tee",        price:55,
+                    img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front.JPG","assets/white tee back.JPG"]},
   "white-black-tee":{name:"White / Black Tee",price:55, photos:[
     "assets/white-black tee front.JPG","assets/white-black tee back.JPG"]},
   "pink-jorts":    {name:"Pink Jorts",       price:95,  photos:[
     "assets/pink jorts front.JPG","assets/pink jorts back.JPG"]},
-  "beige-duffle":  {name:"Beige Duffle Bag", price:120, photos:[
+  "beige-duffle":  {name:"Beige Duffle Bag", price:120,
+                    img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag.JPG"]},
-  "black-backpack":{name:"Black Backpack",   price:110, photos:[
-    "assets/black backpack.JPG"]},
-  "brown-backpack":{name:"Brown Backpack",   price:110, photos:[
-    "assets/brown backpack.JPG"]}
+  /* One bag, two colourways. `colours` is what makes a piece offer a swatch
+     row instead of a plain photo strip: the drawing is shared, because the
+     shape is the same and only the cloth differs, and each colourway brings
+     its own photographs. A cart line records the colourway by name. */
+  "backpack":      {name:"Backpack",         price:110,
+                    img:"assets/backpack drawing.svg", colours:[
+    {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
+    {name:"Brown", swatch:"#6d4a30", photos:["assets/brown backpack.JPG"]}]}
 };
-/* every picture of a piece, drawing first; paths encoded for the spaces */
-const shotsOf = p => [p.img, ...(p.photos || [])].filter(Boolean).map(encodeURI);
-const heroOf  = p => shotsOf(p)[0] || '';
+/* every picture of a piece, drawing first; paths encoded for the spaces.
+   For a piece with colourways the photographs come from the chosen one, so
+   the strip only ever shows the bag you are actually looking at. */
+const shotsOf = (p, ci) => {
+  const c = p.colours && (p.colours[ci] || p.colours[0]);
+  return [p.img, ...((c ? c.photos : p.photos) || [])].filter(Boolean).map(encodeURI);
+};
+/* the thumbnail a cart line shows. A piece with colourways shares one drawing
+   between them, so the cart shows the cloth instead — otherwise a black bag
+   and a brown one are the same picture twice. */
+const heroOf  = (p, ci) => {
+  const s = shotsOf(p, ci);
+  return (p.colours && s[1]) || s[0] || '';
+};
+/* a cart line stores its colourway by name, so reordering the list cannot
+   silently turn someone's black bag brown */
+const colourIdx = (p, name) =>
+  Math.max(0, (p.colours || []).findIndex(c => c.name === name));
 const SIZES = ["XS","S","M","L","XL","XXL"];
 const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
 
@@ -592,18 +642,23 @@ const BOOK1_PAGES = [
   {type:"art", img:"assets/page5.svg",  ar:0.7446, products:["rose-tee"]},
   {type:"art", img:"assets/page6.svg",  ar:0.4397, products:["vest"]},
   {type:"art", img:"assets/page8.svg",  ar:0.8519, products:["rose-tee"]},
-  /* Photographed but not yet drawn — these carry the name and open the product
-     like any other page; swap `type` to "art" and add img/ar once each drawing
-     arrives. */
-  {type:"placeholder", label:"Black Jeans",        products:["black-jeans"]},
-  {type:"placeholder", label:"Beige Jeans",        products:["beige-jeans"]},
-  {type:"placeholder", label:"Beige Tee",          products:["beige-tee"]},
-  {type:"placeholder", label:"White Tee",          products:["white-tee"]},
+  /* The drawings that arrived after the photographs. A sheet drawn with two
+     garments on it opens both, the same way page1 opens three. Jeans run
+     together, then the tees, then the bags. */
+  {type:"art", img:"assets/black jeans drawing.svg",     ar:0.6420, products:["black-jeans"]},
+  {type:"art", img:"assets/beige jeans drawing 1.svg",   ar:0.7685, products:["beige-jeans"]},
+  {type:"art", img:"assets/beige jeans drawing 2.svg",   ar:0.6955, products:["beige-jeans"]},
+  {type:"art", img:"assets/purple jeans + brown jeans 1 drawings.svg",
+                                                         ar:0.6915, products:["purple-jeans","brown-jeans"]},
+  {type:"art", img:"assets/beige tee drawing.svg",       ar:0.7349, products:["beige-tee"]},
+  {type:"art", img:"assets/white tee drawing.svg",       ar:0.5729, products:["white-tee"]},
+  {type:"art", img:"assets/pink tee + pink jorts drawings.svg",
+                                                         ar:0.7205, products:["pink-tee","pink-jorts"]},
+  {type:"art", img:"assets/beige bag drawing.svg",       ar:0.8548, products:["beige-duffle"]},
+  {type:"art", img:"assets/backpack drawing.svg",        ar:0.6028, products:["backpack"]},
+  /* The one piece still undrawn: it carries its name and opens the product
+     like any other page. Swap `type` to "art" and add img/ar when it lands. */
   {type:"placeholder", label:"White / Black Tee",  products:["white-black-tee"]},
-  {type:"placeholder", label:"Pink Jorts",         products:["pink-jorts"]},
-  {type:"placeholder", label:"Beige Duffle Bag",   products:["beige-duffle"]},
-  {type:"placeholder", label:"Black Backpack",     products:["black-backpack"]},
-  {type:"placeholder", label:"Brown Backpack",     products:["brown-backpack"]},
   {type:"back", board:true}
 ];
 /* Only-drawn pieces: nothing here has been shot on a model yet. */
@@ -689,7 +744,7 @@ PAGES.forEach((p, i) => {
   leaf.style.transform = `translateZ(${leafZ(i)}px)`;
   let inner = '';
   if(p.type === 'title'){
-    inner = `<div class="title-art"><img src="${p.img}" alt="garnements 2026"></div>`;
+    inner = `<div class="title-art"><img src="${encodeURI(p.img)}" alt="garnements 2026"></div>`;
   } else if(p.type === 'colophon'){
     inner = `
       <div class="colophon">
@@ -717,7 +772,7 @@ PAGES.forEach((p, i) => {
     const clickable = p.products && p.products.length;
     inner = `
       <div class="page-art ${clickable ? 'clickable' : ''}" ${clickable ? `data-page="${i}"` : ''}>
-        <img src="${p.img}" alt="drawing">
+        <img src="${encodeURI(p.img)}" alt="drawing">
       </div>
       ${clickable ? '<div class="plus">+</div>' : ''}`;
   }
@@ -1430,28 +1485,33 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- product modal ---------- */
-let curItems = [], curIdx = 0, curSize = null;
+let curItems = [], curIdx = 0, curSize = null, curColour = 0;
 function openModal(ids){
-  curItems = ids; curIdx = 0; curSize = null;
+  curItems = ids; curIdx = 0; curSize = null; curColour = 0;
   renderItem();
   const ov = document.getElementById('overlay');
   ov.classList.add('open');
   requestAnimationFrame(() => ov.classList.add('dim'));
 }
-function renderItem(){
+/* `shot` is which picture to open on. It stays 0 — the drawing — every time
+   except when the shopper has just picked a colourway, where opening on the
+   drawing would show them nothing of the choice they made, so the first
+   photograph of that cloth leads instead. */
+function renderItem(shot = 0){
   const p = PRODUCTS[curItems[curIdx]];
-  /* drawing first, then the photographs; pieces with no drawing yet simply
-     open on their first photograph */
-  const shots = shotsOf(p);
+  /* drawing first, then the photographs; pieces with no drawing of their own
+     simply open on their first photograph */
+  const shots = shotsOf(p, curColour);
+  const start = Math.min(shot, shots.length - 1);
   const main = document.getElementById('pImg');
-  main.src = shots[0] || '';
+  main.src = shots[start] || '';
   main.alt = p.name;
   const thumbs = document.getElementById('pThumbs');
   thumbs.innerHTML = '';
   if(shots.length > 1){
     shots.forEach((src, k) => {
       const b = document.createElement('button');
-      b.className = k === 0 ? 'on' : '';
+      b.className = k === start ? 'on' : '';
       b.innerHTML = `<img src="${src}" alt="">`;
       b.onclick = () => {
         main.src = src;
@@ -1470,8 +1530,25 @@ function renderItem(){
       const b = document.createElement('button');
       b.textContent = PRODUCTS[id].name;
       b.className = i === curIdx ? 'on' : '';
-      b.onclick = () => { curIdx = i; curSize = null; renderItem(); };
+      b.onclick = () => { curIdx = i; curSize = null; curColour = 0; renderItem(); };
       tabs.appendChild(b);
+    });
+  }
+  const cRow = document.getElementById('pColourRow');
+  cRow.hidden = !p.colours;
+  if(p.colours){
+    document.getElementById('pColourName').textContent = p.colours[curColour].name;
+    const sw = document.getElementById('pSwatches');
+    sw.innerHTML = '';
+    p.colours.forEach((c, i) => {
+      const b = document.createElement('button');
+      b.className = i === curColour ? 'sel' : '';
+      b.title = c.name;
+      b.setAttribute('aria-label', c.name);
+      b.innerHTML = `<span style="background:${c.swatch}"></span>`;
+      /* redraw rather than patch: the photo strip belongs to the colourway */
+      b.onclick = () => { curColour = i; renderItem(1); };
+      sw.appendChild(b);
     });
   }
   const sz = document.getElementById('pSizes');
@@ -1479,6 +1556,8 @@ function renderItem(){
   SIZES.forEach(s => {
     const b = document.createElement('button');
     b.textContent = s;
+    /* a size already chosen survives a colour change */
+    b.className = s === curSize ? 'sel' : '';
     b.onclick = () => { curSize = s; [...sz.children].forEach(c => c.classList.remove('sel')); b.classList.add('sel'); };
     sz.appendChild(b);
   });
@@ -1495,10 +1574,15 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeModal()
 /* ---------- cart ---------- */
 let cart = [];
 try { cart = JSON.parse(localStorage.getItem('garnements_cart') || '[]'); } catch(e){ cart = []; }
+/* a saved cart can outlive the piece it names — the two backpacks became one
+   bag in two colourways — so drop lines that no longer resolve */
+cart = cart.filter(it => it && PRODUCTS[it.id]);
 function saveCart(){ try{ localStorage.setItem('garnements_cart', JSON.stringify(cart)); }catch(e){} renderCart(); }
 function addToCart(){
   if(!curSize){ document.getElementById('addedMsg').textContent = 'Please select a size'; document.getElementById('addedMsg').classList.add('show'); return; }
-  cart.push({id: curItems[curIdx], size: curSize});
+  const p = PRODUCTS[curItems[curIdx]];
+  cart.push({id: curItems[curIdx], size: curSize,
+             colour: p.colours ? p.colours[curColour].name : null});
   saveCart();
   const m = document.getElementById('addedMsg');
   m.textContent = 'Added'; m.classList.add('show');
@@ -1513,10 +1597,12 @@ function renderCart(){
   if(!cart.length) list.innerHTML = '<p class="empty-msg">Your cart is empty</p>';
   cart.forEach((it, i) => {
     const p = PRODUCTS[it.id]; total += p.price;
+    const ci = it.colour ? colourIdx(p, it.colour) : 0;
     const d = document.createElement('div');
     d.className = 'cart-item';
-    d.innerHTML = `<img src="${heroOf(p)}" alt="">
-      <div><div class="ci-name">${p.name}</div><div class="ci-size">Size ${it.size}</div></div>
+    d.innerHTML = `<img src="${heroOf(p, ci)}" alt="">
+      <div><div class="ci-name">${p.name}</div>
+        <div class="ci-size">${it.colour ? it.colour + ' · ' : ''}Size ${it.size}</div></div>
       <div class="ci-price">€${p.price}</div>`;
     const rm = document.createElement('button');
     rm.className = 'rm'; rm.textContent = '×'; rm.onclick = () => removeItem(i);
@@ -1531,7 +1617,8 @@ function checkout(){
   let body = 'Hello garnements,%0D%0A%0D%0AI would like to order:%0D%0A';
   let total = 0;
   cart.forEach(it => { const p = PRODUCTS[it.id]; total += p.price;
-    body += `- ${p.name} (Size ${it.size}) - EUR ${p.price}%0D%0A`; });
+    const spec = (it.colour ? it.colour + ', ' : '') + 'Size ' + it.size;
+    body += `- ${p.name} (${spec}) - EUR ${p.price}%0D%0A`; });
   body += `%0D%0ATotal: EUR ${total}%0D%0A%0D%0AMy shipping address:%0D%0A%0D%0AThank you`;
   window.location.href = `mailto:${ORDER_EMAIL}?subject=Order - garnements 2026&body=${body}`;
 }
