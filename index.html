@@ -1313,6 +1313,16 @@ if(window.THREE) startGL();
 else addEventListener('DOMContentLoaded', startGL);
 nextBtn.onclick = next;
 prevBtn.onclick = prev;
+/* Opening a product has to live in here too. `PAGES` and `next` are this
+   book's, and a page index means nothing without knowing which book it came
+   from — as a global listener this threw ReferenceError and no product opened
+   at all. Bound to this pad, so a click can only ever mean this book. */
+cal.addEventListener('click', e => {
+  /* the corner turns the page; it sits over the art, so it has to win here */
+  if(e.target.closest('.peel')){ next(); return; }
+  const t = e.target.closest('.page-art.clickable');
+  if(t) openModal(PAGES[+t.dataset.page].products);
+});
 /* touch swipe — bound to this book's own pad, so each answers only to itself */
 let ty = null;
 cal.addEventListener('touchstart', e => ty = e.touches[0].clientY, {passive:true});
@@ -1384,12 +1394,6 @@ document.addEventListener('keydown', e => {
 
 /* ---------- product modal ---------- */
 let curItems = [], curIdx = 0, curSize = null;
-document.addEventListener('click', e => {
-  /* the corner turns the page; it sits over the art, so it has to win here */
-  if(e.target.closest('.peel')){ next(); return; }
-  const t = e.target.closest('.page-art.clickable');
-  if(t) openModal(PAGES[+t.dataset.page].products);
-});
 function openModal(ids){
   curItems = ids; curIdx = 0; curSize = null;
   renderItem();
