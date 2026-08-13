@@ -15,7 +15,8 @@
 <!-- The cover art is created by script, so its download would otherwise not
      start until the whole script had run. Preloading fetches it in parallel
      with the HTML, which is what actually gets the first page on screen. -->
-<link rel="preload" as="image" href="assets/title-2.svg">
+<link rel="preload" as="image" href="assets/title%201.svg">
+<link rel="preload" as="image" href="assets/title%202.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -1320,8 +1321,15 @@ prevBtn.onclick = prev;
 cal.addEventListener('click', e => {
   /* the corner turns the page; it sits over the art, so it has to win here */
   if(e.target.closest('.peel')){ next(); return; }
-  const t = e.target.closest('.page-art.clickable');
-  if(t) openModal(PAGES[+t.dataset.page].products);
+  if(!e.target.closest('.page-art')) return;
+  /* Resolve against `cur`, never against whichever sheet caught the click.
+     Mid-turn the two disagree: going forward the outgoing sheet is hidden so
+     the hit falls through to the right one, but going BACK it stays on top for
+     the whole animation and kept opening the page you were leaving. `cur` is
+     already the destination the instant a flip starts, which is what a click
+     should mean — no waiting for the animation to land. */
+  const p = PAGES[cur];
+  if(p && p.products && p.products.length) openModal(p.products);
 });
 /* touch swipe — bound to this book's own pad, so each answers only to itself */
 let ty = null;
