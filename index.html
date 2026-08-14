@@ -212,6 +212,22 @@
   }
   .page-art.clickable{cursor:pointer;transition:opacity .3s;}
   .page-art.clickable:hover{opacity:.82;}
+  /* an isolated design's exact spot on its page — positioned from its own
+     real artwork geometry (see fitDesignSpots), not guessed. No visible box
+     of its own; hovering it lights a soft spotlight behind the drawing
+     instead, echoing the sketchbook picker's own grow-and-brighten (see
+     .book:not(.active):hover) without scaling art that isn't its own sprite
+     to distort. */
+  .design-spot{ position:absolute; cursor:pointer; }
+  .design-spot::before{
+    content:''; position:absolute; inset:-18%;
+    border-radius:50%;
+    background:radial-gradient(closest-side, rgba(35,31,32,.24), rgba(35,31,32,0) 72%);
+    opacity:0; transform:scale(.82);
+    transition:opacity .3s, transform .35s cubic-bezier(.34,.08,.24,1);
+    pointer-events:none;
+  }
+  .design-spot:hover::before{ opacity:1; transform:scale(1); }
   /* title art fills whole page (it includes its own spiral + margins) */
   .title-art{position:absolute;inset:0;}
   .title-art img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -328,24 +344,33 @@
   footer a{color:inherit;text-decoration:none;border-bottom:1px solid transparent;}
   footer a:hover{border-color:var(--grey);}
 
-  /* ---------- product modal ---------- */
+  /* ---------- product modal ----------
+     Docked to the left edge rather than centred over everything — the
+     sketchbook stays visible and interactive beside it (see centreActive's
+     `reserve`), so this only ever slides in and out of its own share of the
+     screen. Same off-screen-position-not-display mechanic as .drawer below,
+     just from the left and full height, for the same reason: a single class
+     toggle drives the whole transition with nothing to time in JS. */
   .overlay{
-    position:fixed;inset:0;background:rgba(25,22,20,0);
-    display:none;align-items:center;justify-content:center;z-index:100;
-    padding:20px;
-    transition:background .5s;
+    position:fixed;top:0;left:0;bottom:0;z-index:100;
+    width:min(860px,60vw);
+    background:#fff;
+    display:flex;flex-direction:column;
+    transform:translateX(-100%);
+    transition:transform .5s cubic-bezier(.3,.1,.25,1);
+    box-shadow:16px 0 50px rgba(35,31,32,.14);
   }
-  .overlay.open{display:flex;}
-  .overlay.dim{background:rgba(25,22,20,.4);}
-  .panel{opacity:0;transform:scale(.985);transition:opacity .45s ease, transform .55s cubic-bezier(.3,.05,.2,1);}
-  .overlay.dim .panel{opacity:1;transform:scale(1);}
+  .overlay.open{transform:translateX(0);}
+  @media(max-width:900px){
+    .overlay{width:100%;}
+  }
   .panel{
-    background:#fff;width:min(980px,100%);max-height:92vh;
-    display:grid;grid-template-columns:1.25fr 1fr;
-    overflow:hidden;position:relative;
+    flex:1;min-height:0;
+    display:grid;grid-template-columns:1.15fr 1fr;
+    overflow-y:auto;position:relative;
   }
   @media(max-width:760px){
-    .panel{grid-template-columns:1fr;overflow-y:auto;}
+    .panel{grid-template-columns:1fr;}
   }
   .panel-img{
     background:#f7f7f6;display:flex;flex-direction:column;
@@ -353,7 +378,7 @@
     padding:34px;min-height:420px;
   }
   .panel-img > img{width:100%;flex:1;min-height:0;
-    max-height:calc(92vh - 150px);object-fit:contain;}
+    max-height:calc(100vh - 150px);object-fit:contain;}
   /* photographs first, drawing after — one row, no carousel to get lost in */
   .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
   .panel-thumbs button{
@@ -614,41 +639,47 @@ const colourIdx = (p, name) =>
 const SIZES = ["XS","S","M","L","XL","XXL"];
 const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
 
-/* page order: title, colophon, drawings 1–10 (products per your plan).
-   `ar` is each drawing's width/height from its viewBox. The browser can't be
-   asked for it — these SVGs carry no width/height attribute, so naturalWidth
-   is unreliable — and the WebGL flip needs it to fit the art the same way
-   CSS object-fit:contain does. */
-/* Two sketchbooks, split by whether a page's pieces were photographed on a
-   model. A page goes in the first book if ANY of its products has photos —
-   pages 1 and 4 carry brown-jeans alongside photographed pieces, so they go
-   there too rather than being torn in half.
-   `board` marks the heavy stock — the covers. Everything that makes a sheet
+/* page order: title, colophon, S1P1–S1P11, back. Every one of these is built
+   at literal A4 (2480×3508 @300dpi), so `ar` is the same 0.7071 throughout —
+   see PAGE_W/PAGE_H below for why that's still only a ratio match and not
+   the site's own internal scale.
+   `designs` replaces `products` here: each entry names the one piece drawn
+   at that spot, isolated in its own "<page> <piece> design.svg" file sharing
+   the page's coordinate space. fitDesignSpots() below measures each one's
+   real geometry and turns it into its own clickable hotspot — no whole-page
+   click/tabs fallback for these pages, since every piece on one now opens on
+   its own rather than as a set (see the cal click handler). */
+/* `board` marks the heavy stock — the covers. Everything that makes a sheet
    read as card rather than paper keys off that flag, not the type. */
 const BOOK1_PAGES = [
   {type:"title", img:"assets/title 1 new.svg", ar:0.7071, board:true},
   {type:"colophon"},
-  {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
-  {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
-  {type:"art", img:"assets/page3.svg",  ar:0.6350, products:["black-tee"]},
-  {type:"art", img:"assets/page4.svg",  ar:0.4737, products:["cream-hoodie","brown-jeans"]},
-  {type:"art", img:"assets/page5.svg",  ar:0.7446, products:["rose-tee"]},
-  {type:"art", img:"assets/page6.svg",  ar:0.4397, products:["vest"]},
-  {type:"art", img:"assets/page8.svg",  ar:0.8519, products:["rose-tee"]},
-  /* The drawings that arrived after the photographs. A sheet drawn with two
-     garments on it opens both, the same way page1 opens three. Jeans run
-     together, then the tees, then the bags. */
-  {type:"art", img:"assets/black jeans drawing.svg",     ar:0.6420, products:["black-jeans"]},
-  {type:"art", img:"assets/beige jeans drawing 1.svg",   ar:0.7685, products:["beige-jeans"]},
-  {type:"art", img:"assets/beige jeans drawing 2.svg",   ar:0.6955, products:["beige-jeans"]},
-  {type:"art", img:"assets/purple jeans + brown jeans 1 drawings.svg",
-                                                         ar:0.6915, products:["purple-jeans","brown-jeans"]},
-  {type:"art", img:"assets/beige tee drawing.svg",       ar:0.7349, products:["beige-tee"]},
-  {type:"art", img:"assets/white tee drawing.svg",       ar:0.5729, products:["white-tee"]},
-  {type:"art", img:"assets/pink tee + pink jorts drawings.svg",
-                                                         ar:0.7205, products:["pink-tee","pink-jorts"]},
-  {type:"art", img:"assets/beige bag drawing.svg",       ar:0.8548, products:["beige-duffle"]},
-  {type:"art", img:"assets/backpack drawing.svg",        ar:0.6028, products:["backpack"]},
+  {type:"art", img:"assets/S1P1.svg", ar:0.7071, designs:[
+    {product:"backpack", file:"assets/S1P1 backpack design.svg"}]},
+  {type:"art", img:"assets/S1P2.svg", ar:0.7071, designs:[
+    {product:"cream-hoodie", file:"assets/S1P2 beige hoodie design.svg"},
+    {product:"pink-tee",     file:"assets/S1P2 pink tee design.svg"}]},
+  {type:"art", img:"assets/S1P3.svg", ar:0.7071, designs:[
+    {product:"cream-hoodie", file:"assets/S1P3 beige hoodie design.svg"},
+    {product:"black-jeans",  file:"assets/S1P3 black jeans design.svg"}]},
+  {type:"art", img:"assets/S1P4.svg", ar:0.7071, designs:[
+    {product:"pink-hoodie", file:"assets/S1P4 pink hoodie design.svg"}]},
+  {type:"art", img:"assets/S1P5.svg", ar:0.7071, designs:[
+    {product:"vest", file:"assets/S1P5 black vest design.svg"}]},
+  {type:"art", img:"assets/S1P6.svg", ar:0.7071, designs:[
+    {product:"pink-jorts", file:"assets/S1P6 pink jorts design.svg"},
+    {product:"pink-tee",   file:"assets/S1P6 pink tee design.svg"}]},
+  {type:"art", img:"assets/S1P7.svg", ar:0.7071, designs:[
+    {product:"rose-tee", file:"assets/S1P7 Black Tee 2 design.svg"}]},
+  {type:"art", img:"assets/S1P8.svg", ar:0.7071, designs:[
+    {product:"black-tee", file:"assets/S1P8 black tee 1 design.svg"}]},
+  {type:"art", img:"assets/S1P9.svg", ar:0.7071, designs:[
+    {product:"beige-tee", file:"assets/S1P9 beige tee design .svg"},
+    {product:"black-tee", file:"assets/S1P9 black tee 1 design.svg"}]},
+  {type:"art", img:"assets/S1P10.svg", ar:0.7071, designs:[
+    {product:"cream-hoodie", file:"assets/S1P10 beige hoodie design.svg"}]},
+  {type:"art", img:"assets/S1P11.svg", ar:0.7071, designs:[
+    {product:"beige-duffle", file:"assets/S1P11 beige duffle design.svg"}]},
   {type:"back", board:true}
 ];
 /* Only-drawn pieces: nothing here has been shot on a model yet. */
@@ -690,6 +721,60 @@ const punchSVG =
    reads it as --over-x/--over-y, and the binding's mask subtracts it so the
    wire stops at the board's edge rather than the sheet's. */
 const BOARD_OVER = 6;
+
+/* ---------- design hotspots ----------
+   Each " design.svg" isolates one piece's graphic at its exact spot on a
+   page, sharing that page's own literal-A4 viewBox (2480×3508 @300dpi — a
+   different, unrelated scale from PAGE_W/PAGE_H above, chosen by whoever
+   exported these from Illustrator, not by this site). getBBox() on the
+   fetched content, briefly attached to the document, is the only reliable
+   way to find that spot — these files carry no meaningful width/height
+   attributes to read instead. */
+const ART_SVG_W = 2480, ART_SVG_H = 3508;
+async function designBBox(url){
+  const text = await (await fetch(encodeURI(url))).text();
+  const src = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
+  const probe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  probe.setAttribute('viewBox', src.getAttribute('viewBox') || `0 0 ${ART_SVG_W} ${ART_SVG_H}`);
+  probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+  while(src.firstChild) probe.appendChild(src.firstChild);
+  document.body.appendChild(probe);
+  const box = probe.getBBox();
+  probe.remove();
+  return box;
+}
+/* .page-art is NOT itself A4-shaped: top:4% plus bottom:0 (see its CSS)
+   compress its height to 96% of the leaf while the width stays full, even
+   though the leaf and an exact-A4 drawing both are. Fitting a same-ratio
+   image into a box like that under object-fit:contain always compresses the
+   image's WIDTH by that same 96% (the two ratios cancel out algebraically),
+   letterboxing it 2% on each side — not a rounding artifact, an exact
+   consequence of the 4% inset. A hotspot has to land on the actual drawing
+   rather than on the box, so this corrects for it. Only valid for art built
+   at the leaf's own ratio — the new A4 pages — which is the only place
+   hotspots are used. */
+const ART_W = 0.96, ART_X = (1 - ART_W) / 2;
+/* Turns a page's `designs` list into positioned, clickable regions once each
+   one's real geometry is known. Runs once per leaf at book-build time; a
+   design only becomes hoverable once its own fetch+measure resolves, same as
+   the page art's own <img> loading in — small enough (one sheet per piece)
+   that there's nothing to gain from eagerly caching or batching it. */
+function fitDesignSpots(leaf, p){
+  if(!p.designs || !p.designs.length) return;
+  const art = leaf.querySelector('.page-art');
+  p.designs.forEach(d => {
+    designBBox(d.file).then(box => {
+      const spot = document.createElement('div');
+      spot.className = 'design-spot';
+      spot.dataset.product = d.product;
+      spot.style.left   = ((ART_X + (box.x / ART_SVG_W) * ART_W) * 100).toFixed(3) + '%';
+      spot.style.top    = ((box.y / ART_SVG_H) * 100).toFixed(3) + '%';
+      spot.style.width  = ((box.width  / ART_SVG_W) * ART_W * 100).toFixed(3) + '%';
+      spot.style.height = ((box.height / ART_SVG_H) * 100).toFixed(3) + '%';
+      art.appendChild(spot);
+    }).catch(() => console.warn('design hotspot failed to measure:', d.file));
+  });
+}
 
 /* ============================================================
    A SKETCHBOOK
@@ -775,6 +860,7 @@ PAGES.forEach((p, i) => {
     <div class="leaf-face rear">${punchSVG}</div>
     ${isCover ? '<div class="board-over"></div>' : ''}`;
   cal.appendChild(leaf);
+  fitDesignSpots(leaf, p);
 });
 
 const leaves = [...cal.querySelectorAll('.leaf')];
@@ -1626,16 +1712,30 @@ ticksEl.addEventListener('click', e => {
 /* Opening a product has to live in here too. `PAGES` and `next` are this
    book's, and a page index means nothing without knowing which book it came
    from — as a global listener this threw ReferenceError and no product opened
-   at all. Bound to this pad, so a click can only ever mean this book. */
+   at all. Bound to this pad, so a click can only ever mean this book.
+   Every click here stops rather than reaching document — the pad stays live
+   while the modal is open (see openModal/closeModal), and without this any
+   click on it — a hotspot, or just a blank part of the page — would also
+   read as the "click outside" that closes the modal it just opened. */
 cal.addEventListener('click', e => {
-  if(!e.target.closest('.page-art')) return;
+  e.stopPropagation();
   /* Resolve against `cur`, never against whichever sheet caught the click.
      Mid-turn the two disagree: going forward the outgoing sheet is hidden so
      the hit falls through to the right one, but going BACK it stays on top for
      the whole animation and kept opening the page you were leaving. `cur` is
      already the destination the instant a flip starts, which is what a click
-     should mean — no waiting for the animation to land. */
+     should mean — no waiting for the animation to land. Applies just the same
+     to a design hotspot as to the whole-page fallback below: cross-check its
+     product against the CURRENT page's designs rather than trusting the DOM
+     node it lives on. */
   const p = PAGES[cur];
+  const spot = e.target.closest('.design-spot');
+  if(spot){
+    if(p && p.designs && p.designs.some(d => d.product === spot.dataset.product))
+      openModal([spot.dataset.product]);
+    return;
+  }
+  if(!e.target.closest('.page-art')) return;
   if(p && p.products && p.products.length) openModal(p.products);
 });
 /* touch swipe — bound to this book's own pad, so each answers only to itself */
@@ -1667,16 +1767,28 @@ const books = [
    exactly on the sheet you left it at. Switching only slides the rail. */
 const rail = document.querySelector('.books');
 let activeIndex = -1;
+/* Whether the product panel is open — set by openModal/closeModal, read by
+   centreActive so the book slides right to share the screen with it rather
+   than staying centred underneath it. */
+let modalOpen = false;
 /* Before either book is picked there is nothing to centre ON — .books (this
    same element `rail` points to) is centred within its own parent instead,
    so the pair sits together rather than one arbitrarily standing in for
    "the selection". offsetLeft/offsetWidth are layout, not paint, so reading
-   them off the element we are about to transform is still no feedback loop. */
+   them off the element we are about to transform is still no feedback loop.
+   While the product panel is open, its width is reserved out of the left
+   side rather than centring in the FULL rail width — the panel is
+   position:fixed, off the document flow, so nothing does this for free.
+   #overlay keeps its layout width even off-screen (it's moved with
+   transform, not display), so this reads correctly whether or not it has
+   actually finished sliding in yet. */
 function centreActive(){
   const el = activeIndex === -1 ? rail : books[activeIndex].mount;
   const railW = rail.parentElement.clientWidth;
+  const reserve = modalOpen ? document.getElementById('overlay').offsetWidth : 0;
+  const centreX = reserve + (railW - reserve) / 2;
   rail.style.transform =
-    'translateX(' + (railW/2 - (el.offsetLeft + el.offsetWidth/2)) + 'px)';
+    'translateX(' + (centreX - (el.offsetLeft + el.offsetWidth/2)) + 'px)';
 }
 function setActive(i){
   if(i === activeIndex) return;
@@ -1747,9 +1859,11 @@ let curItems = [], curIdx = 0, curSize = null, curColour = 0;
 function openModal(ids){
   curItems = ids; curIdx = 0; curSize = null; curColour = 0;
   renderItem();
-  const ov = document.getElementById('overlay');
-  ov.classList.add('open');
-  requestAnimationFrame(() => ov.classList.add('dim'));
+  document.getElementById('overlay').classList.add('open');
+  /* Already open and just switching to a different piece (another hotspot,
+     or a tab) — the book is already shifted, re-centring again would be a
+     no-op at best and a redundant transition restart at worst. */
+  if(!modalOpen){ modalOpen = true; centreActive(); }
 }
 function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
@@ -1817,11 +1931,19 @@ function renderItem(){
   document.getElementById('addedMsg').classList.remove('show');
 }
 function closeModal(){
-  const ov = document.getElementById('overlay');
-  ov.classList.remove('dim');
-  setTimeout(() => ov.classList.remove('open'), 450);
+  document.getElementById('overlay').classList.remove('open');
+  modalOpen = false;
+  centreActive();
 }
-document.getElementById('overlay').addEventListener('click', e => { if(e.target === e.currentTarget) closeModal(); });
+/* The panel now fills its own bounds edge to edge — no backdrop margin left
+   inside #overlay to click, the way the old centred/dimmed version had. The
+   equivalent "click away to dismiss" is anywhere outside it instead; the
+   book itself is exempted since its own click handler already stops
+   propagation (see cal's click listener) rather than reaching here. */
+document.addEventListener('click', e => {
+  const ov = document.getElementById('overlay');
+  if(ov.classList.contains('open') && !ov.contains(e.target)) closeModal();
+});
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeModal(); toggleCart(false); } });
 
 /* ---------- cart ---------- */
