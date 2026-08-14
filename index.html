@@ -26,6 +26,11 @@
     --ink:#231f20;
     --grey:#8a8a8a;
     --line:rgba(35,31,32,.18);
+    /* the field the product window sits on — the covers' own grey-beige (see
+       .leaf.cover's --board-face) taken lighter, and flat rather than the
+       board's gradient, so it reads as the same material without competing
+       with the sketchbook standing next to it */
+    --panel:#dcd7cc;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -284,17 +289,33 @@
   .book{
     margin-bottom:34px;
     transform-origin:50% 42%;
+    position:relative;
   }
+  /* The chosen book stands in front, so a waiting one crossing the screen
+     passes BEHIND it rather than over it (see updateOrbits). Safe to make a
+     stacking context here: every layer that has to sort against another —
+     the pad, the WebGL canvas, the coils — already lives inside .stage,
+     which is one of its own by way of `perspective`. */
+  .book.active{ z-index:2; }
   /* a waiting book is a target to pick, not a pad to flip. The grow/dim
      transition lives here rather than on the bare .book, so it only ever
      plays going INTO this state (closing) or between rest and hover —
      never coming OUT of it, which .book.active below cuts off on purpose. */
+  /* --orbit is where a waiting book has been sent to get out of the product
+     window's way — 0 at rest. It composes with the scale here rather than
+     replacing it, so the book keeps its hover nudge wherever it has been
+     parked; the swing between two orbits is animated separately, in JS,
+     because an arc is not something one transform can tween into another. */
   .book:not(.active){
-    cursor:pointer; opacity:.5; transform:scale(.84);
+    cursor:pointer; opacity:.5;
+    transform:translateX(var(--orbit,0px)) scale(.84);
     transition:transform .55s cubic-bezier(.34,.08,.24,1), opacity .5s;
   }
   /* the nudge that says "this is the one you'd press" */
-  .book:not(.active):hover{ opacity:.75; transform:scale(.88); }
+  .book:not(.active):hover{
+    opacity:.75;
+    transform:translateX(var(--orbit,0px)) scale(.88);
+  }
   .book:not(.active) .stage{ pointer-events:none; }
   /* Picking a book snaps it to size instead of growing into it — the flip
      starts the instant it's pressed, and its geometry is read from this
@@ -351,26 +372,21 @@
      screen. Same off-screen-position-not-display mechanic as .drawer below,
      just from the left and full height, for the same reason: a single class
      toggle drives the whole transition with nothing to time in JS.
-     No panel of its own — no ground, no shadow, no edge. The photograph and
-     the type sit straight on the paper the rest of the site is printed on,
-     so nothing reads as a window laid over the page. Every surface inside it
-     stays transparent for the same reason; a single opaque child would put
-     the box back. */
+     One flat field of --panel, and nothing else: no shadow, no border, no
+     card. What makes it read as part of the page rather than a window laid
+     over it is that the colour belongs to the covers, not to the browser —
+     everything inside stays transparent and sits directly on it. */
   .overlay{
     position:fixed;top:0;left:0;bottom:0;z-index:100;
     width:min(860px,60vw);
+    background:var(--panel);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
   }
   .overlay.open{transform:translateX(0);}
-  /* Narrow enough that the panel has to take the whole screen, which puts the
-     sketchbook directly BEHIND it rather than beside it — the one case where
-     floating can't hold, since the drawing and the header/footer read straight
-     through the type. It gets the page's own colour back, so it still reads as
-     the same paper, just opaque enough to be legible. */
   @media(max-width:900px){
-    .overlay{width:100%;background:var(--bg);}
+    .overlay{width:100%;}
   }
   .panel{
     flex:1;min-height:0;
@@ -1790,13 +1806,79 @@ let modalOpen = false;
    #overlay keeps its layout width even off-screen (it's moved with
    transform, not display), so this reads correctly whether or not it has
    actually finished sliding in yet. */
-function centreActive(){
+function railShift(){
   const el = activeIndex === -1 ? rail : books[activeIndex].mount;
   const railW = rail.parentElement.clientWidth;
   const reserve = modalOpen ? document.getElementById('overlay').offsetWidth : 0;
   const centreX = reserve + (railW - reserve) / 2;
-  rail.style.transform =
-    'translateX(' + (centreX - (el.offsetLeft + el.offsetWidth/2)) + 'px)';
+  return centreX - (el.offsetLeft + el.offsetWidth/2);
+}
+function centreActive(){
+  rail.style.transform = 'translateX(' + railShift() + 'px)';
+}
+/* ---------- getting out of the window's way ----------
+   Centring the chosen book in what's left of the screen is only half of it:
+   any book sitting to its LEFT is still standing where the product window
+   now is. Those swing around to the far side of the chosen one instead, so
+   the whole left of the screen belongs to the window.
+   Where it lands is read from the rail's own layout — put its box down just
+   past the chosen book's, one gap along, mirroring the spacing it had on the
+   other side. offsetLeft/offsetWidth are unaffected by any of the transforms
+   involved, so this measures the resting layout no matter what is mid-swing. */
+/* how much of a parked book still has to show past the right edge. Sending it
+   the full distance puts it exactly one screen-width out and it vanishes
+   entirely — the swing would end somewhere nobody can see, and there would be
+   no way back to that sketchbook without closing the window first. Landing it
+   at the margin instead keeps the same "another book waits over there" reading
+   the shelf has at rest. */
+const IDLE_SCALE = .84, ORBIT_PEEK = .28;
+function orbitTarget(i){
+  if(!modalOpen || activeIndex < 0 || i >= activeIndex) return 0;
+  const act = books[activeIndex].mount, me = books[i].mount;
+  const gap = parseFloat(getComputedStyle(rail).columnGap) || 0;
+  const natural = (act.offsetLeft + act.offsetWidth + gap) - me.offsetLeft;
+  /* Everything here is layout, then shifted by the rail's own target offset —
+     never getBoundingClientRect, which mid-swing reports where the animation
+     has the book rather than where its resting place is, and would fold the
+     previous orbit back into the next one. Scaling pulls a waiting book's
+     edges inside its layout box, so the visible edge is `inset` in from it. */
+  const shown = me.offsetWidth * IDLE_SCALE;
+  const inset = (me.offsetWidth - shown) / 2;
+  const restLeft = rail.parentElement.getBoundingClientRect().left
+                 + railShift() + me.offsetLeft + inset;
+  return Math.min(natural, (innerWidth - shown * ORBIT_PEEK) - restLeft);
+}
+/* The path is an arc, not a slide: it shrinks away to .58 at the midpoint and
+   rises a little, which is what a book travelling AROUND the far side of
+   another one does under .stage's perspective — receding reads as smaller and
+   slightly higher. Passing behind is real rather than implied; the chosen book
+   holds z-index 2 (see .book.active) for exactly the moment this crosses it.
+   Two transforms can't tween through a third, so the arc is keyframed here
+   rather than left to the CSS transition — and the resting place is written to
+   --orbit FIRST, with the transition suppressed, so when the keyframes end
+   there is nothing for CSS to animate into afterwards. Same disable/reflow/
+   restore dance as setActive, and for the same reason. */
+function updateOrbits(instant){
+  books.forEach((b, i) => {
+    const mount = b.mount;
+    const from = parseFloat(mount.style.getPropertyValue('--orbit')) || 0;
+    const to   = orbitTarget(i);
+    if(Math.abs(to - from) < 1) return;
+    if(mount._orbit){ mount._orbit.cancel(); mount._orbit = null; }
+    mount.style.transition = 'none';
+    mount.style.setProperty('--orbit', to + 'px');
+    mount.offsetHeight;
+    mount.style.transition = '';
+    /* the chosen book never orbits, and a resize is a re-measure rather than
+       a move — both just land on the number */
+    if(instant || i === activeIndex) return;
+    const lift = mount.offsetHeight * .06;
+    mount._orbit = mount.animate([
+      {transform:`translateX(${from}px) scale(.84)`},
+      {transform:`translate(${(from + to) / 2}px, ${-lift}px) scale(.58)`},
+      {transform:`translateX(${to}px) scale(.84)`}
+    ], {duration:950, easing:'cubic-bezier(.45,.05,.35,1)'});
+  });
 }
 function setActive(i){
   if(i === activeIndex) return;
@@ -1819,6 +1901,10 @@ function setActive(i){
   centreActive();
   rail.offsetHeight;
   rail.style.transition = '';
+  /* the picked book snaps rather than grows, so whatever was orbiting for it
+     snaps back too — animating an arc against that would be two different
+     stories about the same moment */
+  updateOrbits(true);
   const b = books[activeIndex];
   b.relayout();
   if(b.atCover()) b.next();
@@ -1833,6 +1919,7 @@ function deselect(){
   activeBook = null;
   books.forEach(b => b.mount.classList.remove('active'));
   centreActive();
+  updateOrbits(true);
 }
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
   /* already the selected book and still showing its cover — just open it,
@@ -1840,7 +1927,9 @@ books.forEach((b, i) => b.mount.addEventListener('click', () => {
   if(i === activeIndex){ if(b.atCover()) b.next(); return; }
   setActive(i);
 }));
-addEventListener('resize', centreActive);
+/* a resize re-measures where things belong; it is not a move, so the orbit
+   lands on the new number rather than swinging to it */
+addEventListener('resize', () => { centreActive(); updateOrbits(true); });
 /* Neither book starts selected — both wait, dimmed and arrow-less, until
    pressed. Still needs centring once up front, or the pair would sit at
    whatever the flex layout landed on until the first resize or click moved
@@ -1871,7 +1960,7 @@ function openModal(ids){
   /* Already open and just switching to a different piece (another hotspot,
      or a tab) — the book is already shifted, re-centring again would be a
      no-op at best and a redundant transition restart at worst. */
-  if(!modalOpen){ modalOpen = true; centreActive(); }
+  if(!modalOpen){ modalOpen = true; centreActive(); updateOrbits(); }
 }
 function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
@@ -1942,6 +2031,7 @@ function closeModal(){
   document.getElementById('overlay').classList.remove('open');
   modalOpen = false;
   centreActive();
+  updateOrbits();
 }
 /* The panel has no backdrop margin of its own to click, the way the old
    centred/dimmed version had, so "click away to dismiss" means anywhere
