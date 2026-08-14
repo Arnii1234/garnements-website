@@ -1266,14 +1266,28 @@ function initGL(){
 function layoutGL(){
   if(!glOK) return;
   const sr = stage.getBoundingClientRect(), cr = cal.getBoundingClientRect();
-  const ox = sr.left + sr.width/2, oy = sr.top + sr.height/2;   /* perspective origin */
-  const pw = cr.width, ph = cr.height;
+  /* EVERY ancestor scale, folded into one number. #fit shrinks the whole page
+     whenever it would otherwise scroll — which a visitor can trigger just by
+     zooming — and a waiting book is scaled down on top of that.
+     getBoundingClientRect reports the result of both, but this canvas LIVES
+     inside them, so writing screen pixels into its style lets the same scale
+     apply a second time: the canvas came out s too small, and the turning
+     sheet rendered that much smaller than the page it lifts off.
+     offsetWidth is the untransformed width, so this ratio is exactly what has
+     to be divided back out. Working in the stage's own units is also what
+     makes PERSP right — the CSS perspective is 2000 of THESE units, never
+     2000 screen pixels, and at any scale but 1 those are different lengths. */
+  const s = cal.offsetWidth ? cr.width / cal.offsetWidth : 1;
+  const pw = cr.width / s, ph = cr.height / s;
+  /* the pad's corner and the perspective origin, both in the stage's frame */
+  const cx = (cr.left - sr.left) / s, cy = (cr.top - sr.top) / s;
+  const ox = sr.width / s / 2, oy = sr.height / s / 2;
   /* the sheet swings a full page height above the pad, so the canvas reaches
      well past the top — but not below, where nothing happens. */
   /* margins verified against the sheet's actual swept extent: perspective
      magnifies it when it bows toward the viewer, so it overhangs the pad */
-  const x0 = cr.left - pw*.32, x1 = cr.right  + pw*.32;
-  const y0 = cr.top  - ph*1.2, y1 = cr.bottom + ph*.12;
+  const x0 = cx - pw*.32, x1 = cx + pw + pw*.32;
+  const y0 = cy - ph*1.2, y1 = cy + ph + ph*.12;
   /* The CSS projection is a pinhole at the perspective origin, so the camera
      has to be on-axis there. An off-centre canvas is handled by rendering a
      sub-rectangle of that symmetric view rather than by moving the camera —
@@ -1285,13 +1299,16 @@ function layoutGL(){
      parametrised by arc length from the hinge, so it has to start this far
      *above* it — otherwise the whole sheet renders hOff too low and jumps back
      into place the moment the DOM leaf takes over at the end of a flip. */
-  glBox = {ox, oy, pw, ph, hx: cr.left + pw/2,
-           hy: cr.top + ph*0.0036, hOff: ph*0.0036};
-  glc.style.left = (x0 - sr.left) + 'px';
-  glc.style.top  = (y0 - sr.top)  + 'px';
+  glBox = {ox, oy, pw, ph, hx: cx + pw/2,
+           hy: cy + ph*0.0036, hOff: ph*0.0036};
+  glc.style.left = x0 + 'px';
+  glc.style.top  = y0 + 'px';
   glc.style.width  = w + 'px';
   glc.style.height = h + 'px';
-  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  /* the drawing buffer still has to come out in REAL screen pixels, and those
+     are s smaller than the units everything above is written in — so the scale
+     rides here instead, leaving the buffer exactly the size it always was */
+  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2) * s);
   glR.setSize(w, h, false);
   glCam.fov = 2 * Math.atan(hh / PERSP) * 180 / Math.PI;
   glCam.aspect = hw / hh;
