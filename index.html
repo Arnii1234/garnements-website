@@ -1415,65 +1415,64 @@ function prev(){
      already be correct by) */
   if(cur === 0 && onClose) setTimeout(onClose, flipMs(cur));
 }
-/* Skips straight to a page instead of flipping through everything between —
-   a scrubber, not a fast-forward. Every leaf between the old and new cur
-   gets set directly to whichever resting state land() would have left it
-   in after an actual flip (same transform, same .flipped class), without
-   ever animating; leaves outside that range are already correct and are
-   left untouched. Closing onto the cover this way still hands back to the
-   picker, same as reaching it by pressing back. */
-function jumpTo(target){
-  if(flipLocked() || target === cur || target < 0 || target >= PAGES.length) return;
+/* Shared by the tick scrubber and by closing a book on switch — a wave, not
+   a fast sequence: every affected leaf plays the same full, smooth flip a
+   real page turn would (same duration), and what changes is only how soon
+   after the previous one it STARTS. That short stagger is what turns many
+   individual flips into something that reads as one continuous wave rolling
+   through the stack, with several sheets genuinely mid-turn at once, rather
+   than a rapid one-after-another flutter. More pages means a longer wave
+   (the stagger adds up) but never a slower-looking one (each flip is still
+   the same speed). The wave starts at whichever end is closest to where you
+   already are and rolls toward the target, matching how riffling a real
+   stack reads. Always the CSS path, deliberately never WebGL: closing plays
+   out while the book is simultaneously shrinking to hand focus to the other
+   one, and a real DOM transform keeps composing correctly under that
+   ancestor scale, where the WebGL overlay's separately-tracked pixel
+   position would drift as the book shrinks under it.
+   cur and the nav move to the target immediately — the wave underneath is a
+   visual layer playing out on top of an already-current page, not something
+   the rest of the book waits on. */
+let riffleT = 0;
+function waveLeaf(i, toBack, ms){
+  const leaf = leaves[i];
+  leaf.getAnimations().forEach(a => a.cancel());
+  const kf = flipKeyframes(i);
+  leaf.animate(toBack ? kf : reverseKeyframes(kf), {duration:ms, easing:EASE, fill:'forwards'})
+    .onfinish = () => {
+      leaf.classList.toggle('flipped', toBack);
+      leaf.style.transform = toBack
+        ? `translateZ(${backZ(i)}px) rotateX(360deg)`
+        : `translateZ(${leafZ(i)}px)`;
+    };
+}
+function waveTo(target){
+  if(target === cur) return;
   glSettle();
   const lo = Math.min(cur, target), hi = Math.max(cur, target);
-  for(let i = lo; i <= hi; i++){
-    const leaf = leaves[i];
-    leaf.getAnimations().forEach(a => a.cancel());
-    const flipped = i < target;
-    leaf.classList.toggle('flipped', flipped);
-    leaf.style.transform = flipped
-      ? `translateZ(${backZ(i)}px) rotateX(360deg)`
-      : `translateZ(${leafZ(i)}px)`;
-    leaf.style.visibility = '';
+  const toBack = target > cur;
+  const n = hi - lo, mine = ++riffleT;
+  const dur = 450;
+  const stagger = n > 1 ? Math.max(28, Math.min(60, 650 / n)) : 0;
+  for(let k = 0; k < n; k++){
+    const i = toBack ? lo + k : hi - 1 - k;
+    setTimeout(() => { if(mine === riffleT) waveLeaf(i, toBack, dur); }, k * stagger);
   }
   cur = target;
   updateNav();
+}
+function jumpTo(target){
+  if(flipLocked() || target === cur || target < 0 || target >= PAGES.length) return;
+  waveTo(target);
   if(cur === 0 && onClose) onClose();
 }
-/* Always the CSS path, deliberately never WebGL — this plays while the book
-   is simultaneously shrinking down to hand focus to the other one, and a
-   real DOM transform keeps composing correctly under that ancestor scale.
-   The WebGL overlay tracks its own pixel position separately and would
-   drift out of alignment as the book shrinks under it. */
-function riffleLeaf(i, ms){
-  const leaf = leaves[i];
-  leaf.getAnimations().forEach(a => a.cancel());
-  leaf.classList.remove('flipped');
-  leaf.animate(reverseKeyframes(flipKeyframes(i)), {duration:ms, easing:EASE, fill:'forwards'})
-    .onfinish = () => { leaf.style.transform = `translateZ(${leafZ(i)}px)`; };
-}
-let riffleT = 0;
-/* Losing focus to the other book closes this one rather than leaving it
-   sitting wherever it was — a quick flutter back to the cover, paced by how
-   far in it was: nearby barely riffles, deep in visibly flips through more
-   sheets and takes a beat longer to land. Purely a visual/state reset, not
-   the same "closing" as reaching the cover by pressing back — onClose is
-   deliberately not called here, since the picker isn't what's being
-   returned to; the other book is already taking over as active. */
+/* Purely a visual/state reset, not the same "closing" as reaching the cover
+   by pressing back — onClose is deliberately not called here, since the
+   picker isn't what's being returned to; the other book is already taking
+   over as active. */
 function closeRapidly(){
   if(cur === 0) return;
-  glSettle();
-  const n = cur, mine = ++riffleT;
-  const step = Math.max(60, Math.min(150, 900 / n));
-  function tick(){
-    if(mine !== riffleT) return;
-    const i = cur - 1;
-    riffleLeaf(i, i === 0 ? Math.max(step, 220) : step);
-    cur = i;
-    updateNav();
-    if(cur > 0) setTimeout(tick, step);
-  }
-  tick();
+  waveTo(0);
 }
 /* The pad is built and laid out immediately; three.js is deferred so a slow CDN
    cannot hold the first page off the screen. Wire the curved flip up once it
