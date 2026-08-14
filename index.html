@@ -148,7 +148,7 @@
      larger than the sheets on every edge (--over-x/--over-y, set from JS so the
      one number lives in script). Nothing here paints an "edge" — the darker
      outline you see around an inner page is the back cover genuinely showing
-     past it. Stiffness is handled in the flip itself (see bendFor/flipMs). */
+     past it. Stiffness is handled in the flip itself (see stiffFor/flipMs). */
   .leaf.cover{
     --board-face:radial-gradient(128% 92% at 50% 10%, #d0cabe 0%, #c8c2b6 44%, #beb8ac 100%);
   }
@@ -697,7 +697,7 @@ const BOARD_OVER = 6;
    coils, WebGL canvas, textures and nav, so two books can sit on one page
    without sharing a single piece of state. The constants and helpers inside
    are duplicated per book rather than hoisted out, which costs a few objects
-   and buys flipMs/bendFor closing over that book's own PAGES.
+   and buys flipMs/stiffFor closing over that book's own PAGES.
    Products, the modal and the cart stay global — one cart for both books.
    ============================================================ */
 function makeBook(mount, PAGES, onClose){
@@ -992,10 +992,57 @@ function animateShade(leafBelow, from, to, ms){
    ============================================================ */
 const PERSP = 2000;      /* must match the .stage perspective */
 const ROWS  = 72;        /* strip subdivisions along the sheet */
-const BEND  = 1.15;      /* radians of trailing turn at peak bend */
-/* Heavy board barely curls. This is the strongest cue that the cover is a
-   different material: it comes over nearly rigid while paper ripples. */
-const bendFor = i => PAGES[i].board ? 0.3 : BEND;
+/* ---------- the sheet's own weight, integrated ----------
+   The bend used to be plotted rather than simulated: a circular arc whose
+   curvature rose and fell on a sine, the same curve on every turn. It read
+   as a shape being drawn — nothing lagged behind the hinge, nothing
+   carried on after the hinge stopped.
+
+   It is now a Verlet-integrated rod running down the sheet, one node per
+   strip row, in the same (y, z) plane that arc lived in: y down the page
+   from the hinge, z lifting toward the viewer. Verlet keeps no velocities
+   — a node's velocity is implied by the gap between where it is now and
+   where it was — which is what suits paper, since anything that moves a
+   node also changes its velocity for free and the disturbance travels the
+   sheet's own length instead of each row acting alone. What is integrated
+   is the tangent ANGLE rather than position; see simInit for why that
+   matters more than it sounds.
+
+   The rows nearest the hinge are driven, never integrated: their angle is
+   the flip angle, which is the wire keeping its grip no matter what the
+   free edge is doing.
+
+   Fixed timestep, with the frame gap clamped before it is spent. A
+   backgrounded tab hands back an enormous dt, and an explicit integrator
+   fed one of those throws the sheet somewhere past the moon in a single
+   step — not a hypothetical here; this pane throttles rAF constantly.
+   The step is small because the system is stiff: at 1/480 the board's
+   stiffness below reaches NaN within one flip, and 1/2000 leaves real
+   headroom above the worst case. ~33 steps a frame across 72 rows costs
+   0.1ms, which is nothing next to the WebGL draw it feeds. */
+const SIM_DT   = 1/2000; /* one physics step, seconds */
+const SIM_MAX  = 0.05;   /* most sim time a single frame may buy */
+const SIM_DAMP = 0.998;  /* air — also what lets it settle instead of ring */
+const SIM_GRAV = 60;     /* rad/s², the free end's own weight */
+/* Heavy board barely gives. This is the strongest cue that the cover is a
+   different material: it comes over nearly rigid while paper ripples.
+   Also the wave speed — a bend travels √stiff rows per second — so it is
+   really the dial for how far behind the hinge the far edge runs. Measured
+   over a real flip, the free edge peaks about 58° behind on paper and 7.5°
+   on the board; those two numbers are the whole feel, and they are what to
+   tune. Going much stiffer than the board's value needs a smaller step. */
+const stiffFor = i => PAGES[i].board ? 400000 : 120000;
+let sim = null;
+const simAcc = new Float32Array(ROWS + 1);
+/* How much of the chain's own shape to show, measured against the dead
+   straight sheet. Zero at both ends is not a stylistic choice: there the
+   mesh hands back to a flat DOM leaf, and any bend left in it at that
+   moment is a visible snap — the same handover the colophon once jumped
+   on. Full through the middle, eased out over the last fifth, which reads
+   as the sheet flattening as it lands. It doubles as the gravity window:
+   at either end the sheet is lying supported on the pad, and only in
+   between is it actually out in the air with its own weight to carry. */
+const bendWindow = e => smoothstep(0, .12, e) * (1 - smoothstep(.80, 1, e));
 /* How the turning sheet is lit. Matte paper, so: a narrow brightness range —
    the gloss came from a 0.42 swing sweeping a bright band across the sheet, not
    from its peak — and `wrap` instead of clamping the Lambert term at zero,
@@ -1251,28 +1298,86 @@ function pageTexture(i){
   glTex[i] = t;
   return t;
 }
+/* The chain is stored as the sheet's tangent ANGLE per row, not as points.
+   Points were the obvious first try and the wrong one: keeping paper from
+   stretching then means relaxing a distance constraint along 72 links, and
+   corrections crawl one link per pass, so anything affordable left the
+   sheet visibly rubbery (measured: 62% stretch on a real flip). Integrating
+   the angle instead makes inextensibility structural — positions are
+   recovered by walking the angles at a fixed step, so every segment is
+   exactly its own length no matter what the solver does, for free and with
+   no iteration at all.
+
+   Verlet still, just on θ: velocity stays implicit in the gap between the
+   current angle and the previous one. */
+function simInit(i, e){
+  const A = e * Math.PI * 2;
+  sim = {i, stiff: stiffFor(i),
+         th: new Float32Array(ROWS+1).fill(A),
+         tp: new Float32Array(ROWS+1).fill(A),   /* at rest: no phantom kick */
+         /* enough driven rows to pin direction as well as position, however
+            few happen to sit above the hinge */
+         jPin: Math.max(2, Math.ceil(glBox.hOff / glBox.ph * ROWS) + 1),
+         last: performance.now(), acc: 0};
+}
+function simStep(dt, A, gw){
+  const th = sim.th, tp = sim.tp, k = sim.stiff, jPin = sim.jPin;
+  for(let j = 0; j < jPin; j++) th[j] = tp[j] = A;   /* the wire's grip */
+  for(let j = jPin; j <= ROWS; j++){
+    /* Stiffness as the discrete second difference of the angle: paper
+       resists CHANGE of curvature, so a smooth arc costs it almost
+       nothing while a kink is expensive. That one term is what makes it
+       read as paper rather than as string. The free edge carries no
+       curvature — nothing beyond it to bend against. */
+    const curve = th[j-1] - 2*th[j] + (j < ROWS ? th[j+1] : th[j]);
+    /* Weight, as torque about this row: only the span still outboard of it
+       pulls, so the far edge droops and the rooted end barely does. */
+    simAcc[j] = k * curve - SIM_GRAV * gw * Math.cos(th[j]) * (ROWS - j) / ROWS;
+  }
+  const dt2 = dt * dt;
+  for(let j = jPin; j <= ROWS; j++){
+    const v = (th[j] - tp[j]) * SIM_DAMP;
+    tp[j] = th[j];
+    th[j] += v + simAcc[j] * dt2;
+  }
+}
+function simAdvance(now, e){
+  if(!sim) return;
+  const dt = (now - sim.last) / 1000;
+  sim.last = now;
+  if(!(dt > 0)) return;
+  /* clamped on the way in, so a stalled frame cannot buy unbounded sim */
+  sim.acc = Math.min(sim.acc + dt, SIM_MAX);
+  const A = e * Math.PI * 2, gw = bendWindow(e);
+  while(sim.acc >= SIM_DT){ simStep(SIM_DT, A, gw); sim.acc -= SIM_DT; }
+}
 /* write the sheet's shape and shading for a progress value e ∈ [0,1] */
 function shapeSheet(i, e){
   const A = e * Math.PI * 2;
-  const C = -bendFor(i) * Math.sin(Math.PI * e);
-  const H = glBox.ph, W = glBox.pw, c = C / H;
+  const H = glBox.ph, W = glBox.pw;
   const z = leafZ(i) + (backZ(i) - leafZ(i)) * smoothstep(.45, .62, e);
   const x0 = glBox.hx - glBox.ox, y0 = glBox.hy - glBox.oy;
   const pf = gFront.attributes, pb = gBack.attributes;
-  const sinA = Math.sin(A), cosA = Math.cos(A);
+  const seg = H / ROWS;
+  const w = bendWindow(e);
+  const th = (sim && sim.i === i && w > 0) ? sim.th : null;
+  /* Blend the ANGLES toward straight rather than the points. Blending
+     points between two inextensible shapes gives a shape that is not one;
+     blending angles and then walking them keeps every intermediate exactly
+     as long as the sheet really is. */
+  const ang = j => th ? A + (th[j] - A) * w : A;
+  /* walk out from the hinge, which sits hOff back along the first row's
+     own direction — the sheet's top edge is above it, at negative s */
+  let py = -glBox.hOff * Math.cos(ang(0));
+  let pz = -glBox.hOff * Math.sin(ang(0));
   for(let j = 0; j <= ROWS; j++){
-    /* measured from the hinge, so the sheet's top edge is at a negative s */
-    const s = (j / ROWS) * H - glBox.hOff;
-    const psi = A + c * s;
-    let py, pz;
-    if(Math.abs(c) < 1e-7){ py = s * cosA; pz = s * sinA; }
-    else { py = (Math.sin(psi) - sinA) / c; pz = (cosA - Math.cos(psi)) / c; }
+    const psi = ang(j);
     /* CSS space has y pointing down; three.js has it up */
     const Y = -(y0 + py), Z = pz + z;
     /* surface normal is (0, −sinψ, cosψ); light sits above and in front */
     const lam = (0.287*Math.sin(psi) + 0.958*Math.cos(psi)) / 0.958;
     const f = LIT.base     + LIT.gain     * wrapLit(lam);
-    const b = LIT.backBase + LIT.backGain * wrapLit(-lam);
+    const bk = LIT.backBase + LIT.backGain * wrapLit(-lam);
     for(let n = 0; n < 2; n++){
       const o = (j*2 + n) * 3;
       const X = x0 + (n ? W/2 : -W/2);
@@ -1280,8 +1385,10 @@ function shapeSheet(i, e){
       pf.position.array[o+1] = pb.position.array[o+1] = Y;
       pf.position.array[o+2] = pb.position.array[o+2] = Z;
       pf.color.array[o] = pf.color.array[o+1] = pf.color.array[o+2] = f;
-      pb.color.array[o] = pb.color.array[o+1] = pb.color.array[o+2] = b;
+      pb.color.array[o] = pb.color.array[o+1] = pb.color.array[o+2] = bk;
     }
+    py += seg * Math.cos(psi);
+    pz += seg * Math.sin(psi);
   }
   pf.position.needsUpdate = pf.color.needsUpdate = true;
   pb.position.needsUpdate = pb.color.needsUpdate = true;
@@ -1290,6 +1397,7 @@ function glTick(now){
   if(!glRun) return;
   const t = Math.min(1, (now - glRun.t0) / glRun.ms);
   const prog = glRun.dir > 0 ? glEase(t) : 1 - glEase(t);
+  simAdvance(now, prog);
   shapeSheet(glRun.i, prog);
   /* the canvas is one flat layer, so it can only be entirely above or
      entirely below the pad — swap it the instant the sheet's own depth
@@ -1322,6 +1430,7 @@ function glFlip(i, dir, done){
   }
   glRun = {i, dir, t0: performance.now(), ms: flipMs(i), done};
   const prog0 = dir > 0 ? 0 : 1;
+  simInit(i, prog0);
   shapeSheet(i, prog0);
   glc.classList.toggle('behind', smoothstep(.45, .62, prog0) > .5);
   glR.render(glScene, glCam);
