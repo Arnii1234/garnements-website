@@ -304,14 +304,18 @@
   .nav button:disabled{opacity:.15;cursor:default;}
   /* One mark per sheet, evenly spaced the way the coils are — position read
      as rhythm rather than as a number. The number itself stays for screen
-     readers in .sr-only below. */
-  .ticks{display:flex;align-items:center;gap:5px;height:44px;}
+     readers in .sr-only below. A scrubber, not individually-clickable 1px
+     targets: the row itself carries the pointer and the interaction (see
+     jumpTo/tickIndexAt), which is also why .hover exists as its own class
+     rather than reusing .now — one tracks the mouse, the other the actual
+     page, and they should be free to disagree. */
+  .ticks{display:flex;align-items:center;gap:5px;height:44px;cursor:pointer;}
   .ticks i{
     display:block;width:1px;height:8px;background:var(--line);
     transition:height .3s, background .3s;
   }
   .ticks i.done{background:var(--grey);}
-  .ticks i.now{height:14px;background:var(--ink);}
+  .ticks i.now, .ticks i.hover{height:14px;background:var(--ink);}
   .sr-only{
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
@@ -1411,6 +1415,31 @@ function prev(){
      already be correct by) */
   if(cur === 0 && onClose) setTimeout(onClose, flipMs(cur));
 }
+/* Skips straight to a page instead of flipping through everything between —
+   a scrubber, not a fast-forward. Every leaf between the old and new cur
+   gets set directly to whichever resting state land() would have left it
+   in after an actual flip (same transform, same .flipped class), without
+   ever animating; leaves outside that range are already correct and are
+   left untouched. Closing onto the cover this way still hands back to the
+   picker, same as reaching it by pressing back. */
+function jumpTo(target){
+  if(flipLocked() || target === cur || target < 0 || target >= PAGES.length) return;
+  glSettle();
+  const lo = Math.min(cur, target), hi = Math.max(cur, target);
+  for(let i = lo; i <= hi; i++){
+    const leaf = leaves[i];
+    leaf.getAnimations().forEach(a => a.cancel());
+    const flipped = i < target;
+    leaf.classList.toggle('flipped', flipped);
+    leaf.style.transform = flipped
+      ? `translateZ(${backZ(i)}px) rotateX(360deg)`
+      : `translateZ(${leafZ(i)}px)`;
+    leaf.style.visibility = '';
+  }
+  cur = target;
+  updateNav();
+  if(cur === 0 && onClose) onClose();
+}
 /* The pad is built and laid out immediately; three.js is deferred so a slow CDN
    cannot hold the first page off the screen. Wire the curved flip up once it
    turns up — until then, and if it never arrives at all, the flat CSS flip is
@@ -1426,6 +1455,31 @@ if(window.THREE) startGL();
 else addEventListener('DOMContentLoaded', startGL);
 nextBtn.onclick = next;
 prevBtn.onclick = prev;
+/* The tick row as one continuous scrubber rather than 19 individual 1px
+   targets — those would be next to unclickable on their own. Position
+   along the row maps straight to a page index; hover previews it (.hover,
+   independent of .now so the two can point at different pages at once),
+   click commits it via jumpTo. */
+function tickIndexAt(e){
+  const r = ticksEl.getBoundingClientRect();
+  const frac = (e.clientX - r.left) / r.width;
+  return Math.min(PAGES.length - 1, Math.max(0, Math.round(frac * (PAGES.length - 1))));
+}
+ticksEl.addEventListener('mousemove', e => {
+  const idx = tickIndexAt(e);
+  [...ticksEl.children].forEach((t, k) => t.classList.toggle('hover', k === idx));
+});
+ticksEl.addEventListener('mouseleave', () => {
+  [...ticksEl.children].forEach(t => t.classList.remove('hover'));
+});
+ticksEl.addEventListener('click', e => {
+  /* left to bubble, this reaches .book's own click-to-select/reopen handler
+     next — which, arriving right after a jump to the cover has just
+     deselected the book, reads as "click an inactive book" and reopens it
+     immediately. The book's handler has no reason to ever see this click. */
+  e.stopPropagation();
+  jumpTo(tickIndexAt(e));
+});
 /* Opening a product has to live in here too. `PAGES` and `next` are this
    book's, and a page index means nothing without knowing which book it came
    from — as a global listener this threw ReferenceError and no product opened
