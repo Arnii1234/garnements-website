@@ -350,19 +350,27 @@
      `reserve`), so this only ever slides in and out of its own share of the
      screen. Same off-screen-position-not-display mechanic as .drawer below,
      just from the left and full height, for the same reason: a single class
-     toggle drives the whole transition with nothing to time in JS. */
+     toggle drives the whole transition with nothing to time in JS.
+     No panel of its own — no ground, no shadow, no edge. The photograph and
+     the type sit straight on the paper the rest of the site is printed on,
+     so nothing reads as a window laid over the page. Every surface inside it
+     stays transparent for the same reason; a single opaque child would put
+     the box back. */
   .overlay{
     position:fixed;top:0;left:0;bottom:0;z-index:100;
     width:min(860px,60vw);
-    background:#fff;
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
-    box-shadow:16px 0 50px rgba(35,31,32,.14);
   }
   .overlay.open{transform:translateX(0);}
+  /* Narrow enough that the panel has to take the whole screen, which puts the
+     sketchbook directly BEHIND it rather than beside it — the one case where
+     floating can't hold, since the drawing and the header/footer read straight
+     through the type. It gets the page's own colour back, so it still reads as
+     the same paper, just opaque enough to be legible. */
   @media(max-width:900px){
-    .overlay{width:100%;}
+    .overlay{width:100%;background:var(--bg);}
   }
   .panel{
     flex:1;min-height:0;
@@ -373,7 +381,7 @@
     .panel{grid-template-columns:1fr;}
   }
   .panel-img{
-    background:#f7f7f6;display:flex;flex-direction:column;
+    display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:16px;
     padding:34px;min-height:420px;
   }
@@ -383,7 +391,7 @@
   .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
   .panel-thumbs button{
     width:46px;height:60px;padding:0;overflow:hidden;
-    border:1px solid transparent;background:#fff;
+    border:1px solid transparent;background:none;
     opacity:.55;transition:opacity .2s,border-color .2s;
   }
   .panel-thumbs button:hover{opacity:.85;}
@@ -1935,11 +1943,19 @@ function closeModal(){
   modalOpen = false;
   centreActive();
 }
-/* The panel now fills its own bounds edge to edge — no backdrop margin left
-   inside #overlay to click, the way the old centred/dimmed version had. The
-   equivalent "click away to dismiss" is anywhere outside it instead; the
-   book itself is exempted since its own click handler already stops
-   propagation (see cal's click listener) rather than reaching here. */
+/* The panel has no backdrop margin of its own to click, the way the old
+   centred/dimmed version had, so "click away to dismiss" means anywhere
+   outside it. The book is exempted by its own handler stopping propagation
+   (see cal's click listener) rather than reaching here.
+   The panel stops its own clicks for a subtler reason: a control that
+   REBUILDS the panel — a colourway swatch, an item tab — both calls
+   renderItem() and is destroyed by it, all before this listener runs. By
+   then the clicked button is detached, so asking whether the overlay still
+   contains it answers no, and picking a second colourway read as a click
+   outside and closed the very panel it was meant to redraw. Containment
+   can't be trusted after a re-render; not letting those clicks reach the
+   document at all is what actually holds. */
+document.getElementById('overlay').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', e => {
   const ov = document.getElementById('overlay');
   if(ov.classList.contains('open') && !ov.contains(e.target)) closeModal();
