@@ -536,8 +536,7 @@ const PRODUCTS = {
   "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
                    photos:["assets/beige hoodie front.JPG","assets/beige hoodie back.JPG"]},
   "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
-                   photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG",
-                           "assets/pink hoodie right.JPG"]},
+                   photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
                    photos:["assets/black tee 1 front.JPG","assets/black tee 1 back.JPG"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
@@ -563,8 +562,8 @@ const PRODUCTS = {
     "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
   "beige-jeans":   {name:"Beige Jeans",      price:140,
                     img:"assets/beige jeans drawing 1.svg", photos:[
-    "assets/beige jeans front.JPG","assets/beige jeans left.JPG",
-    "assets/beige jeans right.JPG"]},
+    "assets/beige jeans front.JPG","assets/beige jeans back.JPG",
+    "assets/beige jeans left.JPG","assets/beige jeans right.JPG"]},
   "purple-jeans":  {name:"Purple Jeans",     price:140, photos:[
     "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
   "beige-tee":     {name:"Beige Tee",        price:55,
@@ -585,17 +584,21 @@ const PRODUCTS = {
   "backpack":      {name:"Backpack",         price:110,
                     img:"assets/backpack drawing.svg", colours:[
     {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
-    {name:"Brown", swatch:"#6d4a30", photos:["assets/brown backpack.JPG"]}]}
+    {name:"Brown", swatch:"#6d4a30", photos:[
+      "assets/brown backpack front.JPG","assets/brown backpack.JPG"]}]}
 };
-/* every picture of a piece, model photographs first — front, then back, in
-   the order PRODUCTS lists them — and the digital drawing last, since it's
-   standing in only until real product photography arrives. Paths run through
-   encodeURI for the spaces in the filenames.
+/* Every picture of a piece — model photographs only, front then back, in the
+   order PRODUCTS lists them. The digital drawing was only ever a stand-in
+   for photography that didn't exist yet, so once real photos are in, it
+   drops out rather than lingering alongside them; a piece with no photos
+   yet still falls back to it, or its page would open on nothing at all.
+   Paths run through encodeURI for the spaces in the filenames.
    For a piece with colourways the photographs come from the chosen one, so
    the strip only ever shows the bag you are actually looking at. */
 const shotsOf = (p, ci) => {
   const c = p.colours && (p.colours[ci] || p.colours[0]);
-  return [...((c ? c.photos : p.photos) || []), p.img].filter(Boolean).map(encodeURI);
+  const photos = (c ? c.photos : p.photos) || [];
+  return (photos.length ? photos : [p.img]).filter(Boolean).map(encodeURI);
 };
 /* the thumbnail a cart line shows — now simply the first shot, since that's
    already a photograph of the right colourway whenever one exists */
