@@ -1440,6 +1440,41 @@ function jumpTo(target){
   updateNav();
   if(cur === 0 && onClose) onClose();
 }
+/* Always the CSS path, deliberately never WebGL — this plays while the book
+   is simultaneously shrinking down to hand focus to the other one, and a
+   real DOM transform keeps composing correctly under that ancestor scale.
+   The WebGL overlay tracks its own pixel position separately and would
+   drift out of alignment as the book shrinks under it. */
+function riffleLeaf(i, ms){
+  const leaf = leaves[i];
+  leaf.getAnimations().forEach(a => a.cancel());
+  leaf.classList.remove('flipped');
+  leaf.animate(reverseKeyframes(flipKeyframes(i)), {duration:ms, easing:EASE, fill:'forwards'})
+    .onfinish = () => { leaf.style.transform = `translateZ(${leafZ(i)}px)`; };
+}
+let riffleT = 0;
+/* Losing focus to the other book closes this one rather than leaving it
+   sitting wherever it was — a quick flutter back to the cover, paced by how
+   far in it was: nearby barely riffles, deep in visibly flips through more
+   sheets and takes a beat longer to land. Purely a visual/state reset, not
+   the same "closing" as reaching the cover by pressing back — onClose is
+   deliberately not called here, since the picker isn't what's being
+   returned to; the other book is already taking over as active. */
+function closeRapidly(){
+  if(cur === 0) return;
+  glSettle();
+  const n = cur, mine = ++riffleT;
+  const step = Math.max(60, Math.min(150, 900 / n));
+  function tick(){
+    if(mine !== riffleT) return;
+    const i = cur - 1;
+    riffleLeaf(i, i === 0 ? Math.max(step, 220) : step);
+    cur = i;
+    updateNav();
+    if(cur > 0) setTimeout(tick, step);
+  }
+  tick();
+}
 /* The pad is built and laid out immediately; three.js is deferred so a slow CDN
    cannot hold the first page off the screen. Wire the curved flip up once it
    turns up — until then, and if it never arrives at all, the flat CSS flip is
@@ -1509,7 +1544,7 @@ updateNav();
 /* the keyboard is shared; the page decides which book it is talking to, and
    that follows which book is centred rather than where the pointer happens
    to be */
-return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0};
+return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0, closeRapidly};
 }   /* ---- end makeBook ---------------------------------------------------- */
 
 /* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
@@ -1537,9 +1572,13 @@ function centreActive(){
 }
 function setActive(i){
   if(i === activeIndex) return;
+  /* Losing focus closes whatever book was open, rather than leaving it
+     sitting deep inside for whenever someone comes back to it. */
+  const leaving = activeIndex === -1 ? null : books[activeIndex];
   activeIndex = i;
   activeBook = books[i];
   books.forEach((b, k) => b.mount.classList.toggle('active', k === i));
+  if(leaving) leaving.closeRapidly();
   /* The book's own grow is instant already (.book.active{transition:none}).
      The rail's slide needs the same one-off treatment, or the flip below
      would start reading geometry while the pad is still sliding into place.
