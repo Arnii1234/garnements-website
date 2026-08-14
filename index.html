@@ -1345,21 +1345,52 @@ function flipLeaf(i, dir){
                {duration:flipMs(i), easing:EASE, fill:'forwards'});
 }
 /* hold off every input until a board sheet has finished turning, and put the
-   nav buttons back once it lands */
-function lockIfBoard(i){
+   nav buttons back once it lands. `delay` is a pause BEFORE the sheet even
+   starts moving (see next's cover pause) — the lock has to cover that too,
+   or a second press during the pause could fire before the first has done
+   anything yet. */
+function lockIfBoard(i, delay = 0){
   if(!PAGES[i].board) return;
   const ms = flipMs(i);
-  lockedUntil = performance.now() + ms;
-  setTimeout(updateNav, ms);
+  lockedUntil = performance.now() + delay + ms;
+  setTimeout(updateNav, delay + ms);
+}
+/* Arrows tied to the cover's own motion rather than a fixed timer — reusing
+   glEase keeps the same feel as the sheet itself, whichever engine (WebGL or
+   the CSS fallback) is actually drawing it, since this reads nothing from
+   either and just tracks the same start time and duration they were given.
+   dir>0 (opening) ramps 0→1 as the page behind becomes visible; dir<0
+   (closing) runs it backward. Cleared to '' once landed so the CSS rule
+   (already at the matching value) can take back over. */
+let navAnimT = 0;
+function animateCoverNav(dir, ms){
+  const t0 = performance.now();
+  const mine = ++navAnimT;
+  function tick(now){
+    if(mine !== navAnimT) return;            /* superseded by a newer flip */
+    const t = Math.min(1, (now - t0) / ms);
+    nav.style.opacity = dir > 0 ? glEase(t) : 1 - glEase(t);
+    if(t < 1) requestAnimationFrame(tick);
+    else nav.style.opacity = '';
+  }
+  requestAnimationFrame(tick);
 }
 function next(){
   if(flipLocked() || cur >= PAGES.length - 1) return;
   const i = cur;
+  const board = PAGES[i].board;
+  /* the cover gets a short, deliberate pause before it starts moving; every
+     other page still flips the instant it's pressed */
+  const delay = board ? 250 : 0;
   glSettle();
-  flipLeaf(i, 1);
-  animateShade(leaves[i+1], .45, 0, flipMs(i));
-  lockIfBoard(i);
-  cur++; updateNav();
+  lockIfBoard(i, delay);
+  const fire = () => {
+    flipLeaf(i, 1);
+    animateShade(leaves[i+1], .45, 0, flipMs(i));
+    if(board) animateCoverNav(1, flipMs(i));
+    cur++; updateNav();
+  };
+  delay ? setTimeout(fire, delay) : fire();
 }
 function prev(){
   if(flipLocked() || cur <= 0) return;
@@ -1369,6 +1400,7 @@ function prev(){
   animateShade(leaves[cur+1], 0, .45, flipMs(cur));
   lockIfBoard(cur);
   updateNav();
+  if(PAGES[cur].board) animateCoverNav(-1, flipMs(cur));
   /* flipping back onto the cover is closing the book — hand back to the
      picker once the cover has actually landed, not while it is still
      turning (same reasoning as the settle before an auto-open: the layout
