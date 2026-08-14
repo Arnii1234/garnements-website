@@ -176,33 +176,6 @@
     position:absolute;inset:0;width:100%;height:100%;
     pointer-events:none;z-index:2;
   }
-  /* The corner you take hold of, so turning a page can happen on the object
-     rather than only in the chrome below it. Bottom LEFT, not right: the "+"
-     that opens a product already lives in the right corner and the two would
-     fight. The outer box is a generous transparent hit area; the span is the
-     visible dog-ear, which grows on hover. Mouse-only by design — the nav
-     buttons remain the keyboard and screen-reader path, so this stays
-     aria-hidden rather than adding a second focusable "next page". */
-  .peel{
-    position:absolute;left:0;bottom:0;z-index:3;
-    width:76px;height:76px;cursor:pointer;
-  }
-  .peel span{
-    position:absolute;left:0;bottom:0;display:block;
-    width:19px;height:19px;
-    clip-path:polygon(0 0, 0 100%, 100% 100%);
-    background:linear-gradient(135deg,#f0eeea 0%, #e2dfda 55%, #cdcac4 100%);
-    filter:drop-shadow(2px -2px 2.5px rgba(35,31,32,.2));
-    transition:width .3s cubic-bezier(.34,.08,.24,1),
-               height .3s cubic-bezier(.34,.08,.24,1);
-  }
-  /* kept modest on purpose: the cover carries "200 - 300 gsm" in this corner,
-     so a large open peel sits on top of it */
-  .peel:hover span{ width:48px;height:48px; }
-  /* board folds differently from paper — its underside is the cover's own tone */
-  .leaf.cover .peel span{
-    background:linear-gradient(135deg,#c6c0b4 0%, #bbb5a9 55%, #aca69a 100%);
-  }
   /* shadow cast on the page below while one flips over it */
   .leaf .shade{
     position:absolute;inset:0;pointer-events:none;
@@ -211,7 +184,7 @@
   }
 
   .page-art{
-    position:absolute;left:6%;right:6%;top:9.2%;bottom:5%;
+    position:absolute;left:6%;right:6%;top:9.2%;bottom:0;
   }
   .page-art img{
     width:100%;height:100%;object-fit:contain;display:block;
@@ -225,19 +198,6 @@
   }
   .page-art.clickable{cursor:pointer;transition:opacity .3s;}
   .page-art.clickable:hover{opacity:.82;}
-  /* minimal plus marker on shoppable pages */
-  .plus{
-    position:absolute;right:4.5%;bottom:3.4%;
-    width:27px;height:27px;border:1px solid var(--ink);border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    font-size:15px;font-weight:300;line-height:1;
-    background:rgba(232,232,232,.7);
-    pointer-events:none;
-    transition:background .3s,color .3s;
-  }
-  .page-art.clickable:hover ~ .plus, .leaf-face:hover .plus{
-    background:var(--ink);color:var(--paper);
-  }
   /* title art fills whole page (it includes its own spiral + margins) */
   .title-art{position:absolute;inset:0;}
   .title-art img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -753,26 +713,20 @@ PAGES.forEach((p, i) => {
     inner = `
       <div class="page-art clickable" data-page="${i}">
         <div class="page-label">${p.label}</div>
-      </div>
-      <div class="plus">+</div>`;
+      </div>`;
   } else {
     const clickable = p.products && p.products.length;
     inner = `
       <div class="page-art ${clickable ? 'clickable' : ''}" ${clickable ? `data-page="${i}"` : ''}>
         <img src="${encodeURI(p.img)}" alt="drawing">
-      </div>
-      ${clickable ? '<div class="plus">+</div>' : ''}`;
+      </div>`;
   }
   /* the covers are heavier stock, so they get their own tone, tooth, cut edge
      and a stiffer, slower turn */
   const isCover = !!p.board;
   if(isCover) leaf.classList.add('cover');
-  /* a corner to take hold of — omitted on the last sheet, which has nowhere
-     to turn to */
-  const peel = i === PAGES.length - 1
-    ? '' : '<div class="peel" aria-hidden="true"><span></span></div>';
   leaf.innerHTML = `
-    <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}${peel}</div>
+    <div class="leaf-face">${inner}<div class="shade"></div>${punchSVG}</div>
     <div class="leaf-face rear">${punchSVG}</div>
     ${isCover ? '<div class="board-over"></div>' : ''}`;
   cal.appendChild(leaf);
@@ -1224,7 +1178,7 @@ function pageTexture(i){
       x.shadowOffsetX = x.shadowOffsetY = 0;
       x.drawImage(img, 0, 0, TW, TH);               /* cover: same aspect as the page */
     }else{
-      const bx = TW*.06, bw = TW*.88, by = TH*.092, bh = TH*.858;
+      const bx = TW*.06, bw = TW*.88, by = TH*.092, bh = TH*.908;
       let dw = bw, dh = dw / p.ar;                  /* contain */
       if(dh > bh){ dh = bh; dw = dh * p.ar; }
       x.drawImage(img, bx + (bw-dw)/2, by + (bh-dh)/2, dw, dh);
@@ -1390,8 +1344,6 @@ prevBtn.onclick = prev;
    from — as a global listener this threw ReferenceError and no product opened
    at all. Bound to this pad, so a click can only ever mean this book. */
 cal.addEventListener('click', e => {
-  /* the corner turns the page; it sits over the art, so it has to win here */
-  if(e.target.closest('.peel')){ next(); return; }
   if(!e.target.closest('.page-art')) return;
   /* Resolve against `cur`, never against whichever sheet caught the click.
      Mid-turn the two disagree: going forward the outgoing sheet is hidden so
