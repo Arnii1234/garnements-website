@@ -15,8 +15,8 @@
 <!-- The cover art is created by script, so its download would otherwise not
      start until the whole script had run. Preloading fetches it in parallel
      with the HTML, which is what actually gets the first page on screen. -->
-<link rel="preload" as="image" href="assets/title%201.svg">
-<link rel="preload" as="image" href="assets/title%202.svg">
+<link rel="preload" as="image" href="assets/title%201%20new.svg">
+<link rel="preload" as="image" href="assets/title%202%20new.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,7 @@
   .calendar{
     position:relative;z-index:1;
     width:min(480px, 92vw);
-    aspect-ratio: 966 / 1398;
+    aspect-ratio: 210 / 297;   /* A4 — see PAGE_H below, the same ratio in artwork units */
     transform-style:preserve-3d;
   }
   /* the curved sheet renders here, above the pad but below the coils */
@@ -191,15 +191,17 @@
     opacity:0;
   }
 
-  /* full bleed: the drawing itself is the page, same as .title-art below.
-     Artboards authored at the sheet's own 966.24×1398.35 (see PRODUCTS'
-     comment) fill this exactly; object-fit:cover is only a safety margin for
-     whatever hasn't been re-exported to that size yet. */
+  /* Flush to every edge except the top, which stops short of the coil
+     rather than running the art underneath it. object-fit:contain, not
+     cover — this only ever centres a drawing at whatever size fits, never
+     crops or blows one up to force a fill. An artboard already built at
+     A4 (210×297mm, e.g. 2480×3508px at 300dpi — the size of the new title
+     art) fills exactly either way, cropped or not. */
   .page-art{
-    position:absolute;inset:0;
+    position:absolute;left:0;right:0;bottom:0;top:4%;
   }
   .page-art img{
-    width:100%;height:100%;object-fit:cover;display:block;
+    width:100%;height:100%;object-fit:contain;display:block;
   }
   /* a sheet waiting for its drawing — the piece's name, set like the colophon */
   .page-label{
@@ -601,7 +603,7 @@ const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
    `board` marks the heavy stock — the covers. Everything that makes a sheet
    read as card rather than paper keys off that flag, not the type. */
 const BOOK1_PAGES = [
-  {type:"title", img:"assets/title 1.svg", ar:0.6910, board:true},
+  {type:"title", img:"assets/title 1 new.svg", ar:0.7071, board:true},
   {type:"colophon"},
   {type:"art", img:"assets/page1.svg",  ar:0.6973, products:["pink-tee","brown-jeans","cream-hoodie"]},
   {type:"art", img:"assets/page2.svg",  ar:0.5611, products:["pink-hoodie"]},
@@ -628,7 +630,7 @@ const BOOK1_PAGES = [
 ];
 /* Only-drawn pieces: nothing here has been shot on a model yet. */
 const BOOK2_PAGES = [
-  {type:"title", img:"assets/title 2.svg", ar:0.6910, board:true},
+  {type:"title", img:"assets/title 2 new.svg", ar:0.7071, board:true},
   {type:"art", img:"assets/page7.svg",  ar:0.3262, products:["walker-jeans"]},
   {type:"art", img:"assets/page9.svg",  ar:0.7046, products:["jorts"]},
   {type:"art", img:"assets/page10.svg", ar:0.7892, products:["jumping-tee"]},
@@ -641,16 +643,22 @@ const BOOK2_PAGES = [
    the holes identically on every sheet and on the wire that threads them.
    Each sheet carries its own copy, which is what makes the holes travel around
    the coil as the sheet turns instead of sitting still. */
+/* The page, in artwork units — width is untouched from before, height is
+   set to match true A4 (210:297) exactly, same ratio as .calendar's CSS.
+   Every other page-shaped constant (HOLE, the punch viewBox, --over-y, the
+   flip texture's TH) reads from here rather than repeating the number, so
+   there is exactly one place this could ever get out of sync. */
+const PAGE_W = 966.24, PAGE_H = 1366.54;
 /* Y sits one coil radius below the helix axis, so it moves with the coil
    radius: Y − r must stay at 5, the axis the sheets hinge on (see .leaf's
    transform-origin and glBox.hy). */
-const HOLE = {N:29, X0:24, X1:966.24 - 24, Y:41.288, RX:4.8, RY:5.8};
+const HOLE = {N:29, X0:24, X1:PAGE_W - 24, Y:41.288, RX:4.8, RY:5.8};
 HOLE.P = (HOLE.X1 - HOLE.X0) / HOLE.N;
 const holeXs = Array.from({length:HOLE.N}, (_, i) => HOLE.X0 + i*HOLE.P + HOLE.P/2);
 const holeEllipses = holeXs.map(h =>
   `<ellipse cx="${h.toFixed(2)}" cy="${HOLE.Y}" rx="${HOLE.RX}" ry="${HOLE.RY}"/>`).join('');
 const punchSVG =
-  `<svg class="punch" viewBox="0 0 966.24 1398.35" preserveAspectRatio="none" aria-hidden="true">` +
+  `<svg class="punch" viewBox="0 0 ${PAGE_W} ${PAGE_H}" preserveAspectRatio="none" aria-hidden="true">` +
   `<g fill="#cfcdc9" stroke="#231f20" stroke-opacity=".2" stroke-width=".7">${holeEllipses}</g></svg>`;
 
 /* How far the covers reach past the sheets, in the same page artwork units as
@@ -689,8 +697,8 @@ const prevBtn  = nav.querySelector('.prev');
 const nextBtn  = nav.querySelector('.next');
 const ticksEl  = nav.querySelector('.ticks');
 const counterEl= nav.querySelector('.sr-only');
-cal.style.setProperty('--over-x', (BOARD_OVER / 966.24 * 100).toFixed(4) + '%');
-cal.style.setProperty('--over-y', (BOARD_OVER / 1398.35 * 100).toFixed(4) + '%');
+cal.style.setProperty('--over-x', (BOARD_OVER / PAGE_W * 100).toFixed(4) + '%');
+cal.style.setProperty('--over-y', (BOARD_OVER / PAGE_H * 100).toFixed(4) + '%');
 const board = document.createElement('div');
 board.className = 'board';
 cal.appendChild(board);
@@ -759,7 +767,7 @@ const leaves = [...cal.querySelectorAll('.leaf')];
    the opaque sheet drawn between them does the occluding for us.
    ============================================================ */
 function buildBinding(){
-  const W = 966.24;            /* artwork width of a page  */
+  const W = PAGE_W;             /* artwork width of a page  */
   /* one turn per hole, threaded through the holes the sheets carry */
   const N = HOLE.N, X0 = HOLE.X0, X1 = HOLE.X1;
   const p  = HOLE.P;           /* pitch                    */
@@ -1035,7 +1043,7 @@ function drawHoles(x, s){
    they stay with the sheet as it comes over the top. Needs the page's real
    proportions now (a 2px-wide gradient strip could not hold the hole row). */
 function paperTexture(stops){
-  const TW = 512, TH = Math.round(TW * 1398.35 / 966.24);
+  const TW = 512, TH = Math.round(TW * PAGE_H / PAGE_W);
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
   const x = c.getContext('2d');
@@ -1043,7 +1051,7 @@ function paperTexture(stops){
   const g = x.createLinearGradient(0, 0, 0, TH);
   g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
   x.fillStyle = g; x.fillRect(0, 0, TW, TH);
-  drawHoles(x, TW / 966.24);
+  drawHoles(x, TW / PAGE_W);
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
@@ -1114,7 +1122,7 @@ function pageTexture(i){
   if(i in glTex) return glTex[i];
   const p = PAGES[i];
   const TW = Math.min(1536, Math.round(cal.offsetWidth * Math.min(window.devicePixelRatio||1, 2) * 1.15));
-  const TH = Math.round(TW * 1398.35 / 966.24);
+  const TH = Math.round(TW * PAGE_H / PAGE_W);
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
   const x = c.getContext('2d');
@@ -1192,15 +1200,19 @@ function pageTexture(i){
       x.shadowOffsetX = x.shadowOffsetY = 0;
       x.drawImage(img, 0, 0, TW, TH);               /* cover: same aspect as the page */
     }else{
-      /* cover, filling the whole sheet — canvas clips anything past its own
-         edges, so an oversized draw here crops cleanly with no extra work */
-      let dw = TW, dh = dw / p.ar;                  /* cover */
-      if(dh < TH){ dh = TH; dw = dh * p.ar; }
-      x.drawImage(img, (TW-dw)/2, (TH-dh)/2, dw, dh);
+      /* contain, not cover: centred at whatever size fits without cropping.
+         An artboard already built at the page's own A4 ratio fills this box
+         exactly with room to spare either way; nothing gets blown up to
+         force a fill the way cover would. Flush to every edge except the
+         top, which stops short of the coil the same as the CSS box below. */
+      const bx = 0, bw = TW, by = TH*.04, bh = TH - by;
+      let dw = bw, dh = dw / p.ar;                  /* contain */
+      if(dh > bh){ dh = bh; dw = dh * p.ar; }
+      x.drawImage(img, bx + (bw-dw)/2, by + (bh-dh)/2, dw, dh);
     }
   }
   /* punched last: the holes go through whatever is printed on the sheet */
-  drawHoles(x, TW / 966.24);
+  drawHoles(x, TW / PAGE_W);
   /* a file:// page taints the canvas the moment an image is drawn on it, and
      WebGL refuses tainted textures. Detect it here and fall back for good. */
   try{ x.getImageData(0, 0, 1, 1); }
