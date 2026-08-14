@@ -886,7 +886,7 @@ const FLIP_MS = REDUCED ? 1 : 1250;
 /* Opening the cover is its own moment — heavy board, taken deliberately — so
    it runs far slower than the pages behind it. The contrast is the point: the
    slow one is getting into the book, the quick ones are the drawings. */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 2600 : FLIP_MS);
+const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 2200 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 /* A cover turn is the one flip that cannot be cut short. Ordinary pages stay
@@ -1395,7 +1395,7 @@ updateNav();
 /* the keyboard is shared; the page decides which book it is talking to, and
    that follows which book is centred rather than where the pointer happens
    to be */
-return {next, prev, mount, relayout: layoutOverlays};
+return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0};
 }   /* ---- end makeBook ---------------------------------------------------- */
 
 /* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
@@ -1410,13 +1410,16 @@ const books = [
    exactly on the sheet you left it at. Switching only slides the rail. */
 const rail = document.querySelector('.books');
 let activeIndex = -1;
+/* Before either book is picked there is nothing to centre ON — .books (this
+   same element `rail` points to) is centred within its own parent instead,
+   so the pair sits together rather than one arbitrarily standing in for
+   "the selection". offsetLeft/offsetWidth are layout, not paint, so reading
+   them off the element we are about to transform is still no feedback loop. */
 function centreActive(){
-  const m = books[activeIndex].mount;
+  const el = activeIndex === -1 ? rail : books[activeIndex].mount;
   const railW = rail.parentElement.clientWidth;
-  /* offsetLeft is layout position, so it is not itself affected by the
-     translate we are about to apply — no feedback loop */
   rail.style.transform =
-    'translateX(' + (railW/2 - (m.offsetLeft + m.offsetWidth/2)) + 'px)';
+    'translateX(' + (railW/2 - (el.offsetLeft + el.offsetWidth/2)) + 'px)';
 }
 let settleT = 0;
 function setActive(i){
@@ -1427,13 +1430,29 @@ function setActive(i){
   centreActive();
   /* It grows back to full size across the transition, and its coils and canvas
      are parked from bounding rects — so re-park them once it has stopped
-     moving, not while it is still on its way. */
+     moving, not while it is still on its way. Pressing a closed book both
+     selects and opens it, but the open has to wait for this same settle —
+     it reads the book's just-grown size for its WebGL projection, and
+     starting any earlier would flip against a still-mid-transition size. */
   clearTimeout(settleT);
-  settleT = setTimeout(() => books[activeIndex].relayout(), 620);
+  settleT = setTimeout(() => {
+    const b = books[activeIndex];
+    b.relayout();
+    if(b.atCover()) b.next();
+  }, 620);
 }
-books.forEach((b, i) => b.mount.addEventListener('click', () => setActive(i)));
+books.forEach((b, i) => b.mount.addEventListener('click', () => {
+  /* already the selected book and still showing its cover — just open it,
+     no reselect (and no second wait) needed */
+  if(i === activeIndex){ if(b.atCover()) b.next(); return; }
+  setActive(i);
+}));
 addEventListener('resize', centreActive);
-setActive(0);
+/* Neither book starts selected — both wait, dimmed and arrow-less, until
+   pressed. Still needs centring once up front, or the pair would sit at
+   whatever the flex layout landed on until the first resize or click moved
+   it, which would read as a jump rather than as having been placed there. */
+centreActive();
 /* One listener for both pads — without routing, a single arrow key would turn
    a page in each book at once. It drives whichever book the pointer last
    entered, falling back to the first. */
