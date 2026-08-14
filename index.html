@@ -272,6 +272,8 @@
   }
   /* a waiting book is a target to pick, not a pad to flip */
   .book:not(.active){ cursor:pointer; opacity:.5; transform:scale(.84); }
+  /* the nudge that says "this is the one you'd press" */
+  .book:not(.active):hover{ opacity:.75; transform:scale(.88); }
   .book:not(.active) .stage{ pointer-events:none; }
   .book:not(.active) .nav{ opacity:0; pointer-events:none; }
   .nav{ transition:opacity .4s; }
@@ -677,7 +679,7 @@ const BOARD_OVER = 6;
    and buys flipMs/bendFor closing over that book's own PAGES.
    Products, the modal and the cart stay global — one cart for both books.
    ============================================================ */
-function makeBook(mount, PAGES){
+function makeBook(mount, PAGES, onClose){
 const stage = document.createElement('div');
 stage.className = 'stage';
 const cal = document.createElement('div');
@@ -1350,6 +1352,12 @@ function prev(){
   animateShade(leaves[cur+1], 0, .45, flipMs(cur));
   lockIfBoard(cur);
   updateNav();
+  /* flipping back onto the cover is closing the book — hand back to the
+     picker once the cover has actually landed, not while it is still
+     turning (same reasoning as the settle before an auto-open: the layout
+     this book is about to lose is what the picker's own centring needs to
+     already be correct by) */
+  if(cur === 0 && onClose) setTimeout(onClose, flipMs(cur));
 }
 /* The pad is built and laid out immediately; three.js is deferred so a slow CDN
    cannot hold the first page off the screen. Wire the curved flip up once it
@@ -1401,8 +1409,8 @@ return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0};
 /* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
 let activeBook = null;
 const books = [
-  makeBook(document.getElementById('book1'), BOOK1_PAGES),
-  makeBook(document.getElementById('book2'), BOOK2_PAGES)
+  makeBook(document.getElementById('book1'), BOOK1_PAGES, () => deselect()),
+  makeBook(document.getElementById('book2'), BOOK2_PAGES, () => deselect())
 ];
 
 /* The roster. Books are never rebuilt when you switch — each keeps its own
@@ -1440,6 +1448,17 @@ function setActive(i){
     b.relayout();
     if(b.atCover()) b.next();
   }, 620);
+}
+/* The other half of setActive: a book that has just been flipped back to
+   its own cover hands itself back to the picker. Same scene as a fresh
+   load — neither book selected, both waiting, centred as a pair — reached
+   by clearing activeIndex rather than by a separate "unselected" state. */
+function deselect(){
+  if(activeIndex === -1) return;
+  activeIndex = -1;
+  activeBook = null;
+  books.forEach(b => b.mount.classList.remove('active'));
+  centreActive();
 }
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
   /* already the selected book and still showing its cover — just open it,
