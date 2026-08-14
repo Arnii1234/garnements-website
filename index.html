@@ -268,20 +268,34 @@
   .book{
     margin-bottom:34px;
     transform-origin:50% 42%;
+  }
+  /* a waiting book is a target to pick, not a pad to flip. The grow/dim
+     transition lives here rather than on the bare .book, so it only ever
+     plays going INTO this state (closing) or between rest and hover —
+     never coming OUT of it, which .book.active below cuts off on purpose. */
+  .book:not(.active){
+    cursor:pointer; opacity:.5; transform:scale(.84);
     transition:transform .55s cubic-bezier(.34,.08,.24,1), opacity .5s;
   }
-  /* a waiting book is a target to pick, not a pad to flip */
-  .book:not(.active){ cursor:pointer; opacity:.5; transform:scale(.84); }
   /* the nudge that says "this is the one you'd press" */
   .book:not(.active):hover{ opacity:.75; transform:scale(.88); }
   .book:not(.active) .stage{ pointer-events:none; }
-  .book:not(.active) .nav{ opacity:0; pointer-events:none; }
-  .nav{ transition:opacity .4s; }
+  /* Picking a book snaps it to size instead of growing into it — the flip
+     starts the instant it's pressed, and its geometry is read from this
+     same size, so there is nothing correct to animate FROM. Losing this
+     transition is what makes that possible; see setActive. */
+  .book.active{ transition:none; }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
     padding:26px 0 8px;
+    /* Tied to being past the cover, not to the book being active — arrives
+       with the first page rather than with the click, and on the way back
+       drops the instant `cur` returns to the cover, well before the book
+       itself has finished closing. */
+    opacity:0; pointer-events:none; transition:opacity .2s;
   }
+  .book.active .nav.on{ opacity:1; pointer-events:auto; }
   .nav button{
     font-size:22px;font-weight:300;width:44px;height:44px;
     transition:opacity .25s;
@@ -916,6 +930,9 @@ function updateNav(){
   [...ticksEl.children].forEach((t, k) => {
     t.className = k < cur ? 'done' : (k === cur ? 'now' : '');
   });
+  /* past the cover — see .book.active .nav.on for why this, not .active,
+     is what the arrows actually watch */
+  nav.classList.toggle('on', cur > 0);
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
    passes over the top, then keeps going down the *back* of the pad: one full
@@ -1429,25 +1446,26 @@ function centreActive(){
   rail.style.transform =
     'translateX(' + (railW/2 - (el.offsetLeft + el.offsetWidth/2)) + 'px)';
 }
-let settleT = 0;
 function setActive(i){
   if(i === activeIndex) return;
   activeIndex = i;
   activeBook = books[i];
   books.forEach((b, k) => b.mount.classList.toggle('active', k === i));
+  /* The book's own grow is instant already (.book.active{transition:none}).
+     The rail's slide needs the same one-off treatment, or the flip below
+     would start reading geometry while the pad is still sliding into place.
+     Disabling the transition and changing transform in the same tick isn't
+     enough by itself — without a forced reflow between the two, the browser
+     can coalesce them and animate with whatever transition ends up restored
+     instead. Reading offsetHeight forces it to actually land the "none"
+     state before that restore happens. */
+  rail.style.transition = 'none';
   centreActive();
-  /* It grows back to full size across the transition, and its coils and canvas
-     are parked from bounding rects — so re-park them once it has stopped
-     moving, not while it is still on its way. Pressing a closed book both
-     selects and opens it, but the open has to wait for this same settle —
-     it reads the book's just-grown size for its WebGL projection, and
-     starting any earlier would flip against a still-mid-transition size. */
-  clearTimeout(settleT);
-  settleT = setTimeout(() => {
-    const b = books[activeIndex];
-    b.relayout();
-    if(b.atCover()) b.next();
-  }, 620);
+  rail.offsetHeight;
+  rail.style.transition = '';
+  const b = books[activeIndex];
+  b.relayout();
+  if(b.atCover()) b.next();
 }
 /* The other half of setActive: a book that has just been flipped back to
    its own cover hands itself back to the picker. Same scene as a fresh
