@@ -307,13 +307,8 @@
     padding:26px 0 8px;
   }
   .nav button{
-    width:44px;height:44px;
-    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:300;width:44px;height:44px;
     transition:opacity .25s;
-  }
-  .nav button svg{
-    width:24px;height:24px;display:block;
-    fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;
   }
   .nav button:hover{opacity:.5;}
   .nav button:disabled{opacity:.15;cursor:default;}
@@ -365,7 +360,7 @@
   }
   .panel-img > img{width:100%;flex:1;min-height:0;
     max-height:calc(92vh - 150px);object-fit:contain;}
-  /* drawing first, photographs after — one row, no carousel to get lost in */
+  /* photographs first, drawing after — one row, no carousel to get lost in */
   .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
   .panel-thumbs button{
     width:46px;height:60px;padding:0;overflow:hidden;
@@ -536,8 +531,10 @@
 /* ============================================
    PRODUCTS — edit prices/names here
    ============================================ */
-/* `img` is the digital drawing, `photos` the shot garment. Both are kept — the
-   modal shows the drawing first and the photographs after it.
+/* `img` is the digital drawing, `photos` the shot garment — front first, then
+   back, matching how they're listed below. Both are kept — the modal leads
+   with the photographs and the drawing comes last, until real product
+   photography replaces these.
    Filenames carry spaces, so every path is run through encodeURI at the point
    of use (see shotsOf/heroOf); do not hand-encode them here. */
 const PRODUCTS = {
@@ -598,20 +595,19 @@ const PRODUCTS = {
     {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
     {name:"Brown", swatch:"#6d4a30", photos:["assets/brown backpack.JPG"]}]}
 };
-/* every picture of a piece, drawing first; paths encoded for the spaces.
+/* every picture of a piece, model photographs first — front, then back, in
+   the order PRODUCTS lists them — and the digital drawing last, since it's
+   standing in only until real product photography arrives. Paths run through
+   encodeURI for the spaces in the filenames.
    For a piece with colourways the photographs come from the chosen one, so
    the strip only ever shows the bag you are actually looking at. */
 const shotsOf = (p, ci) => {
   const c = p.colours && (p.colours[ci] || p.colours[0]);
-  return [p.img, ...((c ? c.photos : p.photos) || [])].filter(Boolean).map(encodeURI);
+  return [...((c ? c.photos : p.photos) || []), p.img].filter(Boolean).map(encodeURI);
 };
-/* the thumbnail a cart line shows. A piece with colourways shares one drawing
-   between them, so the cart shows the cloth instead — otherwise a black bag
-   and a brown one are the same picture twice. */
-const heroOf  = (p, ci) => {
-  const s = shotsOf(p, ci);
-  return (p.colours && s[1]) || s[0] || '';
-};
+/* the thumbnail a cart line shows — now simply the first shot, since that's
+   already a photograph of the right colourway whenever one exists */
+const heroOf  = (p, ci) => shotsOf(p, ci)[0] || '';
 /* a cart line stores its colourway by name, so reordering the list cannot
    silently turn someone's black bag brown */
 const colourIdx = (p, name) =>
@@ -710,14 +706,10 @@ stage.append(cal, glc);
 const nav = document.createElement('div');
 nav.className = 'nav';
 nav.innerHTML =
-  '<button class="prev" aria-label="previous page">' +
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6,9.1 Q11.7,17.4 19.3,9.4"/></svg>' +
-  '</button>' +
+  '<button class="prev" aria-label="previous page">‹</button>' +
   '<div class="ticks" aria-hidden="true"></div>' +
   '<span class="sr-only" role="status" aria-live="polite"></span>' +
-  '<button class="next" aria-label="next page">' +
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5,15.2 Q12.3,6.8 19.4,14.6"/></svg>' +
-  '</button>';
+  '<button class="next" aria-label="next page">›</button>';
 mount.append(stage, nav);
 const prevBtn  = nav.querySelector('.prev');
 const nextBtn  = nav.querySelector('.next');
@@ -1488,25 +1480,20 @@ function openModal(ids){
   ov.classList.add('open');
   requestAnimationFrame(() => ov.classList.add('dim'));
 }
-/* `shot` is which picture to open on. It stays 0 — the drawing — every time
-   except when the shopper has just picked a colourway, where opening on the
-   drawing would show them nothing of the choice they made, so the first
-   photograph of that cloth leads instead. */
-function renderItem(shot = 0){
+function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
-  /* drawing first, then the photographs; pieces with no drawing of their own
-     simply open on their first photograph */
+  /* the model's photographs first, front then back; the drawing trails as a
+     placeholder for pieces real photography hasn't reached yet */
   const shots = shotsOf(p, curColour);
-  const start = Math.min(shot, shots.length - 1);
   const main = document.getElementById('pImg');
-  main.src = shots[start] || '';
+  main.src = shots[0] || '';
   main.alt = p.name;
   const thumbs = document.getElementById('pThumbs');
   thumbs.innerHTML = '';
   if(shots.length > 1){
     shots.forEach((src, k) => {
       const b = document.createElement('button');
-      b.className = k === start ? 'on' : '';
+      b.className = k === 0 ? 'on' : '';
       b.innerHTML = `<img src="${src}" alt="">`;
       b.onclick = () => {
         main.src = src;
@@ -1542,7 +1529,7 @@ function renderItem(shot = 0){
       b.setAttribute('aria-label', c.name);
       b.innerHTML = `<span style="background:${c.swatch}"></span>`;
       /* redraw rather than patch: the photo strip belongs to the colourway */
-      b.onclick = () => { curColour = i; renderItem(1); };
+      b.onclick = () => { curColour = i; renderItem(); };
       sw.appendChild(b);
     });
   }
