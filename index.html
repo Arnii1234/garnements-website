@@ -201,7 +201,7 @@
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
-    border:.5px solid var(--ink);
+    border:.25px solid #3d2b1f;
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
@@ -1073,7 +1073,11 @@ const punchSVG =
    that drifts at other sizes. This is the only place the number lives: the CSS
    reads it as --over-x/--over-y, and the binding's mask subtracts it so the
    wire stops at the board's edge rather than the sheet's. */
-const BOARD_OVER = 6;
+/* Wide enough to survive #fit's transform:scale — the sheet and the board
+   are separate elements that round to device pixels independently once
+   scaled, and too tight a margin here left a hairline of whatever sits
+   behind the pad visible right at the sheet's edge. */
+const BOARD_OVER = 10;
 
 /* ---------- design hotspots ----------
    Each " design.svg" isolates one piece's graphic at its exact spot on a
