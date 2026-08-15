@@ -559,7 +559,8 @@
     font-family:'Bodoni Moda',serif;font-size:27px;font-weight:400;
     letter-spacing:.04em;margin-bottom:10px;
   }
-  .p-price{font-size:13px;letter-spacing:.12em;margin-bottom:34px;color:#4c4846;}
+  .p-price{font-size:13px;letter-spacing:.12em;margin-bottom:18px;color:#4c4846;}
+  .p-desc{font-size:13px;line-height:1.7;color:#4c4846;margin-bottom:32px;max-width:46ch;}
   .size-label{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--grey);margin-bottom:12px;}
   /* colourways: the chosen one is named beside the label, the way a house
      that sells one bag in two cloths does it */
@@ -600,6 +601,64 @@
     margin-top:14px;text-align:center;opacity:0;transition:opacity .3s;
   }
   .added-msg.show{opacity:1;}
+
+  /* ---------- size guide / shipping folds ----------
+     <details> rather than a hand-rolled toggle: open/close, keyboard reach and
+     screen-reader state all come from the element itself, and nothing here
+     needs more than that. */
+  .folds{margin-top:8px;}
+  .fold{border-top:1px solid var(--line);padding:16px 0;}
+  .folds .fold:last-child{border-bottom:1px solid var(--line);}
+  .fold summary{
+    cursor:pointer;list-style:none;
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);
+  }
+  .fold summary::-webkit-details-marker{display:none;}
+  /* the same +/− a spent tick uses for done/undone, so the page has one
+     vocabulary for "there is more here" rather than two */
+  .fold summary::after{
+    content:'+';padding-left:12px;font-size:14px;font-weight:300;color:var(--grey);
+  }
+  .fold[open] summary::after{content:'–';}
+  .fold-body{
+    margin-top:16px;font-size:12px;line-height:1.8;color:#4c4846;max-width:46ch;
+  }
+  .fold-body a{color:var(--ink);}
+  .size-table{width:100%;border-collapse:collapse;margin-top:16px;}
+  .size-table th, .size-table td{
+    padding:7px 4px;text-align:center;font-size:11px;color:#4c4846;
+    border-bottom:1px solid var(--line);
+  }
+  .size-table th:first-child, .size-table td:first-child{
+    text-align:left;color:var(--ink);padding-left:0;
+  }
+  .size-table thead th{
+    color:var(--grey);font-weight:400;letter-spacing:.06em;
+    text-transform:uppercase;font-size:10px;
+  }
+
+  /* ---------- you may also like ----------
+     Spans both of .panel's columns — a shelf below the piece open, not
+     detail crammed into the info column beside it, since it's showing OTHER
+     pieces rather than more about this one. */
+  .also-like{
+    grid-column:1/-1;
+    border-top:1px solid var(--line);
+    padding:32px 46px 40px;
+  }
+  .also-row{display:flex;gap:18px;overflow-x:auto;}
+  .also-card{flex:0 0 auto;width:130px;text-align:left;}
+  .also-card img{
+    width:130px;height:162px;object-fit:cover;background:#f7f7f6;
+    margin-bottom:10px;display:block;
+  }
+  .also-card .also-name{
+    display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink);
+  }
+  .also-card .also-price{
+    display:block;font-size:11px;color:var(--grey);margin-top:2px;
+  }
 
   /* ---------- cart drawer ---------- */
   .drawer{
@@ -681,6 +740,7 @@
       <div class="item-tabs" id="itemTabs"></div>
       <div class="p-name" id="pName"></div>
       <div class="p-price" id="pPrice"></div>
+      <p class="p-desc" id="pDesc"></p>
       <!-- only shown for a piece that comes in more than one colourway -->
       <div id="pColourRow" hidden>
         <div class="size-label">Colour — <span class="swatch-name" id="pColourName"></span></div>
@@ -690,6 +750,33 @@
       <div class="sizes" id="pSizes"></div>
       <button class="add-btn" onclick="addToCart()">Add to Cart</button>
       <div class="added-msg" id="addedMsg">Added</div>
+      <!-- native <details> rather than a hand-rolled toggle — open/close,
+           keyboard and screen-reader behaviour all come for free, and there
+           is nothing here that needs more than that. -->
+      <div class="folds">
+        <details class="fold" id="sizeGuideFold" hidden>
+          <summary>Size Guide</summary>
+          <div id="pSizeGuide"></div>
+        </details>
+        <details class="fold">
+          <summary>Shipping &amp; Returns</summary>
+          <!-- placeholder until Arne sends real terms — see DESC/SIZE_GUIDES'
+               own comment upstream for why this stays honest rather than
+               inventing a policy no one has actually agreed to yet -->
+          <div class="fold-body">
+            Shipping times, costs and our return window will be posted here
+            shortly. Questions before ordering —
+            <a href="mailto:Arne.Schubert@hotmail.com">write to us</a>.
+          </div>
+        </details>
+      </div>
+    </div>
+    <!-- spans both columns, below the image and the info — a full-width shelf
+         rather than squeezed into the info column, since it is showing OTHER
+         pieces, not detail about the one open (see .also-like's grid-column) -->
+    <div class="also-like" id="alsoLike" hidden>
+      <div class="size-label">You may also like</div>
+      <div class="also-row" id="alsoRow"></div>
     </div>
   </div>
 </div>
@@ -719,26 +806,54 @@
    photography replaces these.
    Filenames carry spaces, so every path is run through encodeURI at the point
    of use (see shotsOf/heroOf); do not hand-encode them here. */
+/* `desc` is written per GARMENT TYPE, not per piece — every one of them draws
+   on the same facts already published in the colophon (100% cotton, hand
+   embroidered from a one-line drawing, made in Berlin) rather than inventing
+   anything specific to a single SKU. `sizeType` points a piece at its rows in
+   SIZE_GUIDES below; a bag has none, so its fold never renders (see
+   renderSizeGuide). `pairsWith` is not a merchandising guess — every one of
+   these was read directly off that piece's own model photo, listing only
+   OTHER catalogue pieces actually worn in it. A piece with no photo, or whose
+   photo shows nothing else in the catalogue, gets no list at all rather than
+   a manufactured one. */
+const DESC = {
+  tee:    "Midweight cotton jersey, boxy cropped fit. The design is hand embroidered from one of the original one-line drawings — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  hoodie: "Midweight cotton fleece, oversized fit. Hand embroidered from an original one-line drawing — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  jeans:  "Heavyweight cotton denim, wide leg. The embroidered panel is worked directly into the denim from an original one-line drawing. Designed and embroidered in Berlin.",
+  shorts: "Heavyweight cotton denim, wide fit. The embroidered panel is worked directly into the denim from an original one-line drawing. Designed and embroidered in Berlin.",
+  vest:   "Cotton denim, cropped and sleeveless. Hand embroidered from an original one-line drawing — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  bag:    "Heavy cotton canvas with leather trim. Hand embroidered from an original one-line drawing. Designed and embroidered in Berlin."
+};
 const PRODUCTS = {
   "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg",
+                   desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
                    photos:["assets/pink tee front.JPG","assets/pink tee back.JPG"]},
-  "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg"},
+  "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg",
+                   desc:DESC.jeans, sizeType:"jeans"},
   "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
+                   desc:DESC.hoodie, sizeType:"hoodie", pairsWith:["black-jeans"],
                    photos:["assets/beige hoodie front.JPG","assets/beige hoodie back.JPG"]},
   "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
+                   desc:DESC.hoodie, sizeType:"hoodie", pairsWith:["pink-jorts","white-tee"],
                    photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
+                   desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
                    photos:["assets/black tee 1 front.JPG","assets/black tee 1 back.JPG"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
+                   desc:DESC.tee, sizeType:"tee",
                    photos:["assets/black tee 2 front.JPG","assets/black tee 2 back.JPG"]},
   "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg",
+                   desc:DESC.vest, sizeType:"vest", pairsWith:["black-jeans"],
                    photos:["assets/black vest front.JPG","assets/black vest back.JPG"]},
-  "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg"},
-  "jorts":        {name:"Embroidered Jean Shorts",  price:95,  img:"assets/prod-jorts.svg"},
+  "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg",
+                   desc:DESC.jeans, sizeType:"jeans"},
+  "jorts":        {name:"Embroidered Jean Shorts",  price:95,  img:"assets/prod-jorts.svg",
+                   desc:DESC.shorts, sizeType:"shorts"},
   /* was "White Tee" — the drawing in the sketchbook is not the tee that was
      shot, so it keeps the drawing under a new name and the photographed white
      tee becomes its own piece below */
-  "jumping-tee":  {name:"Jumping Tee",              price:55,  img:"assets/prod-white-tee.svg"},
+  "jumping-tee":  {name:"Jumping Tee",              price:55,  img:"assets/prod-white-tee.svg",
+                   desc:DESC.tee, sizeType:"tee"},
 
   /* ---- photographed on a model, drawn later ----------------------------
      PRICES ARE PLACEHOLDERS. `img` is the piece's own drawing. Two pieces
@@ -747,34 +862,49 @@ const PRODUCTS = {
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
   "black-jeans":   {name:"Black Jeans",      price:140,
+                    desc:DESC.jeans, sizeType:"jeans", pairsWith:["vest"],
                     img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front.JPG","assets/black jeans back.JPG",
     "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
   "beige-jeans":   {name:"Beige Jeans",      price:140,
+                    desc:DESC.jeans, sizeType:"jeans",
                     img:"assets/beige jeans drawing 1.svg", photos:[
     "assets/beige jeans front.JPG","assets/beige jeans back.JPG",
     "assets/beige jeans left.JPG","assets/beige jeans right.JPG"]},
-  "purple-jeans":  {name:"Purple Jeans",     price:140, photos:[
+  "purple-jeans":  {name:"Purple Jeans",     price:140,
+                    desc:DESC.jeans, sizeType:"jeans", photos:[
     "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
   "beige-tee":     {name:"Beige Tee",        price:55,
+                    desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
                     img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front.JPG","assets/beige tee back.JPG"]},
   "white-tee":     {name:"White Tee",        price:55,
+                    desc:DESC.tee, sizeType:"tee", pairsWith:["pink-jorts","pink-hoodie"],
                     img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front.JPG","assets/white tee back.JPG"]},
-  "pink-jorts":    {name:"Pink Jorts",       price:95,  photos:[
+  "pink-jorts":    {name:"Pink Jorts",       price:95,
+                    desc:DESC.shorts, sizeType:"shorts", pairsWith:["pink-hoodie","white-tee"],
+                    photos:[
     "assets/pink jorts front.JPG","assets/pink jorts back.JPG"]},
   "beige-duffle":  {name:"Beige Duffle Bag", price:120,
+                    desc:DESC.bag, pairsWith:["cream-hoodie","black-jeans"],
                     img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag.JPG"]},
   /* One bag, two colourways. `colours` is what makes a piece offer a swatch
      row instead of a plain photo strip: the drawing is shared, because the
      shape is the same and only the cloth differs, and each colourway brings
-     its own photographs. A cart line records the colourway by name. */
+     its own photographs. A cart line records the colourway by name.
+     `pairsWith` also lives per colourway here, not on the product — the black
+     bag's own photo is a completely different shoot (beige hoodie, black
+     jeans) from the brown bag's (pink hoodie, white tee, pink jorts), so one
+     shared list would have been half wrong for whichever colour was showing. */
   "backpack":      {name:"Backpack",         price:110,
+                    desc:DESC.bag,
                     img:"assets/backpack drawing.svg", colours:[
-    {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
-    {name:"Brown", swatch:"#6d4a30", photos:[
+    {name:"Black", swatch:"#242021", pairsWith:["cream-hoodie","black-jeans"],
+     photos:["assets/black backpack.JPG"]},
+    {name:"Brown", swatch:"#6d4a30", pairsWith:["pink-hoodie","white-tee","pink-jorts"],
+     photos:[
       "assets/brown backpack front.JPG","assets/brown backpack.JPG"]}]}
 };
 /* Every picture of a piece — model photographs only, front then back, in the
@@ -797,7 +927,28 @@ const heroOf  = (p, ci) => shotsOf(p, ci)[0] || '';
    silently turn someone's black bag brown */
 const colourIdx = (p, name) =>
   Math.max(0, (p.colours || []).findIndex(c => c.name === name));
+/* companion pieces for "you may also like", colourway-aware for the same
+   reason shotsOf is: which pieces actually appear in the photo depends on
+   which colourway that photo is of. Filtered against PRODUCTS rather than
+   trusted outright, so a renamed or retired key quietly drops off the row
+   instead of breaking it. */
+const pairsOf = (p, ci) => {
+  const c = p.colours && (p.colours[ci] || p.colours[0]);
+  return ((c ? c.pairsWith : p.pairsWith) || []).filter(id => PRODUCTS[id]);
+};
 const SIZES = ["XS","S","M","L","XL","XXL"];
+/* Placeholder — cm, once Arne sends real measurements. Rows only, no values:
+   an em dash reads honestly as "not published yet," where a guessed number
+   would read as fact and could send someone a piece that doesn't fit.
+   sizeType on a PRODUCTS entry indexes this; a piece with none (the bags)
+   never renders the fold at all rather than showing an empty one. */
+const SIZE_GUIDES = {
+  tee:    ["Chest width","Length"],
+  hoodie: ["Chest width","Length"],
+  vest:   ["Chest width","Length"],
+  jeans:  ["Waist","Inseam"],
+  shorts: ["Waist","Inseam"]
+};
 const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
 
 /* page order: title, colophon, S1P1–S1P11, back. Every one of these is built
@@ -2254,6 +2405,7 @@ function renderItem(){
   }
   document.getElementById('pName').textContent = p.name;
   document.getElementById('pPrice').textContent = '€' + p.price + '  ·  incl. VAT';
+  document.getElementById('pDesc').textContent = p.desc || '';
   const tabs = document.getElementById('itemTabs');
   tabs.innerHTML = '';
   if(curItems.length > 1){
@@ -2293,6 +2445,44 @@ function renderItem(){
     sz.appendChild(b);
   });
   document.getElementById('addedMsg').classList.remove('show');
+
+  /* size guide — hidden outright for a piece with no sizeType (the bags)
+     rather than opening on an empty table */
+  const guideFold = document.getElementById('sizeGuideFold');
+  const rows = SIZE_GUIDES[p.sizeType];
+  guideFold.hidden = !rows;
+  if(rows){
+    document.getElementById('pSizeGuide').innerHTML = `
+      <table class="size-table">
+        <thead><tr><th></th>${SIZES.map(s => `<th>${s}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r => `
+          <tr><th>${r} (cm)</th>${SIZES.map(() => '<td>—</td>').join('')}</tr>
+        `).join('')}</tbody>
+      </table>`;
+  }
+
+  /* you may also like — only the pieces actually worn alongside this one in
+     its own photo (see pairsOf); switches curItems outright rather than
+     adding a tab, since clicking one is choosing to look at THAT piece, not
+     comparing it against this one */
+  const also = document.getElementById('alsoLike');
+  const pairs = pairsOf(p, curColour);
+  also.hidden = !pairs.length;
+  if(pairs.length){
+    const row = document.getElementById('alsoRow');
+    row.innerHTML = '';
+    pairs.forEach(id => {
+      const rp = PRODUCTS[id];
+      const b = document.createElement('button');
+      b.className = 'also-card';
+      b.innerHTML = `
+        <img src="${heroOf(rp, 0)}" alt="">
+        <span class="also-name">${rp.name}</span>
+        <span class="also-price">€${rp.price}</span>`;
+      b.onclick = () => openModal([id]);
+      row.appendChild(b);
+    });
+  }
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
