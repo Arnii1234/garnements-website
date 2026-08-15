@@ -154,8 +154,13 @@
     position:absolute;inset:0;
     backface-visibility:hidden;
     -webkit-backface-visibility:hidden;
+    /* the sheets are the same stock as the field the product window sits on
+       (--panel), so the two read as one paper across the whole screen. The
+       ramp is kept, just re-centred on that colour rather than a darker one:
+       it is what stops a sheet reading as a flat rectangle, and it is slight
+       enough that the page and the panel still match. */
     background:
-      radial-gradient(128% 92% at 50% 10%, #f1f0ee 0%, #eae9e7 44%, #e1e0dd 100%);
+      radial-gradient(128% 92% at 50% 10%, #f8f7f5 0%, #f4f3f1 44%, #eeedea 100%);
     overflow:hidden;
     transform:translateZ(.4px); /* keep the two faces off each other's plane (Safari) */
   }
@@ -307,8 +312,15 @@
   /* Nothing in here is text to be selected, and on a touch screen a swipe
      through the stack otherwise drags a blue selection across the artwork —
      and on iOS a long press raises the copy/share callout on top of that. */
+  /* NOT clipped here on a wide screen. #fit scales this element about its own
+     centre, so its painted box is narrower than the window — at 1440 with the
+     pads scaled to .8 it runs 142 to 1298 rather than 0 to 1440. A book slid
+     toward the right edge lost everything past 1298 even though the window had
+     room to spare, which is what cut the open sketchbook off. body already
+     clips at the window, so nothing is gained by clipping again in here; the
+     stack does need it, and takes it back in the query below. */
   .rail{
-    position:relative; overflow:hidden; width:100%; flex:none;
+    position:relative; width:100%; flex:none;
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
   }
   /* The gap is not the whole distance between two books — scaling a waiting one
@@ -375,7 +387,10 @@
   @media(max-width:900px){
     .books{ flex-direction:column; align-items:center; width:auto; gap:0; }
     .book{ margin-bottom:0; }
-    .rail{ height:100%; }
+    /* here the clip earns its keep: it is what hides the books above and below
+       the one being shown, which body's own clip cannot do since they sit in
+       the middle of the window rather than past its edges */
+    .rail{ height:100%; overflow:hidden; }
   }
   /* ---------- navigation ---------- */
   .nav{
