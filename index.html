@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>garnements — 2026</title>
+<title>garnements</title>
 <meta name="description" content="garnements 2026, edition one. Hand-drawn embroidery from Berlin — each piece begins as a one-line drawing.">
 <meta name="theme-color" content="#f4f3f1">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -40,15 +40,26 @@
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
     overflow:hidden;
+    /* masthead pinned to the top, colophon line pinned to the bottom, and the
+       pads given whatever is left in between */
+    display:flex;flex-direction:column;
   }
-  /* Wraps everything except the modal and cart drawer, which stay direct
-     children of body — position:fixed inside a transformed ancestor stops
-     meaning "fixed to the viewport" and starts meaning "fixed to that
-     ancestor", which would break both. #fit gets scaled down by script when
-     its natural height would otherwise force the page to scroll; origin is
-     the top so the header stays put and any slack lands below the footer,
-     where there's nothing to see anyway. */
-  #fit{transform-origin:top center;}
+  header, footer{ flex:none; }
+  /* Wraps ONLY the pads and their arrows — not the masthead or the footer,
+     which keep their place at the edges of the window whatever happens here.
+     They are what a visitor uses to know the page has not moved; scaling them
+     along with the pads made the whole layout creep around on zoom.
+     The modal and cart drawer stay direct children of body for a different
+     reason: position:fixed inside a transformed ancestor stops meaning "fixed
+     to the viewport" and starts meaning "fixed to that ancestor".
+     Scaled by script when the pads' natural height would otherwise overrun
+     the room between header and footer; origin is the centre, because that
+     room is now a box the pads sit in the middle of. */
+  #fit{
+    flex:1;min-height:0;
+    display:flex;align-items:center;justify-content:center;
+    transform-origin:center center;
+  }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
   /* ---------- header ---------- */
@@ -275,7 +286,9 @@
      actually position them are unchanged. A scale would not be — it would
      desync the canvas from its pad and break the perspective match with
      .stage. */
-  .rail{ position:relative; overflow:hidden; }
+  /* full width of the room #fit was given, not of its own contents — the whole
+     centring calculation reads this element's width as "the screen" */
+  .rail{ position:relative; overflow:hidden; width:100%; flex:none; }
   .books{
     display:flex;align-items:flex-start;gap:40px;width:max-content;
     transition:transform .65s cubic-bezier(.34,.08,.24,1);
@@ -411,7 +424,7 @@
   .panel-img > img{
     width:auto;height:auto;
     max-width:100%;max-height:calc(100vh - 150px);
-    border:1px solid var(--ink);
+    border:.5px solid var(--ink);
   }
   /* A photograph carries its own pixel size and is far bigger than the column,
      so the two maxima above shrink it to fit and the box lands exactly on it.
@@ -528,7 +541,6 @@
 </head>
 <body>
 
-<div id="fit">
 <header>
   <!-- one letter per span so each can take its own colour; no whitespace
        between them, so it is still read and selected as one word -->
@@ -538,16 +550,19 @@
 
 <!-- One mount per sketchbook; makeBook() builds the stage, pad and nav inside
      each. Everything the pads share — products, modal, cart — stays global.
-     No captions: the two covers tell them apart. -->
-<div class="rail">
-  <div class="books">
-    <div class="book" id="book1"></div>
-    <div class="book" id="book2"></div>
+     No captions: the two covers tell them apart.
+     The masthead and the footer sit OUTSIDE #fit on purpose — only the pads
+     and their arrows are scaled to fit the room left over. -->
+<div id="fit">
+  <div class="rail">
+    <div class="books">
+      <div class="book" id="book1"></div>
+      <div class="book" id="book2"></div>
+    </div>
   </div>
 </div>
 
 <footer>© garnements 2026 — Berlin · <a href="https://instagram.com/garnements.de" target="_blank">@garnements.de</a></footer>
-</div>
 
 <!-- product modal -->
 <div class="overlay" id="overlay">
@@ -1879,9 +1894,15 @@ function orbitTarget(i){
      edges inside its layout box, so the visible edge is `inset` in from it. */
   const shown = me.offsetWidth * IDLE_SCALE;
   const inset = (me.offsetWidth - shown) / 2;
-  const restLeft = rail.parentElement.getBoundingClientRect().left
-                 + railShift() + me.offsetLeft + inset;
-  return Math.min(natural, (innerWidth - shown * ORBIT_PEEK) - restLeft);
+  const restLeft = railShift() + me.offsetLeft + inset;
+  /* The window's edge is the one number here that arrives in screen pixels,
+     and #fit may be scaling the rail — so it is brought into the rail's own
+     units before being compared with them. Mixing the two only agrees at
+     scale 1, which is exactly the case that hides the mistake. */
+  const box = rail.parentElement.getBoundingClientRect();
+  const s = rail.parentElement.clientWidth ? box.width / rail.parentElement.clientWidth : 1;
+  const edge = (innerWidth - box.left) / s;
+  return Math.min(natural, (edge - shown * ORBIT_PEEK) - restLeft);
 }
 /* The path is an arc, not a slide: it shrinks away to .58 at the midpoint and
    rises a little, which is what a book travelling AROUND the far side of
@@ -2161,16 +2182,23 @@ function checkout(){
 }
 renderCart();
 
-/* ---------- fit the page to the viewport, no scrolling ---------- */
-/* Same effect as pressing the browser's zoom-out once, but computed per
-   visitor instead of relying on their own zoom level. Shrinks only when the
-   page would otherwise be taller than the window; never enlarges past 1.
-   scrollHeight ignores transforms, so it keeps reading the untransformed
-   height no matter what scale is already applied. */
+/* ---------- fit the pads to the room they have ---------- */
+/* Only the pads and their arrows are scaled. The masthead and the footer are
+   outside #fit and keep their places at the edges of the window, so zooming
+   changes the size of the lettering without shifting where it sits — the page
+   stays recognisably the same page at any zoom, and only the sketchbooks grow
+   and shrink to suit the room.
+   Measured against the height #fit was GIVEN (window minus header and footer)
+   rather than the window itself, since that is the room the pads actually
+   have. Both numbers ignore transforms — clientHeight is layout, and the rail's
+   offsetHeight is its untransformed height — so neither feeds this scale back
+   into itself. Shrinks only; never enlarges past 1. */
 const fitEl = document.getElementById('fit');
+const railEl = fitEl.querySelector('.rail');
 let fitScale = null;
 function fitToViewport(){
-  const scale = Math.min(1, window.innerHeight / fitEl.scrollHeight);
+  const room = fitEl.clientHeight, natural = railEl.offsetHeight;
+  const scale = natural ? Math.min(1, room / natural) : 1;
   if(scale === fitScale) return;
   fitScale = scale;
   fitEl.style.transform = scale < 1 ? `scale(${scale})` : '';
