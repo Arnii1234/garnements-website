@@ -371,12 +371,20 @@
     overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
   }
 
+  /* Set in ink and lifted above the product window rather than sitting under
+     it — this line is turning into the place where contact, instagram and the
+     rest will live, so it has to stay readable and reachable whatever is open
+     over the page. Above the window (z-index 100), deliberately below the cart
+     drawer (120): the drawer is a panel you open on purpose and reaches the
+     bottom of the screen, so putting this over it would only collide with the
+     checkout button. */
   footer{
+    position:relative;z-index:110;
     text-align:center;padding:26px 0 34px;
-    font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--grey);
+    font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);
   }
   footer a{color:inherit;text-decoration:none;border-bottom:1px solid transparent;}
-  footer a:hover{border-color:var(--grey);}
+  footer a:hover{border-color:var(--ink);}
 
   /* ---------- product modal ----------
      Docked to the left edge rather than centred over everything — the
@@ -391,7 +399,13 @@
      everything inside stays transparent and sits directly on it. */
   .overlay{
     position:fixed;top:0;left:0;bottom:0;z-index:100;
-    width:min(860px,60vw);
+    /* Exactly half the window, and half of it at any zoom. A px cap here (it
+       was min(860px,60vw)) is a length the browser rescales when you zoom, so
+       the field kept changing which fraction of the screen it took; vw is a
+       fraction of the window by definition and cannot drift. The sketchbook
+       centres itself in the half that is left (see railShift's `reserve`), so
+       it stays whole and on the right however the window is zoomed. */
+    width:50vw;
     background:var(--panel);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
@@ -424,7 +438,7 @@
   .panel-img > img{
     width:auto;height:auto;
     max-width:100%;max-height:calc(100vh - 150px);
-    border:.5px solid var(--ink);
+    border:.75px solid var(--ink);
   }
   /* A photograph carries its own pixel size and is far bigger than the column,
      so the two maxima above shrink it to fit and the box lands exactly on it.
@@ -480,8 +494,13 @@
     border:1px solid var(--line);
   }
   .sizes{display:flex;gap:4px;margin-bottom:38px;flex-wrap:wrap;}
+  /* The six share whatever width the column has rather than each claiming a
+     fixed 44px — at half the window that added up to more than the column and
+     XL and XXL dropped onto a second line. They still wrap if the column ever
+     gets narrower than the floor below, which is what mobile does. */
   .sizes button{
-    font-size:12px;letter-spacing:.06em;width:44px;height:38px;
+    flex:1 1 auto;min-width:34px;
+    font-size:12px;letter-spacing:.06em;height:38px;
     border:1px solid transparent;transition:border-color .2s;
   }
   .sizes button:hover{border-color:var(--line);}
