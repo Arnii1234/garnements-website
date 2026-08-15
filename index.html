@@ -500,10 +500,34 @@
   @media(max-width:760px){
     .panel{grid-template-columns:1fr;}
   }
+  /* align-self:start is what actually stops a fold opening from resizing the
+     photo: by default a grid item stretches to match the row's tallest
+     column, so panel-info growing past its own frame the moment Size Guide
+     or Shipping & Returns opened was quietly resizing panel-img right along
+     with it — its "big enough" size was never fixed, just whatever the info
+     column happened to be that moment. With this it takes only its own
+     content's height, unaffected by panel-info's.
+     position:sticky then keeps the photo in view while that now-independent
+     info column scrolls past beside it, rather than it disappearing upward
+     the moment a long fold pushes the info column below the fold. It
+     naturally lets go once .also-like's row (outside this grid row
+     entirely) scrolls into view. */
   .panel-img{
+    align-self:start;
+    position:sticky;top:0;
     display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:16px;
     padding:34px;min-height:420px;
+  }
+  /* Same equal-specificity trap as the mobile-stack query caught earlier:
+     an override sitting BEFORE the rule it overrides loses the tie to
+     source order and never applies, whatever the media condition says. This
+     one has to come after .panel-img itself for that reason — single column
+     now, so there is no second column for the photo to stay level with, and
+     it can just scroll past like everything else rather than pin itself
+     over content that has nowhere left to sit beside it. */
+  @media(max-width:760px){
+    .panel-img{position:static;align-self:auto;}
   }
   /* The slot the picture sits in. It keeps the same height whatever is shown,
      which is the whole point: the outlined box below hugs each shot exactly,
@@ -644,6 +668,17 @@
      pieces rather than more about this one. */
   .also-like{
     grid-column:1/-1;
+    /* A grid item's default min-width is auto, meaning "never shrink below
+       your content's own natural width" — and with several 130px cards in a
+       row, that natural width is well over 1000px. .also-row's own
+       overflow-x:auto is what is SUPPOSED to make the excess scroll rather
+       than spill out, but that only works once something has already
+       clamped this item down to the column's actual width; nothing had.
+       On a 1440px screen the column was wide enough that the mismatch
+       stayed invisible — a phone has no such headroom, and the whole panel
+       overflowed sideways, the photo included, until this cluster grew past
+       one recommendation and the row finally exceeded 375px. */
+    min-width:0;
     border-top:1px solid var(--line);
     padding:32px 46px 40px;
   }
@@ -826,24 +861,24 @@ const DESC = {
 };
 const PRODUCTS = {
   "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg",
-                   desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
+                   desc:DESC.tee, sizeType:"tee",
                    photos:["assets/pink tee front.JPG","assets/pink tee back.JPG"]},
   "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
   "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
-                   desc:DESC.hoodie, sizeType:"hoodie", pairsWith:["black-jeans"],
+                   desc:DESC.hoodie, sizeType:"hoodie",
                    photos:["assets/beige hoodie front.JPG","assets/beige hoodie back.JPG"]},
   "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
-                   desc:DESC.hoodie, sizeType:"hoodie", pairsWith:["pink-jorts","white-tee"],
+                   desc:DESC.hoodie, sizeType:"hoodie",
                    photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
-                   desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
+                   desc:DESC.tee, sizeType:"tee",
                    photos:["assets/black tee 1 front.JPG","assets/black tee 1 back.JPG"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
                    desc:DESC.tee, sizeType:"tee",
                    photos:["assets/black tee 2 front.JPG","assets/black tee 2 back.JPG"]},
   "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg",
-                   desc:DESC.vest, sizeType:"vest", pairsWith:["black-jeans"],
+                   desc:DESC.vest, sizeType:"vest",
                    photos:["assets/black vest front.JPG","assets/black vest back.JPG"]},
   "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
@@ -862,7 +897,7 @@ const PRODUCTS = {
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
   "black-jeans":   {name:"Black Jeans",      price:140,
-                    desc:DESC.jeans, sizeType:"jeans", pairsWith:["vest"],
+                    desc:DESC.jeans, sizeType:"jeans",
                     img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front.JPG","assets/black jeans back.JPG",
     "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
@@ -875,38 +910,60 @@ const PRODUCTS = {
                     desc:DESC.jeans, sizeType:"jeans", photos:[
     "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
   "beige-tee":     {name:"Beige Tee",        price:55,
-                    desc:DESC.tee, sizeType:"tee", pairsWith:["black-jeans"],
+                    desc:DESC.tee, sizeType:"tee",
                     img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front.JPG","assets/beige tee back.JPG"]},
   "white-tee":     {name:"White Tee",        price:55,
-                    desc:DESC.tee, sizeType:"tee", pairsWith:["pink-jorts","pink-hoodie"],
+                    desc:DESC.tee, sizeType:"tee",
                     img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front.JPG","assets/white tee back.JPG"]},
   "pink-jorts":    {name:"Pink Jorts",       price:95,
-                    desc:DESC.shorts, sizeType:"shorts", pairsWith:["pink-hoodie","white-tee"],
+                    desc:DESC.shorts, sizeType:"shorts",
                     photos:[
     "assets/pink jorts front.JPG","assets/pink jorts back.JPG"]},
   "beige-duffle":  {name:"Beige Duffle Bag", price:120,
-                    desc:DESC.bag, pairsWith:["cream-hoodie","black-jeans"],
+                    desc:DESC.bag,
                     img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag.JPG"]},
   /* One bag, two colourways. `colours` is what makes a piece offer a swatch
      row instead of a plain photo strip: the drawing is shared, because the
      shape is the same and only the cloth differs, and each colourway brings
      its own photographs. A cart line records the colourway by name.
-     `pairsWith` also lives per colourway here, not on the product — the black
-     bag's own photo is a completely different shoot (beige hoodie, black
-     jeans) from the brown bag's (pink hoodie, white tee, pink jorts), so one
-     shared list would have been half wrong for whichever colour was showing. */
+     pairsWith for both colours is set below, by CLUSTERS — the black bag
+     belongs with one outfit, the brown with a completely different one. */
   "backpack":      {name:"Backpack",         price:110,
                     desc:DESC.bag,
                     img:"assets/backpack drawing.svg", colours:[
-    {name:"Black", swatch:"#242021", pairsWith:["cream-hoodie","black-jeans"],
-     photos:["assets/black backpack.JPG"]},
-    {name:"Brown", swatch:"#6d4a30", pairsWith:["pink-hoodie","white-tee","pink-jorts"],
-     photos:[
+    {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
+    {name:"Brown", swatch:"#6d4a30", photos:[
       "assets/brown backpack front.JPG","assets/brown backpack.JPG"]}]}
 };
+/* ---------- "you may also like" clusters ----------
+   Arne's own groupings, not the narrower per-photo reading pairsWith used to
+   be limited to — everything in one cluster recommends everything else in
+   it. Built from a flat member list rather than typed out pairwise on each
+   entry: at 8 members that is 56 cross-references, and handwriting them
+   risked exactly one getting missed or mistyped somewhere in the set.
+   `colour` narrows WHICH of backpack's two colourways belongs to this
+   cluster — recommending it without one would default to Black even from
+   inside the pink cluster, showing the wrong bag for the outfit standing
+   next to it. */
+function applyCluster(members){
+  members.forEach(({id, colour}) => {
+    const others = members.filter(m => !(m.id === id && m.colour === colour));
+    const target = colour
+      ? PRODUCTS[id].colours.find(c => c.name === colour)
+      : PRODUCTS[id];
+    target.pairsWith = others.map(m => m.colour ? {id:m.id, colour:m.colour} : m.id);
+  });
+}
+applyCluster([
+  {id:"cream-hoodie"}, {id:"beige-tee"}, {id:"pink-tee"}, {id:"vest"},
+  {id:"black-tee"}, {id:"black-jeans"}, {id:"backpack", colour:"Black"}, {id:"beige-duffle"}
+]);
+applyCluster([
+  {id:"pink-jorts"}, {id:"white-tee"}, {id:"pink-hoodie"}, {id:"backpack", colour:"Brown"}
+]);
 /* Every picture of a piece — model photographs only, front then back, in the
    order PRODUCTS lists them. The digital drawing was only ever a stand-in
    for photography that didn't exist yet, so once real photos are in, it
@@ -932,9 +989,15 @@ const colourIdx = (p, name) =>
    which colourway that photo is of. Filtered against PRODUCTS rather than
    trusted outright, so a renamed or retired key quietly drops off the row
    instead of breaking it. */
+/* An entry is either a bare id or {id, colour} — the latter for backpack,
+   where a plain id would default to Black even when the cluster recommending
+   it is the pink/brown one. Normalised to {id, colour} here so the render
+   side never has to care which shape it started as. */
 const pairsOf = (p, ci) => {
   const c = p.colours && (p.colours[ci] || p.colours[0]);
-  return ((c ? c.pairsWith : p.pairsWith) || []).filter(id => PRODUCTS[id]);
+  return ((c ? c.pairsWith : p.pairsWith) || [])
+    .map(x => typeof x === 'string' ? {id:x, colour:null} : x)
+    .filter(x => PRODUCTS[x.id]);
 };
 const SIZES = ["XS","S","M","L","XL","XXL"];
 /* Placeholder — cm, once Arne sends real measurements. Rows only, no values:
@@ -2370,8 +2433,19 @@ document.addEventListener('keydown', e => {
 
 /* ---------- product modal ---------- */
 let curItems = [], curIdx = 0, curSize = null, curColour = 0;
+/* Size Guide and Shipping & Returns always start closed for whichever piece
+   is now showing — opening one while looking at a tee and having it still
+   open when you land on a bag (which does not even carry a size guide) would
+   read as the panel remembering something it should not. Called both when a
+   DIFFERENT piece takes over the window (openModal, and the item-tabs switch
+   below) and when the window itself closes — not just the latter, since by
+   the time it would next open, openModal is about to reset it anyway; this
+   only additionally covers a fold left open while the closing slide is still
+   visible. */
+function resetFolds(){ document.querySelectorAll('.fold').forEach(f => f.open = false); }
 function openModal(ids){
   curItems = ids; curIdx = 0; curSize = null; curColour = 0;
+  resetFolds();
   renderItem();
   document.getElementById('overlay').classList.add('open');
   document.body.classList.add('modal-open');
@@ -2413,7 +2487,10 @@ function renderItem(){
       const b = document.createElement('button');
       b.textContent = PRODUCTS[id].name;
       b.className = i === curIdx ? 'on' : '';
-      b.onclick = () => { curIdx = i; curSize = null; curColour = 0; renderItem(); };
+      /* a different piece taking over the window, same as openModal — see
+         resetFolds' own comment for why this one resets and the colourway
+         swatch just below does not */
+      b.onclick = () => { curIdx = i; curSize = null; curColour = 0; resetFolds(); renderItem(); };
       tabs.appendChild(b);
     });
   }
@@ -2461,25 +2538,32 @@ function renderItem(){
       </table>`;
   }
 
-  /* you may also like — only the pieces actually worn alongside this one in
-     its own photo (see pairsOf); switches curItems outright rather than
-     adding a tab, since clicking one is choosing to look at THAT piece, not
-     comparing it against this one */
+  /* you may also like — Arne's own clusters (see applyCluster), not a per-
+     photo guess; switches curItems outright rather than adding a tab, since
+     clicking one is choosing to look at THAT piece, not comparing it against
+     this one. A pair carrying a colour (backpack, from either cluster) opens
+     on ITS colourway rather than the default — the thumbnail here already
+     shows that colourway's own photo, so the panel it opens into should
+     match what was just clicked rather than reverting to Black. */
   const also = document.getElementById('alsoLike');
   const pairs = pairsOf(p, curColour);
   also.hidden = !pairs.length;
   if(pairs.length){
     const row = document.getElementById('alsoRow');
     row.innerHTML = '';
-    pairs.forEach(id => {
+    pairs.forEach(({id, colour}) => {
       const rp = PRODUCTS[id];
+      const rci = colour ? colourIdx(rp, colour) : 0;
       const b = document.createElement('button');
       b.className = 'also-card';
       b.innerHTML = `
-        <img src="${heroOf(rp, 0)}" alt="">
+        <img src="${heroOf(rp, rci)}" alt="">
         <span class="also-name">${rp.name}</span>
         <span class="also-price">€${rp.price}</span>`;
-      b.onclick = () => openModal([id]);
+      b.onclick = () => {
+        openModal([id]);
+        if(colour){ curColour = rci; renderItem(); }
+      };
       row.appendChild(b);
     });
   }
@@ -2487,6 +2571,7 @@ function renderItem(){
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
   document.body.classList.remove('modal-open');
+  resetFolds();
   modalOpen = false;
   centreActive();
   updateOrbits();
