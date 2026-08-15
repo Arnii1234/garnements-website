@@ -2004,10 +2004,11 @@ function centreActive(){
    what makes the shelf read the same however you got there: the one you are
    reading stands clear, the rest wait over its right shoulder. It also leaves
    the whole left of the screen free, which is where the product window opens.
-   Where it lands is read from the rail's own layout — its box goes down just
-   past the chosen book's, one gap along, mirroring the spacing it had on the
-   other side. offsetLeft/offsetWidth are unaffected by any of the transforms
-   involved, so this measures the resting layout no matter what is mid-swing. */
+   Where it lands is read from the rail's own layout — its leading edge tucks
+   under the chosen book's trailing one, so the two overlap rather than sitting
+   in separate columns. offsetLeft/offsetWidth are unaffected by any of the
+   transforms involved, so this measures the resting layout no matter what is
+   mid-swing. */
 /* how much of a parked book still has to show past the right edge. Sending it
    the full distance puts it exactly one screen-width out and it vanishes
    entirely — the swing would end somewhere nobody can see, and there would be
@@ -2018,14 +2019,18 @@ function centreActive(){
    waiting book and the arithmetic that parks one can never disagree */
 const IDLE_SCALE =
   parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--idle')) || .88;
-const ORBIT_PEEK = .28, ORBIT_FAR = .58;
+/* ORBIT_TUCK: how far a waiting book slides UNDER the chosen one, as a share
+   of its own visible width. Standing it clear in its own column read as two
+   books side by side rather than one in front of another — overlapping is what
+   makes the chosen book the near object and the other the far one. It already
+   sits behind (see .book.active's z-index) and a little smaller, so the pad's
+   own drop shadow falls across whatever is tucked under it. */
+const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .20;
 function orbitTarget(i){
   /* nothing parks sideways on a stack — the waiting books are simply above and
      below, and the rail scrolls to whichever one is wanted */
   if(isStacked() || activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
-  const gap = parseFloat(getComputedStyle(rail).columnGap) || 0;
-  const natural = (act.offsetLeft + act.offsetWidth + gap) - me.offsetLeft;
   /* Everything here is layout, then shifted by the rail's own target offset —
      never getBoundingClientRect, which mid-swing reports where the animation
      has the book rather than where its resting place is, and would fold the
@@ -2033,6 +2038,9 @@ function orbitTarget(i){
      edges inside its layout box, so the visible edge is `inset` in from it. */
   const shown = me.offsetWidth * IDLE_SCALE;
   const inset = (me.offsetWidth - shown) / 2;
+  /* the chosen book is never scaled, so its own edge is its layout edge */
+  const natural =
+    (act.offsetLeft + act.offsetWidth - shown * ORBIT_TUCK - inset) - me.offsetLeft;
   const restLeft = railShift() + me.offsetLeft + inset;
   /* The window's edge is the one number here that arrives in screen pixels,
      and #fit may be scaling the rail — so it is brought into the rail's own
