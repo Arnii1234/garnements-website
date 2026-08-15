@@ -2033,9 +2033,16 @@ const IDLE_SCALE =
    shallower tuck. That clamp stays only as a safety net for a narrow window. */
 const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .85;
 function orbitTarget(i){
-  /* nothing parks sideways on a stack — the waiting books are simply above and
-     below, and the rail scrolls to whichever one is wanted */
-  if(isStacked() || activeIndex < 0 || i === activeIndex) return 0;
+  /* Tucking behind is what the product window needs — it is the thing making
+     room on the left, so nothing should move for it before there is a window
+     to make room FOR. Selecting a book alone leaves both where they always
+     sat: the chosen one full size, the other at rest in the row exactly as it
+     was before any of this existed. Gated on modalOpen rather than
+     activeIndex, which is true the instant a book is picked — tying it to
+     that pulled the waiting book in behind on every open, product or not.
+     Nothing parks sideways on a stack either — the waiting books are simply
+     above and below, and the rail scrolls to whichever one is wanted. */
+  if(isStacked() || !modalOpen || activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
   /* Everything here is layout, then shifted by the rail's own target offset —
      never getBoundingClientRect, which mid-swing reports where the animation
