@@ -31,6 +31,15 @@
        white. The two read as the same paper stock at different weights, and
        the join between them is what draws the dividing line down the screen */
     --panel:#f4f3f1;
+    /* How far back a book sits when it is not the one being read. It is also
+       what sets how close the pair stand: scaling pulls each book's edges
+       inside its own layout box, so the lower this is the more empty space
+       opens between them however small the gap is set. Declared here because
+       the script needs the same number to park a book at the screen's edge
+       (see IDLE_SCALE) — two copies of it drifting apart would put the parked
+       book slightly wrong. */
+    --idle:.88;
+    --idle-hover:.92;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -98,9 +107,16 @@
   }
   .calendar{
     position:relative;z-index:1;
-    width:min(480px, 92vw);
+    width:min(560px, 92vw);
     aspect-ratio: 210 / 297;   /* A4 — see PAGE_H below, the same ratio in artwork units */
     transform-style:preserve-3d;
+  }
+  /* Below this the open book has to share the width with the product window
+     (55vw), and a 560 pad no longer fits in what is left — it would stand
+     across the dividing line. Kept at the old size there; #fit takes care of
+     height on its own, but nothing else watches this. */
+  @media(max-width:1300px){
+    .calendar{ width:min(480px, 92vw); }
   }
   /* the curved sheet renders here, above the pad but below the coils */
   .glc{
@@ -289,8 +305,12 @@
   /* full width of the room #fit was given, not of its own contents — the whole
      centring calculation reads this element's width as "the screen" */
   .rail{ position:relative; overflow:hidden; width:100%; flex:none; }
+  /* The gap is not the whole distance between two books — scaling a waiting one
+     leaves empty space inside its own box on each side, and that reads as part
+     of the gap too. Set small for that reason: the visible separation is this
+     plus the slack --idle opens up. */
   .books{
-    display:flex;align-items:flex-start;gap:40px;width:max-content;
+    display:flex;align-items:flex-start;gap:16px;width:max-content;
     transition:transform .65s cubic-bezier(.34,.08,.24,1);
   }
   /* The selected book stands at full size; the waiting ones sit back a little.
@@ -321,13 +341,13 @@
      because an arc is not something one transform can tween into another. */
   .book:not(.active){
     cursor:pointer; opacity:.5;
-    transform:translateX(var(--orbit,0px)) scale(.84);
+    transform:translateX(var(--orbit,0px)) scale(var(--idle));
     transition:transform .55s cubic-bezier(.34,.08,.24,1), opacity .5s;
   }
   /* the nudge that says "this is the one you'd press" */
   .book:not(.active):hover{
     opacity:.75;
-    transform:translateX(var(--orbit,0px)) scale(.88);
+    transform:translateX(var(--orbit,0px)) scale(var(--idle-hover));
   }
   .book:not(.active) .stage{ pointer-events:none; }
   /* Picking a book snaps it to size instead of growing into it — the flip
@@ -1931,7 +1951,11 @@ function centreActive(){
    no way back to that sketchbook at all. Landing it at the margin instead
    keeps the same "another book waits over there" reading the shelf has at
    rest. */
-const IDLE_SCALE = .84, ORBIT_PEEK = .28;
+/* read from --idle rather than restated, so the CSS that actually draws a
+   waiting book and the arithmetic that parks one can never disagree */
+const IDLE_SCALE =
+  parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--idle')) || .88;
+const ORBIT_PEEK = .28, ORBIT_FAR = .58;
 function orbitTarget(i){
   if(activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
@@ -1998,9 +2022,9 @@ function updateOrbits(instant){
     mount.style.transition = '';
     const lift = mount.offsetHeight * .06;
     mount._orbit = mount.animate([
-      {transform:`translateX(${from}px) scale(.84)`},
-      {transform:`translate(${(from + to) / 2}px, ${-lift}px) scale(.58)`},
-      {transform:`translateX(${to}px) scale(.84)`}
+      {transform:`translateX(${from}px) scale(${IDLE_SCALE})`},
+      {transform:`translate(${(from + to) / 2}px, ${-lift}px) scale(${ORBIT_FAR})`},
+      {transform:`translateX(${to}px) scale(${IDLE_SCALE})`}
     ], {duration:950, easing:'cubic-bezier(.45,.05,.35,1)'});
   });
 }
