@@ -267,10 +267,16 @@
     transition:transform .35s cubic-bezier(.34,.08,.24,1), filter .35s;
   }
   .design-spot:hover .design-art{
-    transform:scale(1.045);
+    transform:scale(1.0225);
     filter:
       drop-shadow(0 3px 5px rgba(35,31,32,.28))
       drop-shadow(0 12px 20px rgba(35,31,32,.16));
+  }
+  .design-spot:active .design-art{
+    transform:scale(.99);
+    transition:transform .1s ease-out, filter .1s ease-out;
+    filter:
+      drop-shadow(0 1px 2px rgba(35,31,32,.24));
   }
   /* title art fills whole page (it includes its own spiral + margins) */
   .title-art{position:absolute;inset:0;}
