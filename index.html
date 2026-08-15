@@ -2020,12 +2020,18 @@ function centreActive(){
 const IDLE_SCALE =
   parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--idle')) || .88;
 /* ORBIT_TUCK: how far a waiting book slides UNDER the chosen one, as a share
-   of its own visible width. Standing it clear in its own column read as two
-   books side by side rather than one in front of another — overlapping is what
-   makes the chosen book the near object and the other the far one. It already
-   sits behind (see .book.active's z-index) and a little smaller, so the pad's
-   own drop shadow falls across whatever is tucked under it. */
-const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .20;
+   of its own visible width — .85 leaves 15% of it showing. Standing it clear
+   in its own column read as two books side by side rather than one in front of
+   another — overlapping this heavily is what keeps the page compact rather
+   than reading as a second, competing sketchbook. It already sits behind (see
+   .book.active's z-index) and a little smaller, so the pad's own drop shadow
+   falls across whatever is tucked under it.
+   This far under, ORBIT_PEEK's edge clamp (below) stops being the constraint
+   that decides where the book lands — tucking THIS much moves it closer to
+   its own resting spot rather than out toward the window's edge, which is
+   also what keeps it from ever running off the page the way it could at a
+   shallower tuck. That clamp stays only as a safety net for a narrow window. */
+const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .85;
 function orbitTarget(i){
   /* nothing parks sideways on a stack — the waiting books are simply above and
      below, and the rail scrolls to whichever one is wanted */
