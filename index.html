@@ -194,11 +194,14 @@
     background:linear-gradient(#c1bbaf 0%, #bbb5a9 55%, #b4aea2 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
-     so the two read as one piece of card rather than a border around it. */
+     so the two read as one piece of card. A hairline traces its true outer
+     edge — the cover's actual cut line — thin enough to read as definition,
+     not a frame. */
   .board-over{
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
+    border:.5px solid var(--ink);
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
