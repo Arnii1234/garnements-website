@@ -250,21 +250,28 @@
   .page-art.clickable{cursor:pointer;transition:opacity .3s;}
   .page-art.clickable:hover{opacity:.82;}
   /* an isolated design's exact spot on its page — positioned from its own
-     real artwork geometry (see fitDesignSpots), not guessed. No visible box
-     of its own; hovering it lights a soft spotlight behind the drawing
-     instead, echoing the sketchbook picker's own grow-and-brighten (see
-     .book:not(.active):hover) without scaling art that isn't its own sprite
-     to distort. */
+     real artwork geometry (see fitDesignSpots), not guessed. The spot itself
+     stays invisible; what hovering it actually does is lift the ACTUAL
+     drawing — .design-art, the same piece's own linework cropped to just its
+     own box (see mountDesignArt) and stacked exactly over its counterpart
+     already sitting flat in the page art beneath it. At rest the two are
+     indistinguishable, pixel for pixel; hovering breaks that alignment on
+     purpose, growing it slightly and casting it a shadow, so specifically
+     THAT piece — not the page around it — reads as lifting toward the
+     viewer. Left to grow past its own box on purpose (no overflow:hidden
+     here) — clipping it at the hotspot's own edge would cut the lift off
+     exactly where it should read as most alive. */
   .design-spot{ position:absolute; cursor:pointer; }
-  .design-spot::before{
-    content:''; position:absolute; inset:-18%;
-    border-radius:50%;
-    background:radial-gradient(closest-side, rgba(35,31,32,.24), rgba(35,31,32,0) 72%);
-    opacity:0; transform:scale(.82);
-    transition:opacity .3s, transform .35s cubic-bezier(.34,.08,.24,1);
-    pointer-events:none;
+  .design-art{
+    display:block; width:100%; height:100%;
+    transition:transform .35s cubic-bezier(.34,.08,.24,1), filter .35s;
   }
-  .design-spot:hover::before{ opacity:1; transform:scale(1); }
+  .design-spot:hover .design-art{
+    transform:scale(1.045);
+    filter:
+      drop-shadow(0 3px 5px rgba(35,31,32,.28))
+      drop-shadow(0 12px 20px rgba(35,31,32,.16));
+  }
   /* title art fills whole page (it includes its own spiral + margins) */
   .title-art{position:absolute;inset:0;}
   .title-art img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -1063,22 +1070,35 @@ const BOARD_OVER = 6;
    Each " design.svg" isolates one piece's graphic at its exact spot on a
    page, sharing that page's own literal-A4 viewBox (2480×3508 @300dpi — a
    different, unrelated scale from PAGE_W/PAGE_H above, chosen by whoever
-   exported these from Illustrator, not by this site). getBBox() on the
-   fetched content, briefly attached to the document, is the only reliable
-   way to find that spot — these files carry no meaningful width/height
-   attributes to read instead. */
+   exported these from Illustrator, not by this site).
+   The fetched SVG does double duty: getBBox() on it, briefly attached to the
+   document, is the only reliable way to find its exact spot (these files
+   carry no meaningful width/height attributes to read instead) — and that
+   same element, its viewBox afterwards narrowed from the whole page down to
+   just the box getBBox() found, becomes what actually renders on hover.
+   Narrowing the viewBox is what makes the hover effect possible at all:
+   before that, the piece's own linework was sitting somewhere on a canvas
+   the size of the WHOLE page, so scaling it by a normal, consistent amount
+   would have moved it by however large a fraction of the page it happened to
+   occupy — a small embroidery detail would visibly jump, a large one would
+   barely move. Cropped to its own box, every design fills its element the
+   same way an ordinary image would, so one CSS transform reads the same
+   whether the piece is a cuff detail or a full front panel. */
 const ART_SVG_W = 2480, ART_SVG_H = 3508;
-async function designBBox(url){
+async function mountDesignArt(url){
   const text = await (await fetch(encodeURI(url))).text();
   const src = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
-  const probe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  probe.setAttribute('viewBox', src.getAttribute('viewBox') || `0 0 ${ART_SVG_W} ${ART_SVG_H}`);
-  probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
-  while(src.firstChild) probe.appendChild(src.firstChild);
-  document.body.appendChild(probe);
-  const box = probe.getBBox();
-  probe.remove();
-  return box;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', src.getAttribute('viewBox') || `0 0 ${ART_SVG_W} ${ART_SVG_H}`);
+  svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+  while(src.firstChild) svg.appendChild(src.firstChild);
+  document.body.appendChild(svg);
+  const box = svg.getBBox();
+  svg.remove();
+  svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height}`);
+  svg.removeAttribute('style');
+  svg.classList.add('design-art');
+  return {box, svg};
 }
 /* .page-art is NOT itself A4-shaped: top:4% plus bottom:0 (see its CSS)
    compress its height to 96% of the leaf while the width stays full, even
@@ -1100,7 +1120,7 @@ function fitDesignSpots(leaf, p){
   if(!p.designs || !p.designs.length) return;
   const art = leaf.querySelector('.page-art');
   p.designs.forEach(d => {
-    designBBox(d.file).then(box => {
+    mountDesignArt(d.file).then(({box, svg}) => {
       const spot = document.createElement('div');
       spot.className = 'design-spot';
       spot.dataset.product = d.product;
@@ -1108,6 +1128,7 @@ function fitDesignSpots(leaf, p){
       spot.style.top    = ((box.y / ART_SVG_H) * 100).toFixed(3) + '%';
       spot.style.width  = ((box.width  / ART_SVG_W) * ART_W * 100).toFixed(3) + '%';
       spot.style.height = ((box.height / ART_SVG_H) * 100).toFixed(3) + '%';
+      spot.appendChild(svg);
       art.appendChild(spot);
     }).catch(() => console.warn('design hotspot failed to measure:', d.file));
   });
