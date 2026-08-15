@@ -304,7 +304,13 @@
      .stage. */
   /* full width of the room #fit was given, not of its own contents — the whole
      centring calculation reads this element's width as "the screen" */
-  .rail{ position:relative; overflow:hidden; width:100%; flex:none; }
+  /* Nothing in here is text to be selected, and on a touch screen a swipe
+     through the stack otherwise drags a blue selection across the artwork —
+     and on iOS a long press raises the copy/share callout on top of that. */
+  .rail{
+    position:relative; overflow:hidden; width:100%; flex:none;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  }
   /* The gap is not the whole distance between two books — scaling a waiting one
      leaves empty space inside its own box on each side, and that reads as part
      of the gap too. Set small for that reason: the visible separation is this
@@ -355,6 +361,22 @@
      same size, so there is nothing correct to animate FROM. Losing this
      transition is what makes that possible; see setActive. */
   .book.active{ transition:none; }
+  /* ---------- narrow screens: the pair becomes a stack ----------
+     Two pads will not stand beside each other on a phone — both ended up half
+     off the screen with the gap between them in the middle. They stack instead,
+     one to a screenful, and the rail slides UP and DOWN rather than across:
+     swipe to go from one to the next, press the one you want (see the picker's
+     touch handlers, and centreActive, which switches axis on the same query).
+     The rail takes the full height it was given, so the books either side of
+     the one being shown are clipped away rather than crowding it.
+     This block has to come AFTER the rules it is overriding — sitting above
+     them, only flex-direction survived and the gap and the book's own bottom
+     margin were quietly restored by the later declarations. */
+  @media(max-width:900px){
+    .books{ flex-direction:column; align-items:center; width:auto; gap:0; }
+    .book{ margin-bottom:0; }
+    .rail{ height:100%; }
+  }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -1904,6 +1926,13 @@ let activeIndex = -1;
    centreActive so the book slides right to share the screen with it rather
    than staying centred underneath it. */
 let modalOpen = false;
+/* On a phone the pair becomes a stack (see the max-width:900px block) and the
+   rail slides up and down instead of across. There is no room to show both at
+   once, so the picker has to remember which one it is showing — where the wide
+   layout can simply centre the pair and let you look at either. */
+const stackedMQ = matchMedia('(max-width:900px)');
+const isStacked = () => stackedMQ.matches;
+let browseIndex = 0;
 /* Before either book is picked there is nothing to centre ON — .books (this
    same element `rail` points to) is centred within its own parent instead,
    so the pair sits together rather than one arbitrarily standing in for
@@ -1932,8 +1961,19 @@ function railShift(){
   const centreScreen = reserve + (innerWidth - reserve) / 2;
   return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
+/* The vertical twin of railShift, for the stack. Simpler than the sideways
+   one because nothing is reserved on this axis — the product window takes the
+   whole screen at these widths, so there is no screen-space measurement to
+   reconcile with the rail's own units and everything here is layout. */
+function railShiftY(){
+  const el = books[activeIndex === -1 ? browseIndex : activeIndex].mount;
+  const host = rail.parentElement;
+  return host.clientHeight / 2 - (el.offsetTop + el.offsetHeight/2);
+}
 function centreActive(){
-  rail.style.transform = 'translateX(' + railShift() + 'px)';
+  rail.style.transform = isStacked()
+    ? 'translateY(' + railShiftY() + 'px)'
+    : 'translateX(' + railShift() + 'px)';
 }
 /* ---------- where the waiting books stand ----------
    Picking a book puts every other one BEHIND AND TO THE RIGHT of it, always
@@ -1957,7 +1997,9 @@ const IDLE_SCALE =
   parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--idle')) || .88;
 const ORBIT_PEEK = .28, ORBIT_FAR = .58;
 function orbitTarget(i){
-  if(activeIndex < 0 || i === activeIndex) return 0;
+  /* nothing parks sideways on a stack — the waiting books are simply above and
+     below, and the rail scrolls to whichever one is wanted */
+  if(isStacked() || activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
   const gap = parseFloat(getComputedStyle(rail).columnGap) || 0;
   const natural = (act.offsetLeft + act.offsetWidth + gap) - me.offsetLeft;
@@ -2064,6 +2106,10 @@ function setActive(i){
    by clearing activeIndex rather than by a separate "unselected" state. */
 function deselect(){
   if(activeIndex === -1) return;
+  /* the picker reopens on the book you were just in, not back at the first
+     one — on a stack that is the difference between staying where you were
+     and being thrown to the top of the pile */
+  browseIndex = activeIndex;
   activeIndex = -1;
   activeBook = null;
   books.forEach(b => b.mount.classList.remove('active'));
@@ -2073,11 +2119,36 @@ function deselect(){
   updateOrbits();
 }
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
+  /* a swipe through the stack ends with a tap-like event on whatever was
+     under the finger; without this, browsing to the next book would open it */
+  if(justSwiped){ justSwiped = false; return; }
   /* already the selected book and still showing its cover — just open it,
      no reselect (and no second wait) needed */
   if(i === activeIndex){ if(b.atCover()) b.next(); return; }
   setActive(i);
 }));
+/* ---------- swiping through the stack ----------
+   Only while nothing is chosen. Once a book is open the same up-and-down
+   gesture belongs to its pages (see cal's own touch handlers), and an inactive
+   book's stage is click-through anyway, so the two never contend for a touch. */
+let pickY = null, justSwiped = false;
+rail.parentElement.addEventListener('touchstart', e => {
+  /* cleared here rather than only when a click arrives: a swipe does not
+     always produce one, and a flag left standing would eat the next real tap */
+  justSwiped = false;
+  pickY = (activeIndex === -1 && isStacked()) ? e.touches[0].clientY : null;
+}, {passive:true});
+rail.parentElement.addEventListener('touchend', e => {
+  if(pickY === null) return;
+  const dy = e.changedTouches[0].clientY - pickY;
+  pickY = null;
+  if(Math.abs(dy) < 40) return;              /* a tap, not a swipe */
+  const to = browseIndex + (dy < 0 ? 1 : -1);
+  if(to < 0 || to >= books.length) return;   /* nothing past either end */
+  browseIndex = to;
+  justSwiped = true;
+  centreActive();
+}, {passive:true});
 /* a resize re-measures where things belong; it is not a move, so the orbit
    lands on the new number rather than swinging to it */
 addEventListener('resize', () => { centreActive(); updateOrbits(true); });
@@ -2271,7 +2342,12 @@ const fitEl = document.getElementById('fit');
 const railEl = fitEl.querySelector('.rail');
 let fitScale = null;
 function fitToViewport(){
-  const room = fitEl.clientHeight, natural = railEl.offsetHeight;
+  /* On a stack the rail is as tall as every book piled up, and fitting THAT
+     into the window would shrink each one to a thumbnail. Only one is ever on
+     screen, so one is what has to fit. */
+  const one = railEl.querySelector('.book');
+  const unit = (isStacked() && one) ? one : railEl;
+  const room = fitEl.clientHeight, natural = unit.offsetHeight;
   const scale = natural ? Math.min(1, room / natural) : 1;
   if(scale === fitScale) return;
   fitScale = scale;
