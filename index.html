@@ -399,13 +399,14 @@
      everything inside stays transparent and sits directly on it. */
   .overlay{
     position:fixed;top:0;left:0;bottom:0;z-index:100;
-    /* Exactly half the window, and half of it at any zoom. A px cap here (it
-       was min(860px,60vw)) is a length the browser rescales when you zoom, so
-       the field kept changing which fraction of the screen it took; vw is a
-       fraction of the window by definition and cannot drift. The sketchbook
-       centres itself in the half that is left (see railShift's `reserve`), so
-       it stays whole and on the right however the window is zoomed. */
-    width:50vw;
+    /* A little past half the window, and the same share of it at any zoom.
+       Stated in vw for that reason: a px length (it was min(860px,60vw)) is
+       something the browser rescales when you zoom, so the field kept changing
+       which fraction of the screen it took, where a fraction of the window
+       cannot drift. The sketchbook centres itself in what is left (see
+       railShift's `reserve`), so it stays whole and on the right however the
+       window is zoomed. */
+    width:55vw;
     background:var(--panel);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
@@ -1874,12 +1875,22 @@ let modalOpen = false;
    #overlay keeps its layout width even off-screen (it's moved with
    transform, not display), so this reads correctly whether or not it has
    actually finished sliding in yet. */
+/* Returns the rail's offset in ITS OWN units, which is what gets written to
+   the transform — but the point it has to hit is a screen one: the product
+   window is fixed to the viewport and knows nothing about #fit's scale, so
+   the width it reserves is screen pixels. Those two only agree when nothing
+   is being scaled. Left mixed, the chosen book drifted left of where it
+   belonged by exactly the scale — at a 1050-wide window it sat 25px over the
+   window's own edge. So the target is worked out on screen and then brought
+   back into the rail's units. */
 function railShift(){
   const el = activeIndex === -1 ? rail : books[activeIndex].mount;
-  const railW = rail.parentElement.clientWidth;
+  const host = rail.parentElement;
+  const box = host.getBoundingClientRect();
+  const s = host.clientWidth ? box.width / host.clientWidth : 1;
   const reserve = modalOpen ? document.getElementById('overlay').offsetWidth : 0;
-  const centreX = reserve + (railW - reserve) / 2;
-  return centreX - (el.offsetLeft + el.offsetWidth/2);
+  const centreScreen = reserve + (innerWidth - reserve) / 2;
+  return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
 function centreActive(){
   rail.style.transform = 'translateX(' + railShift() + 'px)';
