@@ -382,8 +382,19 @@
     position:relative;z-index:110;
     text-align:center;padding:26px 0 34px;
     font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);
+    /* Riding above the product window means this bar also lies across the
+       bottom of it, and the thumbnails live exactly there. It has no
+       background, so the row stayed perfectly visible while every click on it
+       was being swallowed by a strip of empty footer. The bar itself is now
+       transparent to the pointer and only its actual links take clicks back —
+       so whatever ends up in here (contact, instagram) stays reachable without
+       the space around it blocking anything underneath. */
+    pointer-events:none;
   }
-  footer a{color:inherit;text-decoration:none;border-bottom:1px solid transparent;}
+  footer a{
+    color:inherit;text-decoration:none;border-bottom:1px solid transparent;
+    pointer-events:auto;
+  }
   footer a:hover{border-color:var(--ink);}
 
   /* ---------- product modal ----------
