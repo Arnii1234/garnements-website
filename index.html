@@ -505,19 +505,33 @@
      column, so panel-info growing past its own frame the moment Size Guide
      or Shipping & Returns opened was quietly resizing panel-img right along
      with it — its "big enough" size was never fixed, just whatever the info
-     column happened to be that moment. With this it takes only its own
-     content's height, unaffected by panel-info's.
-     position:sticky then keeps the photo in view while that now-independent
-     info column scrolls past beside it, rather than it disappearing upward
-     the moment a long fold pushes the info column below the fold. It
-     naturally lets go once .also-like's row (outside this grid row
-     entirely) scrolls into view. */
+     column happened to be that moment. align-self:start alone was not
+     the whole fix, though: .shot below carries min-height:0 (needed so the
+     thumbnail row wouldn't be shoved around by a taller photo — see its own
+     comment), and that same rule quietly tells the grid "this column has NO
+     minimum size of its own," which is exactly the signal auto row sizing
+     needs to know panel-img wants any height at all. With it zeroed, a
+     short piece of info text — Black Jeans with nothing else open, say —
+     could size the row shorter than a tall photo, and the photo simply
+     overflowed past the row's bottom rather than being clipped, running
+     straight through the also-like row underneath it.
+     min-height:100vh sidesteps the whole question rather than trying to
+     get the grid to answer it correctly: the row no longer has to infer
+     panel-img's height from content that was designed not to report it, it
+     is simply always at least a full screen tall regardless of what either
+     column is showing. A short image is centred in the space rather than
+     stretched to fill it (align-items/justify-content below), so nothing
+     here ever looks emptied out.
+     position:sticky keeps the photo in view while the now shorter (and
+     genuinely independent) info column scrolls past beside it. It lets go
+     naturally once .also-like's row — outside this grid row entirely —
+     scrolls into view. */
   .panel-img{
     align-self:start;
     position:sticky;top:0;
     display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:16px;
-    padding:34px;min-height:420px;
+    padding:34px;min-height:100vh;
   }
   /* Same equal-specificity trap as the mobile-stack query caught earlier:
      an override sitting BEFORE the rule it overrides loses the tie to
@@ -525,9 +539,13 @@
      one has to come after .panel-img itself for that reason — single column
      now, so there is no second column for the photo to stay level with, and
      it can just scroll past like everything else rather than pin itself
-     over content that has nowhere left to sit beside it. */
+     over content that has nowhere left to sit beside it.
+     The 100vh floor comes off here too — that exists to give a wide sticky
+     column a stable height to stick WITHIN, which is meaningless once there
+     is no sticky column left, and forcing a full screen of nothing but photo
+     before the name or the price even appear is a bad trade on a phone. */
   @media(max-width:760px){
-    .panel-img{position:static;align-self:auto;}
+    .panel-img{position:static;align-self:auto;min-height:420px;}
   }
   /* The slot the picture sits in. It keeps the same height whatever is shown,
      which is the whole point: the outlined box below hugs each shot exactly,
@@ -2443,6 +2461,41 @@ let curItems = [], curIdx = 0, curSize = null, curColour = 0;
    only additionally covers a fold left open while the closing slide is still
    visible. */
 function resetFolds(){ document.querySelectorAll('.fold').forEach(f => f.open = false); }
+/* ---------- keeping the info column at least as tall as the photo ----------
+   Grid auto-row-sizing turns out not to see how tall panel-img's own content
+   really is once it is position:sticky with align-self:start — measured
+   directly at several different states (994px on Black Jeans; 1190px on
+   Pink Tee with both folds open; 1190px again with panel-img's own min-height
+   cleared entirely), and the row never reflected any of them. It only ever
+   used panel-info's own height, or whatever explicit min-height panel-img
+   itself declared — never panel-img's actual rendered content past that.
+   Left alone, a full-body photo with both folds open on a short description
+   ran straight through the also-like row below it, the same overlap CSS
+   alone was meant to have already fixed.
+   panel-info is an ordinary grid item, though, and DOES correctly report
+   whatever height it is told to have — so this reads panel-img's true
+   rendered height (already includes the 100vh CSS floor, or taller if a
+   full-body photo plus a wrapped thumbnail row needs more) and applies that
+   same number to panel-info directly, which is what the row actually ends up
+   sized to. Not needed below 760px — .panel-img is a normal block there,
+   nothing left for panel-info to stay level with. Re-run whenever either
+   column's own height could have changed: a new product or colourway
+   (renderItem, below), and a fold opening or closing (its own listener,
+   further down), since neither of those calls the other. */
+function syncPanelHeight(){
+  if(matchMedia('(max-width:760px)').matches) return;
+  const pimg = document.querySelector('.panel-img');
+  const pinfo = document.querySelector('.panel-info');
+  if(!pimg || !pinfo) return;
+  pinfo.style.minHeight = '';
+  pinfo.style.minHeight = pimg.scrollHeight + 'px';
+}
+/* Opening or closing a fold changes panel-info's own natural height without
+   touching curItems/curColour, so renderItem never runs for it — this is the
+   only other thing that needs to trigger the same resync. The native
+   'toggle' event fires for both directions, one listener each is enough. */
+document.querySelectorAll('.fold').forEach(f => f.addEventListener('toggle', syncPanelHeight));
+addEventListener('resize', syncPanelHeight);
 function openModal(ids){
   curItems = ids; curIdx = 0; curSize = null; curColour = 0;
   resetFolds();
@@ -2462,6 +2515,14 @@ function renderItem(){
   const main = document.getElementById('pImg');
   main.src = shots[0] || '';
   main.alt = p.name;
+  /* the synchronous syncPanelHeight() at the end of this function runs
+     before a freshly-set src has actually finished loading — measured
+     directly switching Backpack's colourway: it read 900px (the old
+     photo's already-rendered height) instead of the new one's 929px, since
+     the new image's true size isn't known until it loads. This catches the
+     case that misses: whatever the layout was at the end of renderItem(),
+     correct it again once the browser actually knows the new photo's size. */
+  main.onload = syncPanelHeight;
   const thumbs = document.getElementById('pThumbs');
   thumbs.innerHTML = '';
   if(shots.length > 1){
@@ -2567,6 +2628,11 @@ function renderItem(){
       row.appendChild(b);
     });
   }
+
+  /* photo and description just changed — the row may need to grow or shrink
+     to match (see syncPanelHeight's own comment for why this can't just be
+     left to the grid) */
+  syncPanelHeight();
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
