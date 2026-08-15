@@ -21,16 +21,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#f4f3f1;
+    --bg:#ffffff;
     --paper:#e8e8e8;
     --ink:#231f20;
     --grey:#8a8a8a;
     --line:rgba(35,31,32,.18);
-    /* the field the product window sits on — the covers' own grey-beige (see
-       .leaf.cover's --board-face) taken lighter, and flat rather than the
-       board's gradient, so it reads as the same material without competing
-       with the sketchbook standing next to it */
-    --panel:#dcd7cc;
+    /* the field the product window sits on — the warm off-white the page
+       itself used to be, now that the page behind the sketchbooks is plain
+       white. The two read as the same paper stock at different weights, and
+       the join between them is what draws the dividing line down the screen */
+    --panel:#f4f3f1;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -429,25 +429,32 @@
     align-items:center;justify-content:center;gap:16px;
     padding:34px;min-height:420px;
   }
+  /* The slot the picture sits in. It keeps the same height whatever is shown,
+     which is the whole point: the outlined box below hugs each shot exactly,
+     so its size changes with every photograph's proportions, and without a
+     fixed slot the row of thumbnails was shoved up and down the panel each
+     time one was clicked — the next one you reached for had already moved. */
+  .shot{
+    flex:1;min-height:0;width:100%;
+    display:flex;align-items:center;justify-content:center;
+  }
   /* A hairline of ink around the shot, to give it an edge against the panel
      rather than bleeding into it. The border is only worth drawing if the
-     element IS the picture, so the height comes from the width and the
-     picture's own ratio instead of being stretched to the column: with the
-     old flex:1 the box stayed full column height while object-fit:contain
-     shrank the picture inside it, and a landscape drawing ended up outlined
-     with a tall rectangle of empty space around it. */
-  .panel-img > img{
+     element IS the picture, so it takes its size from the picture's own ratio
+     rather than being stretched to the slot — stretched, a landscape drawing
+     ended up outlined with a tall rectangle of empty space around it. */
+  .shot img{
     width:auto;height:auto;
-    max-width:100%;max-height:calc(100vh - 150px);
+    max-width:100%;max-height:100%;
     border:.75px solid var(--ink);
   }
-  /* A photograph carries its own pixel size and is far bigger than the column,
+  /* A photograph carries its own pixel size and is far bigger than the slot,
      so the two maxima above shrink it to fit and the box lands exactly on it.
      A drawing does not: these SVGs ship no width/height, so the browser gives
      them a couple of hundred pixels and they would sit marooned in the middle
-     of the panel at that size. They get told to fill the column instead, and
+     of the panel at that size. They get told to fill the width instead, and
      take their height from their own ratio. */
-  .panel-img > img[src$=".svg"]{ width:100%; }
+  .shot img[src$=".svg"]{ width:100%; }
   /* photographs first, drawing after — one row, no carousel to get lost in */
   .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
   .panel-thumbs button{
@@ -589,7 +596,9 @@
   <div class="panel">
     <button class="close-x" onclick="closeModal()">×</button>
     <div class="panel-img">
-      <img id="pImg" src="" alt="">
+      <!-- the picture gets a slot of its own, so changing shot cannot move the
+           row of thumbnails underneath it — see .shot -->
+      <div class="shot"><img id="pImg" src="" alt=""></div>
       <div class="panel-thumbs" id="pThumbs"></div>
     </div>
     <div class="panel-info">
