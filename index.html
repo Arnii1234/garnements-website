@@ -401,8 +401,25 @@
     align-items:center;justify-content:center;gap:16px;
     padding:34px;min-height:420px;
   }
-  .panel-img > img{width:100%;flex:1;min-height:0;
-    max-height:calc(100vh - 150px);object-fit:contain;}
+  /* A hairline of ink around the shot, to give it an edge against the panel
+     rather than bleeding into it. The border is only worth drawing if the
+     element IS the picture, so the height comes from the width and the
+     picture's own ratio instead of being stretched to the column: with the
+     old flex:1 the box stayed full column height while object-fit:contain
+     shrank the picture inside it, and a landscape drawing ended up outlined
+     with a tall rectangle of empty space around it. */
+  .panel-img > img{
+    width:auto;height:auto;
+    max-width:100%;max-height:calc(100vh - 150px);
+    border:1px solid var(--ink);
+  }
+  /* A photograph carries its own pixel size and is far bigger than the column,
+     so the two maxima above shrink it to fit and the box lands exactly on it.
+     A drawing does not: these SVGs ship no width/height, so the browser gives
+     them a couple of hundred pixels and they would sit marooned in the middle
+     of the panel at that size. They get told to fill the column instead, and
+     take their height from their own ratio. */
+  .panel-img > img[src$=".svg"]{ width:100%; }
   /* photographs first, drawing after — one row, no carousel to get lost in */
   .panel-thumbs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
   .panel-thumbs button{
@@ -1833,24 +1850,25 @@ function railShift(){
 function centreActive(){
   rail.style.transform = 'translateX(' + railShift() + 'px)';
 }
-/* ---------- getting out of the window's way ----------
-   Centring the chosen book in what's left of the screen is only half of it:
-   any book sitting to its LEFT is still standing where the product window
-   now is. Those swing around to the far side of the chosen one instead, so
-   the whole left of the screen belongs to the window.
-   Where it lands is read from the rail's own layout — put its box down just
+/* ---------- where the waiting books stand ----------
+   Picking a book puts every other one BEHIND AND TO THE RIGHT of it, always
+   the same side, whether it started life to the left or the right. That is
+   what makes the shelf read the same however you got there: the one you are
+   reading stands clear, the rest wait over its right shoulder. It also leaves
+   the whole left of the screen free, which is where the product window opens.
+   Where it lands is read from the rail's own layout — its box goes down just
    past the chosen book's, one gap along, mirroring the spacing it had on the
    other side. offsetLeft/offsetWidth are unaffected by any of the transforms
    involved, so this measures the resting layout no matter what is mid-swing. */
 /* how much of a parked book still has to show past the right edge. Sending it
    the full distance puts it exactly one screen-width out and it vanishes
    entirely — the swing would end somewhere nobody can see, and there would be
-   no way back to that sketchbook without closing the window first. Landing it
-   at the margin instead keeps the same "another book waits over there" reading
-   the shelf has at rest. */
+   no way back to that sketchbook at all. Landing it at the margin instead
+   keeps the same "another book waits over there" reading the shelf has at
+   rest. */
 const IDLE_SCALE = .84, ORBIT_PEEK = .28;
 function orbitTarget(i){
-  if(!modalOpen || activeIndex < 0 || i >= activeIndex) return 0;
+  if(activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
   const gap = parseFloat(getComputedStyle(rail).columnGap) || 0;
   const natural = (act.offsetLeft + act.offsetWidth + gap) - me.offsetLeft;
@@ -1882,13 +1900,31 @@ function updateOrbits(instant){
     const to   = orbitTarget(i);
     if(Math.abs(to - from) < 1) return;
     if(mount._orbit){ mount._orbit.cancel(); mount._orbit = null; }
+    /* Only a move long enough to carry it past the book it is parking behind
+       gets the arc — that is the one where going around the back means
+       anything. Opening the window nudges the same book a little further over
+       (the rail gives up the left side), and a shrink-away-and-return on a
+       nudge that short would read as a glitch, so those ride the ordinary CSS
+       transition instead. */
+    const swings = !instant && i !== activeIndex &&
+                   Math.abs(to - from) > mount.offsetWidth * .9;
+    if(!swings){
+      /* the chosen book never orbits, and a resize is a re-measure rather
+         than a move — both land on the number with nothing to animate */
+      if(instant || i === activeIndex){
+        mount.style.transition = 'none';
+        mount.style.setProperty('--orbit', to + 'px');
+        mount.offsetHeight;
+        mount.style.transition = '';
+      } else {
+        mount.style.setProperty('--orbit', to + 'px');
+      }
+      return;
+    }
     mount.style.transition = 'none';
     mount.style.setProperty('--orbit', to + 'px');
     mount.offsetHeight;
     mount.style.transition = '';
-    /* the chosen book never orbits, and a resize is a re-measure rather than
-       a move — both just land on the number */
-    if(instant || i === activeIndex) return;
     const lift = mount.offsetHeight * .06;
     mount._orbit = mount.animate([
       {transform:`translateX(${from}px) scale(.84)`},
@@ -1918,10 +1954,11 @@ function setActive(i){
   centreActive();
   rail.offsetHeight;
   rail.style.transition = '';
-  /* the picked book snaps rather than grows, so whatever was orbiting for it
-     snaps back too — animating an arc against that would be two different
-     stories about the same moment */
-  updateOrbits(true);
+  /* The picked book snaps, but the one it displaces is worth watching: it
+     swings around behind to take up its place on the right. That is the whole
+     move made visible, and it is the same arc the shelf uses everywhere else,
+     so picking a book and opening a piece read as one language. */
+  updateOrbits();
   const b = books[activeIndex];
   b.relayout();
   if(b.atCover()) b.next();
@@ -1936,7 +1973,9 @@ function deselect(){
   activeBook = null;
   books.forEach(b => b.mount.classList.remove('active'));
   centreActive();
-  updateOrbits(true);
+  /* handing back to the picker, the parked book swings home the same way it
+     left rather than blinking back to the pair */
+  updateOrbits();
 }
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
   /* already the selected book and still showing its cover — just open it,
