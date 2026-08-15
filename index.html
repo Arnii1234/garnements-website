@@ -2364,6 +2364,30 @@ function deselect(){
      left rather than blinking back to the pair */
   updateOrbits();
 }
+/* Clicking away from an open book closes it — the same "click outside to
+   dismiss" the product panel already has. rail.contains covers both the
+   active book AND the parked one (clicking that already switches to it via
+   its own handler below, and never reaches here) with a plain ancestry
+   check rather than caring whether any particular click happened to stop
+   its own propagation — simpler, and it can't be defeated by a click
+   somewhere in the pad that forgets to. Clicks inside the product panel
+   never reach this either, but for the opposite reason: #overlay's own
+   listener already stops them before they can bubble this far.
+   closeRapidly + deselect together, not deselect alone — deselect only ever
+   updates the SITE's idea of which book is selected, and was always paired
+   with a book already mid-flip back to its cover by the time it runs (see
+   prev()/jumpTo()). A bare deselect() here would shrink the book down to
+   its picker size while it was still showing whatever inner page it was on,
+   which reads as broken rather than closed. This is the exact pairing
+   setActive already uses on the book it is leaving — closeRapidly's own
+   wave is built to look right composing under a simultaneous shrink, so
+   nothing here needs to wait for it to finish first. */
+document.addEventListener('click', e => {
+  if(activeIndex !== -1 && !rail.contains(e.target)){
+    books[activeIndex].closeRapidly();
+    deselect();
+  }
+});
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
   /* a swipe through the stack ends with a tap-like event on whatever was
      under the finger; without this, browsing to the next book would open it */
