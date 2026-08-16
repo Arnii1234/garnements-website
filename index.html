@@ -328,13 +328,14 @@
   /* Nothing in here is text to be selected, and on a touch screen a swipe
      through the stack otherwise drags a blue selection across the artwork —
      and on iOS a long press raises the copy/share callout on top of that. */
-  /* NOT clipped here on a wide screen. #fit scales this element about its own
-     centre, so its painted box is narrower than the window — at 1440 with the
-     pads scaled to .8 it runs 142 to 1298 rather than 0 to 1440. A book slid
-     toward the right edge lost everything past 1298 even though the window had
-     room to spare, which is what cut the open sketchbook off. body already
-     clips at the window, so nothing is gained by clipping again in here; the
-     stack does need it, and takes it back in the query below. */
+  /* NOT clipped here. #fit scales this element about its own centre, so its
+     painted box is narrower than the window — at 1440 with the pads scaled to
+     .8 it runs 142 to 1298 rather than 0 to 1440. A book slid toward the right
+     edge lost everything past 1298 even though the window had room to spare,
+     which is what cut the open sketchbook off. body already clips at the
+     window, so nothing is gained by clipping again in here — true on a phone
+     too now that the roster tucks a book behind its neighbour instead of
+     stacking the pair in a column body's own clip couldn't reach into. */
   .rail{
     position:relative; width:100%; flex:none;
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
@@ -389,25 +390,26 @@
      same size, so there is nothing correct to animate FROM. Losing this
      transition is what makes that possible; see setActive. */
   .book.active{ transition:none; }
-  /* ---------- narrow screens: the pair becomes a stack ----------
-     Two pads will not stand beside each other on a phone — both ended up half
-     off the screen with the gap between them in the middle. They stack instead,
-     one to a screenful, and the rail slides UP and DOWN rather than across:
-     swipe to go from one to the next, press the one you want (see the picker's
-     touch handlers, and centreActive, which switches axis on the same query).
-     The rail takes the full height it was given, so the books either side of
-     the one being shown are clipped away rather than crowding it.
-     This block has to come AFTER the rules it is overriding — sitting above
-     them, only flex-direction survived and the gap and the book's own bottom
-     margin were quietly restored by the later declarations. */
-  @media(max-width:900px){
-    .books{ flex-direction:column; align-items:center; width:auto; gap:0; }
-    .book{ margin-bottom:0; }
-    /* here the clip earns its keep: it is what hides the books above and below
-       the one being shown, which body's own clip cannot do since they sit in
-       the middle of the window rather than past its edges */
-    .rail{ height:100%; overflow:hidden; }
+  /* ---------- narrow screens: the pair becomes a roster ----------
+     Stays the same row it always was — a phone just has no room to show both
+     books at rest size, so JS (frontIndex/orbitTarget, gated on isMobile())
+     tucks whichever one isn't "front" mostly behind it, the same tuck a
+     desktop book gets once a product opens beside it. That leaves one pad
+     standing clear, exactly as wide as it is everywhere else, with the next
+     one's coil peeking from behind its right shoulder — press it, or swipe,
+     to bring it forward (see the picker's touch handlers). */
+  /* The book standing "front" of the roster is never scaled down like an
+     ordinary waiting book — orbitTarget's own arithmetic assumes whatever it
+     tucks behind sits at its true layout edge, unscaled, which is only true
+     once this overrides the shared .book:not(.active) rule above. Specificity
+     alone (not source order) is what makes that override reliable on hover
+     too — see the selector. */
+  .rail .book.front:not(.active){
+    transform:translateX(var(--orbit,0px)) scale(1);
   }
+  /* so the front card paints over the one tucked behind it — same reasoning
+     as .book.active, just for a book that hasn't been chosen yet */
+  .book.front{ z-index:1; }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -1346,19 +1348,33 @@ function buildBinding(){
 const bindEl = buildBinding();
 
 /* The binding and the WebGL canvas live outside the pad, so they have to be
-   parked over it by hand whenever the layout changes. */
-function layoutOverlays(){
+   parked over it by hand whenever the layout changes. Split in two because
+   the resize listener below needs to run only the first half on a book that
+   isn't the selected one — see there for why. */
+function layoutBinding(){
   const w = cal.offsetWidth, h = cal.offsetHeight;
   bindEl.style.left   = cal.offsetLeft + 'px';
   bindEl.style.width  = w + 'px';
   bindEl.style.top    = (cal.offsetTop - h * 0.02861) + 'px';   /* viewBox y −40 */
   bindEl.style.height = (h * 0.11801) + 'px';                   /* 165 tall      */
+}
+function layoutOverlays(){
+  layoutBinding();
   layoutGL();
 }
-/* Only while this book is the selected one. A waiting book is scaled down, and
-   measuring it in that state would feed the scale into glBox twice over. */
+/* The coil has to be re-parked on EVERY resize, active book or not — a
+   waiting one still has to look like a real sketchbook, coil and all, and
+   its own cal box moves whenever the rail is re-centred, the pair is
+   re-tucked, or the surrounding chrome (a phone's own address bar showing or
+   hiding) changes the room #fit has to work with. Left to only the active
+   book, a resize while this one was waiting parked the coil exactly where it
+   used to be — visibly detached from the pad the next time it was picked,
+   and gone entirely if the drift carried it out from under the board.
+   layoutGL stays gated to the selected book only — measuring a waiting one,
+   which is scaled down, would feed that scale into glBox twice over. */
 addEventListener('resize', () => {
-  if(mount.classList.contains('active')) layoutOverlays();
+  layoutBinding();
+  if(mount.classList.contains('active')) layoutGL();
 });
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2159,18 +2175,29 @@ let activeIndex = -1;
    centreActive so the book slides right to share the screen with it rather
    than staying centred underneath it. */
 let modalOpen = false;
-/* On a phone the pair becomes a stack (see the max-width:900px block) and the
-   rail slides up and down instead of across. There is no room to show both at
-   once, so the picker has to remember which one it is showing — where the wide
-   layout can simply centre the pair and let you look at either. */
-const stackedMQ = matchMedia('(max-width:900px)');
-const isStacked = () => stackedMQ.matches;
+/* On a phone there is no room to show the pair at rest size side by side, so
+   the picker has to remember which one is standing FRONT of the roster —
+   where the wide layout can simply centre the pair and let you look at
+   either. See frontIndex(), which is what actually reads this. */
+const mobileMQ = matchMedia('(max-width:900px)');
+const isMobile = () => mobileMQ.matches;
 let browseIndex = 0;
-/* Before either book is picked there is nothing to centre ON — .books (this
-   same element `rail` points to) is centred within its own parent instead,
-   so the pair sits together rather than one arbitrarily standing in for
-   "the selection". offsetLeft/offsetWidth are layout, not paint, so reading
-   them off the element we are about to transform is still no feedback loop.
+/* The book everything else centres and tucks around. Once one is actually
+   chosen that's it, same as always — but before that, on a screen with no
+   room to show the pair at rest size, the roster still needs a "this one is
+   front" to centre on and tuck the other behind, which is what browseIndex
+   remembers (see the swipe handler below). On a wide screen there is nothing
+   to prefer — the pair simply centres together (see railShift's -1 case). */
+function frontIndex(){
+  if(activeIndex !== -1) return activeIndex;
+  return isMobile() ? browseIndex : -1;
+}
+/* Before either book is picked there is nothing to centre ON, on a wide
+   screen — .books (this same element `rail` points to) is centred within its
+   own parent instead, so the pair sits together rather than one arbitrarily
+   standing in for "the selection". offsetLeft/offsetWidth are layout, not
+   paint, so reading them off the element we are about to transform is still
+   no feedback loop.
    While the product panel is open, its width is reserved out of the left
    side rather than centring in the FULL rail width — the panel is
    position:fixed, off the document flow, so nothing does this for free.
@@ -2186,7 +2213,8 @@ let browseIndex = 0;
    window's own edge. So the target is worked out on screen and then brought
    back into the rail's units. */
 function railShift(){
-  const el = activeIndex === -1 ? rail : books[activeIndex].mount;
+  const fi = frontIndex();
+  const el = fi === -1 ? rail : books[fi].mount;
   const host = rail.parentElement;
   const box = host.getBoundingClientRect();
   const s = host.clientWidth ? box.width / host.clientWidth : 1;
@@ -2194,19 +2222,18 @@ function railShift(){
   const centreScreen = reserve + (innerWidth - reserve) / 2;
   return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
-/* The vertical twin of railShift, for the stack. Simpler than the sideways
-   one because nothing is reserved on this axis — the product window takes the
-   whole screen at these widths, so there is no screen-space measurement to
-   reconcile with the rail's own units and everything here is layout. */
-function railShiftY(){
-  const el = books[activeIndex === -1 ? browseIndex : activeIndex].mount;
-  const host = rail.parentElement;
-  return host.clientHeight / 2 - (el.offsetTop + el.offsetHeight/2);
+/* Which book is standing "front" of a phone's roster is a fact the CSS needs
+   too (see .book.front — it's what stops that one card from being scaled
+   down like an ordinary waiting book). Folded into centreActive so every
+   caller that repositions the rail keeps this in step for free, the same way
+   they already keep the transform itself in step. */
+function updateFront(){
+  const fi = (activeIndex === -1 && isMobile()) ? browseIndex : -1;
+  books.forEach((b, i) => b.mount.classList.toggle('front', i === fi));
 }
 function centreActive(){
-  rail.style.transform = isStacked()
-    ? 'translateY(' + railShiftY() + 'px)'
-    : 'translateX(' + railShift() + 'px)';
+  updateFront();
+  rail.style.transform = 'translateX(' + railShift() + 'px)';
 }
 /* ---------- where the waiting books stand ----------
    Picking a book puts every other one BEHIND AND TO THE RIGHT of it, always
@@ -2243,17 +2270,19 @@ const IDLE_SCALE =
    shallower tuck. That clamp stays only as a safety net for a narrow window. */
 const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .85;
 function orbitTarget(i){
-  /* Tucking behind is what the product window needs — it is the thing making
-     room on the left, so nothing should move for it before there is a window
-     to make room FOR. Selecting a book alone leaves both where they always
-     sat: the chosen one full size, the other at rest in the row exactly as it
-     was before any of this existed. Gated on modalOpen rather than
-     activeIndex, which is true the instant a book is picked — tying it to
-     that pulled the waiting book in behind on every open, product or not.
-     Nothing parks sideways on a stack either — the waiting books are simply
-     above and below, and the rail scrolls to whichever one is wanted. */
-  if(isStacked() || !modalOpen || activeIndex < 0 || i === activeIndex) return 0;
-  const act = books[activeIndex].mount, me = books[i].mount;
+  /* On a wide screen, tucking behind is what the product window needs — it is
+     the thing making room on the left, so nothing should move for it before
+     there is a window to make room FOR. Selecting a book alone leaves both
+     where they always sat: the chosen one full size, the other at rest in
+     the row exactly as it was before any of this existed.
+     On a phone there is no such spare moment — there was never room to show
+     the pair at rest size side by side, so the one that isn't front tucks in
+     from the start, which is what makes the roster read as a roster rather
+     than two books fighting for the same strip of screen. */
+  const fi = frontIndex();
+  if(fi === -1 || i === fi) return 0;
+  if(!isMobile() && !modalOpen) return 0;
+  const act = books[fi].mount, me = books[i].mount;
   /* Everything here is layout, then shifted by the rail's own target offset —
      never getBoundingClientRect, which mid-swing reports where the animation
      has the book rather than where its resting place is, and would fold the
@@ -2261,7 +2290,9 @@ function orbitTarget(i){
      edges inside its layout box, so the visible edge is `inset` in from it. */
   const shown = me.offsetWidth * IDLE_SCALE;
   const inset = (me.offsetWidth - shown) / 2;
-  /* the chosen book is never scaled, so its own edge is its layout edge */
+  /* the front book — chosen, or just standing at the head of a phone's
+     roster — is never scaled, so its own edge is its layout edge (see
+     .book.front:not(.active) overriding the shared idle-scale rule) */
   const natural =
     (act.offsetLeft + act.offsetWidth - shown * ORBIT_TUCK - inset) - me.offsetLeft;
   const restLeft = railShift() + me.offsetLeft + inset;
@@ -2410,27 +2441,30 @@ books.forEach((b, i) => b.mount.addEventListener('click', () => {
   if(i === activeIndex){ if(b.atCover()) b.next(); return; }
   setActive(i);
 }));
-/* ---------- swiping through the stack ----------
-   Only while nothing is chosen. Once a book is open the same up-and-down
-   gesture belongs to its pages (see cal's own touch handlers), and an inactive
-   book's stage is click-through anyway, so the two never contend for a touch. */
-let pickY = null, justSwiped = false;
+/* ---------- swiping through the roster ----------
+   Only while nothing is chosen, and only sideways — a page flip (see cal's
+   own touch handlers) reads up/down instead, so the two gestures never
+   collide even leaving activeIndex out of it. An inactive book's stage is
+   click-through anyway, which is the other half of why they never contend
+   for the same touch. */
+let pickX = null, justSwiped = false;
 rail.parentElement.addEventListener('touchstart', e => {
   /* cleared here rather than only when a click arrives: a swipe does not
      always produce one, and a flag left standing would eat the next real tap */
   justSwiped = false;
-  pickY = (activeIndex === -1 && isStacked()) ? e.touches[0].clientY : null;
+  pickX = (activeIndex === -1 && isMobile()) ? e.touches[0].clientX : null;
 }, {passive:true});
 rail.parentElement.addEventListener('touchend', e => {
-  if(pickY === null) return;
-  const dy = e.changedTouches[0].clientY - pickY;
-  pickY = null;
-  if(Math.abs(dy) < 40) return;              /* a tap, not a swipe */
-  const to = browseIndex + (dy < 0 ? 1 : -1);
+  if(pickX === null) return;
+  const dx = e.changedTouches[0].clientX - pickX;
+  pickX = null;
+  if(Math.abs(dx) < 40) return;              /* a tap, not a swipe */
+  const to = browseIndex + (dx < 0 ? 1 : -1);
   if(to < 0 || to >= books.length) return;   /* nothing past either end */
   browseIndex = to;
   justSwiped = true;
   centreActive();
+  updateOrbits();
 }, {passive:true});
 /* a resize re-measures where things belong; it is not a move, so the orbit
    lands on the new number rather than swinging to it */
@@ -2438,8 +2472,12 @@ addEventListener('resize', () => { centreActive(); updateOrbits(true); });
 /* Neither book starts selected — both wait, dimmed and arrow-less, until
    pressed. Still needs centring once up front, or the pair would sit at
    whatever the flex layout landed on until the first resize or click moved
-   it, which would read as a jump rather than as having been placed there. */
+   it, which would read as a jump rather than as having been placed there.
+   updateOrbits(true) is the other half of that on a phone — without it the
+   second book would sit at its bare flex position, ungapped, until the first
+   resize event happened to tuck it behind the front one. */
 centreActive();
+updateOrbits(true);
 /* One listener for both pads — without routing, a single arrow key would turn
    a page in each book at once. It drives whichever book the pointer last
    entered, falling back to the first. */
@@ -2719,12 +2757,7 @@ const fitEl = document.getElementById('fit');
 const railEl = fitEl.querySelector('.rail');
 let fitScale = null;
 function fitToViewport(){
-  /* On a stack the rail is as tall as every book piled up, and fitting THAT
-     into the window would shrink each one to a thumbnail. Only one is ever on
-     screen, so one is what has to fit. */
-  const one = railEl.querySelector('.book');
-  const unit = (isStacked() && one) ? one : railEl;
-  const room = fitEl.clientHeight, natural = unit.offsetHeight;
+  const room = fitEl.clientHeight, natural = railEl.offsetHeight;
   const scale = natural ? Math.min(1, room / natural) : 1;
   if(scale === fitScale) return;
   fitScale = scale;
