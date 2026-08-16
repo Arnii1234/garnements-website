@@ -407,7 +407,16 @@
      styles intentionally outrank every rule in this sheet for as long as
      they're set, including .book:not(.active) and its :hover just below.
      They're cleared the moment a book is actually picked (see setActive),
-     which is what hands the book back to these ordinary rules. */
+     which is what hands the book back to these ordinary rules.
+     will-change hints the browser to give each book its own compositor
+     layer up front — without it, the first frame of a drag was where that
+     promotion happened, which is a bigger one-off cost than every frame
+     after it and is exactly the frame a finger is most sensitive to. Scoped
+     to a phone only; the desktop pair only ever animates on a CSS
+     transition, which does not carry the same cost. */
+  @media(max-width:900px){
+    .book{ will-change:transform; }
+  }
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -2217,56 +2226,66 @@ function centreActive(){
   rail.style.transition = '';
   rail.style.transform = 'translateX(' + railShift() + 'px)';
 }
-/* ---------- the roster, on a phone: a filmstrip you can drag ----------
+/* ---------- the roster, on a phone: an endless filmstrip you can drag ----------
    Only live while nothing is chosen — the instant a book opens, the rail and
    every book's transform hand back to centreActive/orbitTarget above, which
    is what clearRosterStyles below is for.
    rosterPos is a continuous read of "which book is centred", not a step
-   count — 0 means book 0 is exactly centred, 1.5 means the drag is exactly
-   halfway from book 1 to book 2, and so on. A real finger never lands on a
-   whole number, which is the whole point: the strip tracks it 1:1 while it
-   moves and coasts on when it lets go (see settleRoster), the way flicking
-   an actual stack of pads would, rather than snapping the moment a swipe
-   crosses some threshold. */
-let rosterPos = 0, browseIndex = 0, rosterAnim = null;
-/* Where the CENTRE of the picture at position p sits, in the rail's own
-   units — a straight lerp between the two real books either side of p.
-   Reads only offsetLeft/offsetWidth (never a mid-drag bounding rect), so a
-   book's resting layout is what's being interpolated, not wherever the
-   filmstrip currently has it painted. */
-function bookCenterAt(p){
-  const n = books.length, c = i => {
-    const m = books[Math.max(0, Math.min(n - 1, i))].mount;
-    return m.offsetLeft + m.offsetWidth / 2;
-  };
-  const lo = Math.floor(p), hi = Math.ceil(p);
-  return lo === hi ? c(lo) : c(lo) + (c(hi) - c(lo)) * (p - lo);
+   count — 0 means book 0 is exactly centred, .5 means the drag is exactly
+   halfway to book 1, and it is never clamped: dragging past the last book
+   just keeps counting (2, 3, …), which is what makes the loop endless — see
+   circDist, which is the only place that number actually gets turned back
+   into "which real book, how far off". A real finger never lands on a whole
+   number either way, which is the rest of the point: the strip tracks it
+   1:1 while it moves and coasts on when it lets go (see settleRoster), the
+   way flicking an actual stack of pads would, rather than snapping the
+   moment a swipe crosses some threshold. */
+let rosterPos = 0, browseIndex = 0, rosterAnim = null, rosterGeom = null;
+/* Signed distance from book i to position p, the SHORT way around a loop of
+   books.length — never plain subtraction, which is what would make two
+   books a line with two dead ends instead of a loop with none. With two
+   books this is always the near side: asking how far book 1 is from
+   rosterPos 1.9 answers -0.1 (book 0 is almost back around), not 0.9. */
+function circDist(i, p){
+  const n = books.length;
+  let d = (i - p) % n;
+  if(d > n / 2) d -= n;
+  if(d < -n / 2) d += n;
+  return d;
 }
-/* The sideways twin of railShift, centring on the interpolated point above
-   instead of one book's own box — same screen/rail unit reconciliation, for
-   the same reason (see railShift's own comment). */
-function railShiftForRoster(p){
+/* Every DOM read the filmstrip needs, taken ONCE — at the start of a drag
+   and again after a resize invalidates it (see rosterGeom = null below) —
+   never per frame. A touchmove and every tick of the coast that follows do
+   nothing but arithmetic on this cache and then write styles; interleaving
+   a getBoundingClientRect/offsetLeft READ into that loop is what forces the
+   browser to flush and recompute layout before it can answer — on every
+   single frame, on a real phone — which is what made this laggy. Reading
+   once and writing many is the whole fix.
+   The rail's own transform is set here too, and only here: it is fixed for
+   as long as this geometry is valid (rosterGeom stays the single source of
+   truth for it), with every book's OWN motion layered on top of that in
+   renderRoster instead of the rail moving under them. */
+function measureRoster(){
   const host = rail.parentElement;
   const box = host.getBoundingClientRect();
   const s = host.clientWidth ? box.width / host.clientWidth : 1;
-  return (innerWidth / 2 - box.left) / s - bookCenterAt(p);
-}
-/* #fit's own scale, folded out the same way railShiftForRoster does — a
-   screen-px drag has to be read in the rail's units before it means
-   anything to rosterPos. */
-function railScale(){
-  const host = rail.parentElement, box = host.getBoundingClientRect();
-  return host.clientWidth ? box.width / host.clientWidth : 1;
-}
-/* Real centre-to-centre spacing between two neighbouring books, in rail
-   units — the flex row's own gap plus their width, not a guess. Both the
-   drag conversion and the resting peek below are read off this, so a wider
-   or narrower book (a different breakpoint, a resize) can never leave them
-   disagreeing with each other. */
-function rosterUnit(){
-  if(books.length < 2) return books[0].mount.offsetWidth || 300;
-  const c = i => books[i].mount.offsetLeft + books[i].mount.offsetWidth / 2;
-  return Math.abs(c(1) - c(0)) || 300;
+  const lefts = books.map(b => b.mount.offsetLeft);
+  const width = books[0].mount.offsetWidth;
+  rosterGeom = {
+    lefts, width,
+    /* resting centre-to-centre spacing, deliberately smaller than the row's
+       real gap (see ROSTER_PEEK) — the next book peeking out from behind
+       this one, not standing a whole pad-width away off the edge of a
+       phone screen */
+    step: width * ROSTER_PEEK,
+    /* screen px of drag per whole rosterPos unit — a book-width's worth of
+       finger travel to fully swap the pair, which is what keeps a small
+       peek (above) from also making the drag itself feel twitchy */
+    dragUnit: width * s,
+  };
+  rail.style.transition = 'none';
+  rail.style.transform =
+    'translateX(' + ((innerWidth / 2 - box.left) / s - (lefts[0] + width / 2)) + 'px)';
 }
 /* Hands every book back to the plain .book/.book:not(.active) CSS the
    moment one is actually picked (see centreActive) — inline styles beat any
@@ -2288,28 +2307,23 @@ function stopRosterAnim(){
    behind this one", the same reading the desktop tuck already has once a
    product opens beside it. */
 const ROSTER_PEEK = .3;
-/* Paints rosterPos. Never through a CSS transition — this runs once per
-   drag event and once per animation frame during the coast, and a
+/* Paints rosterPos — pure arithmetic against the geometry measureRoster
+   cached, no DOM reads, so this is cheap enough to call every animation
+   frame. Never through a CSS transition either, for the same reason
+   layoutBinding's resize listener gives for itself: this already runs once
+   per drag event and once per animation frame during the coast, and a
    transition restarting on every one of those would lag a frame behind the
-   value it's chasing rather than showing it. transform/opacity/z-index are
-   set with transition:none instead, so every call lands instantly and the
-   motion comes entirely from rosterPos changing smoothly beneath it. */
+   value it's chasing rather than showing it. */
 function renderRoster(){
-  rail.style.transition = 'none';
-  rail.style.transform = 'translateX(' + railShiftForRoster(rosterPos) + 'px)';
-  /* railShiftForRoster already re-centres whichever book rosterPos is
-     nearest, using each book's true natural spacing — so AT the centre
-     (d=0) nothing more is needed. A neighbour still sitting at its own true
-     offset from there is a whole book away, which is what `pull` claws
-     back: every book gets an extra nudge TOWARD the centre, scaled by how
-     far it is from it, that fades to exactly nothing right at d=0 (so the
-     book actually being centred is never distorted by it) and reaches its
-     full amount at |d|=1, landing a resting neighbour at ROSTER_PEEK of a
-     book-width away instead of a full one. */
-  const pull = rosterUnit() - books[0].mount.offsetWidth * ROSTER_PEEK;
+  if(!rosterGeom) measureRoster();
+  const g = rosterGeom;
   books.forEach((b, i) => {
-    const d = i - rosterPos, ad = Math.min(Math.abs(d), 1);
-    const extra = -Math.sign(d) * ad * pull;
+    /* cancels this book's own natural offset from book 0 — the rail is
+       fixed on book 0's resting spot (see measureRoster) — then lays the
+       desired circular offset on top; at d=0 that's a net zero, so the
+       book actually centred is never distorted by any of this */
+    const d = circDist(i, rosterPos), ad = Math.min(Math.abs(d), 1);
+    const extra = (g.lefts[0] - g.lefts[i]) + d * g.step;
     const s = b.mount.style;
     s.transition = 'none';
     s.transform = `translateX(${extra}px) scale(${1 - ad * (1 - IDLE_SCALE)})`;
@@ -2320,23 +2334,16 @@ function renderRoster(){
     s.zIndex = ad <= .5 ? 2 : 1;
   });
 }
-/* Keeps rosterPos inside [0, books.length-1] — with a little give while a
-   finger is actually dragging past the end (rubber === true), so pulling
-   past the last book still moves *something* instead of going dead against
-   a hard wall, and springs back once settleRoster takes over. */
-function clampRoster(p, rubber){
-  const max = books.length - 1;
-  if(p < 0) return rubber ? p * .35 : 0;
-  if(p > max) return rubber ? max + (p - max) * .35 : max;
-  return p;
-}
 /* Friction while it's still coasting, a light spring pulling it onto the
    nearest book once it's nearly stopped — the spring is what guarantees it
    always ends up EXACTLY on a book rather than wherever friction happened to
    run out. v0 is in roster-units per ms (see the drag handler, which tracks
    the same units so the coast picks up at the speed the finger was actually
    moving). Kept brief on purpose — "slightly", not a real flick-scroll — so
-   a fast swipe reads as a nudge with a bit of natural give, not a spin. */
+   a fast swipe reads as a nudge with a bit of natural give, not a spin.
+   Never clamped — rosterPos is free to sail past books.length and keep
+   going, which combined with circDist is the entire mechanism behind an
+   endless loop; there is no edge here left to hit. */
 function settleRoster(v0){
   stopRosterAnim();
   let v = v0, vSpring = 0, last = performance.now();
@@ -2345,15 +2352,15 @@ function settleRoster(v0){
     const dt = Math.min(now - last, 40); last = now;
     v *= Math.max(0, 1 - FRICTION * dt);
     let p = rosterPos + v * dt;
-    const settled = Math.abs(v) < .0008;
-    if(settled || p < 0 || p > books.length - 1){
+    if(Math.abs(v) < .0008){
       v = 0;
-      const target = Math.round(clampRoster(p, false));
+      const target = Math.round(p);
       const dx = target - p;
       vSpring = vSpring * DAMP + dx * SPRING;
       p += vSpring;
       if(Math.abs(dx) < .002 && Math.abs(vSpring) < .0006){
-        rosterPos = browseIndex = target;
+        const n = books.length;
+        rosterPos = browseIndex = ((target % n) + n) % n;
         renderRoster();
         rosterAnim = null;
         return;
@@ -2526,6 +2533,7 @@ function deselect(){
      one — on a stack that is the difference between staying where you were
      and being thrown to the top of the pile */
   browseIndex = rosterPos = activeIndex;
+  rosterGeom = null;
   activeIndex = -1;
   activeBook = null;
   books.forEach(b => b.mount.classList.remove('active'));
@@ -2574,17 +2582,30 @@ books.forEach((b, i) => b.mount.addEventListener('click', () => {
    click-through anyway, which is the other half of why they never contend
    for the same touch.
    Tracks the finger 1:1 rather than waiting for a threshold and jumping: a
-   book-to-book distance in SCREEN px is converted to one unit of rosterPos
-   on every move, so the filmstrip is always exactly under the finger.
+   book-width of SCREEN px is converted to one unit of rosterPos on every
+   move, so the filmstrip is always exactly under the finger.
    dragV keeps a running roster-units-per-ms reading off the last two
    samples, which is what settleRoster picks the coast up at — a fast flick
-   and a slow drag that end at the same point should not release the same. */
+   and a slow drag that end at the same point should not release the same.
+   The actual paint is queued through requestAnimationFrame rather than run
+   straight from the touchmove handler — touchmove can fire faster than the
+   screen repaints, and writing styles from every single one of those queues
+   up more layout/paint work than the browser can keep up with, on a real
+   phone, which reads as lag; coalescing however many arrive within a frame
+   into the one call that frame can actually show is what a passive
+   `{passive:true}` listener can't do for you by itself. */
 let dragging = false, dragStartX = 0, dragStartPos = 0, dragLastX = 0,
-    dragLastT = 0, dragV = 0, justDragged = false;
+    dragLastT = 0, dragV = 0, justDragged = false, rosterPaintQueued = false;
+function queueRosterPaint(){
+  if(rosterPaintQueued) return;
+  rosterPaintQueued = true;
+  requestAnimationFrame(() => { rosterPaintQueued = false; renderRoster(); });
+}
 rail.parentElement.addEventListener('touchstart', e => {
   justDragged = false;
   if(activeIndex !== -1 || !isMobile()){ dragging = false; return; }
   stopRosterAnim();
+  measureRoster();
   dragging = true;
   dragStartX = dragLastX = e.touches[0].clientX;
   dragStartPos = rosterPos;
@@ -2594,13 +2615,13 @@ rail.parentElement.addEventListener('touchstart', e => {
 rail.parentElement.addEventListener('touchmove', e => {
   if(!dragging) return;
   const x = e.touches[0].clientX, now = performance.now();
-  const unit = rosterUnit() * railScale();
-  rosterPos = clampRoster(dragStartPos - (x - dragStartX) / unit, true);
+  const unit = rosterGeom.dragUnit;
+  rosterPos = dragStartPos - (x - dragStartX) / unit;
   const dt = Math.max(1, now - dragLastT);
   dragV = -(x - dragLastX) / dt / unit;
   dragLastX = x; dragLastT = now;
   if(Math.abs(x - dragStartX) > 6) justDragged = true;
-  renderRoster();
+  queueRosterPaint();
 }, {passive:true});
 rail.parentElement.addEventListener('touchend', () => {
   if(!dragging) return;
@@ -2608,8 +2629,10 @@ rail.parentElement.addEventListener('touchend', () => {
   if(justDragged) settleRoster(dragV);
 }, {passive:true});
 /* a resize re-measures where things belong; it is not a move, so the orbit
-   lands on the new number rather than swinging to it */
-addEventListener('resize', () => { centreActive(); updateOrbits(true); });
+   lands on the new number rather than swinging to it. rosterGeom is stale
+   the instant the window changes size, so it's invalidated here rather than
+   trusted until the next drag happens to remeasure it on its own. */
+addEventListener('resize', () => { rosterGeom = null; centreActive(); updateOrbits(true); });
 /* Neither book starts selected — both wait, dimmed and arrow-less, until
    pressed. Still needs centring once up front, or the pair would sit at
    whatever the flex layout landed on until the first resize or click moved
