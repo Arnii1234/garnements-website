@@ -97,6 +97,15 @@
     transition:border-color .25s;
   }
   .cart-btn:hover{border-color:var(--ink);}
+  /* On a phone the masthead was competing with the book below it rather than
+     sitting quietly above it — sized for a desktop window, it read as loud
+     as the sketchbook itself on a narrow screen. Padding comes down with it,
+     or the now-smaller type just leaves the same gap looking oversized. */
+  @media(max-width:900px){
+    header{ padding:20px 24px 0; }
+    .brand{ font-size:17px; }
+    .cart-btn{ font-size:9.5px; }
+  }
 
   /* ---------- calendar ---------- */
   .stage{
@@ -390,26 +399,15 @@
      same size, so there is nothing correct to animate FROM. Losing this
      transition is what makes that possible; see setActive. */
   .book.active{ transition:none; }
-  /* ---------- narrow screens: the pair becomes a roster ----------
-     Stays the same row it always was — a phone just has no room to show both
-     books at rest size, so JS (frontIndex/orbitTarget, gated on isMobile())
-     tucks whichever one isn't "front" mostly behind it, the same tuck a
-     desktop book gets once a product opens beside it. That leaves one pad
-     standing clear, exactly as wide as it is everywhere else, with the next
-     one's coil peeking from behind its right shoulder — press it, or swipe,
-     to bring it forward (see the picker's touch handlers). */
-  /* The book standing "front" of the roster is never scaled down like an
-     ordinary waiting book — orbitTarget's own arithmetic assumes whatever it
-     tucks behind sits at its true layout edge, unscaled, which is only true
-     once this overrides the shared .book:not(.active) rule above. Specificity
-     alone (not source order) is what makes that override reliable on hover
-     too — see the selector. */
-  .rail .book.front:not(.active){
-    transform:translateX(var(--orbit,0px)) scale(1);
-  }
-  /* so the front card paints over the one tucked behind it — same reasoning
-     as .book.active, just for a book that hasn't been chosen yet */
-  .book.front{ z-index:1; }
+  /* ---------- narrow screens: the pair becomes a filmstrip ----------
+     Stays the same row it always was. On a phone, while nothing is chosen,
+     renderRoster() (JS) drives each book's transform/opacity/z-index by hand,
+     inline, every frame of a drag or its momentum — a CSS transition can't
+     track a finger 1:1 or coast the way a flick should, so those inline
+     styles intentionally outrank every rule in this sheet for as long as
+     they're set, including .book:not(.active) and its :hover just below.
+     They're cleared the moment a book is actually picked (see setActive),
+     which is what hands the book back to these ordinary rules. */
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
@@ -478,6 +476,10 @@
     pointer-events:auto;
   }
   body.modal-open footer a{ pointer-events:none; }
+  /* the colophon line, same reasoning as the masthead above */
+  @media(max-width:900px){
+    footer{ font-size:7.5px; padding:18px 0 26px; }
+  }
   footer a:hover{border-color:var(--ink);}
 
   /* ---------- product modal ----------
@@ -2175,29 +2177,13 @@ let activeIndex = -1;
    centreActive so the book slides right to share the screen with it rather
    than staying centred underneath it. */
 let modalOpen = false;
-/* On a phone there is no room to show the pair at rest size side by side, so
-   the picker has to remember which one is standing FRONT of the roster —
-   where the wide layout can simply centre the pair and let you look at
-   either. See frontIndex(), which is what actually reads this. */
 const mobileMQ = matchMedia('(max-width:900px)');
 const isMobile = () => mobileMQ.matches;
-let browseIndex = 0;
-/* The book everything else centres and tucks around. Once one is actually
-   chosen that's it, same as always — but before that, on a screen with no
-   room to show the pair at rest size, the roster still needs a "this one is
-   front" to centre on and tuck the other behind, which is what browseIndex
-   remembers (see the swipe handler below). On a wide screen there is nothing
-   to prefer — the pair simply centres together (see railShift's -1 case). */
-function frontIndex(){
-  if(activeIndex !== -1) return activeIndex;
-  return isMobile() ? browseIndex : -1;
-}
-/* Before either book is picked there is nothing to centre ON, on a wide
-   screen — .books (this same element `rail` points to) is centred within its
-   own parent instead, so the pair sits together rather than one arbitrarily
-   standing in for "the selection". offsetLeft/offsetWidth are layout, not
-   paint, so reading them off the element we are about to transform is still
-   no feedback loop.
+/* Before either book is picked there is nothing to centre ON — .books (this
+   same element `rail` points to) is centred within its own parent instead,
+   so the pair sits together rather than one arbitrarily standing in for
+   "the selection". offsetLeft/offsetWidth are layout, not paint, so reading
+   them off the element we are about to transform is still no feedback loop.
    While the product panel is open, its width is reserved out of the left
    side rather than centring in the FULL rail width — the panel is
    position:fixed, off the document flow, so nothing does this for free.
@@ -2213,8 +2199,7 @@ function frontIndex(){
    window's own edge. So the target is worked out on screen and then brought
    back into the rail's units. */
 function railShift(){
-  const fi = frontIndex();
-  const el = fi === -1 ? rail : books[fi].mount;
+  const el = activeIndex === -1 ? rail : books[activeIndex].mount;
   const host = rail.parentElement;
   const box = host.getBoundingClientRect();
   const s = host.clientWidth ? box.width / host.clientWidth : 1;
@@ -2222,18 +2207,163 @@ function railShift(){
   const centreScreen = reserve + (innerWidth - reserve) / 2;
   return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
-/* Which book is standing "front" of a phone's roster is a fact the CSS needs
-   too (see .book.front — it's what stops that one card from being scaled
-   down like an ordinary waiting book). Folded into centreActive so every
-   caller that repositions the rail keeps this in step for free, the same way
-   they already keep the transform itself in step. */
-function updateFront(){
-  const fi = (activeIndex === -1 && isMobile()) ? browseIndex : -1;
-  books.forEach((b, i) => b.mount.classList.toggle('front', i === fi));
-}
 function centreActive(){
-  updateFront();
+  /* On a phone, while nothing is picked, the filmstrip (below) owns both the
+     rail's transform and every book's own transform/opacity — trying to also
+     drive the rail from here would just have the two fight over it. */
+  if(activeIndex === -1 && isMobile()){ renderRoster(); return; }
+  stopRosterAnim();
+  clearRosterStyles();
+  rail.style.transition = '';
   rail.style.transform = 'translateX(' + railShift() + 'px)';
+}
+/* ---------- the roster, on a phone: a filmstrip you can drag ----------
+   Only live while nothing is chosen — the instant a book opens, the rail and
+   every book's transform hand back to centreActive/orbitTarget above, which
+   is what clearRosterStyles below is for.
+   rosterPos is a continuous read of "which book is centred", not a step
+   count — 0 means book 0 is exactly centred, 1.5 means the drag is exactly
+   halfway from book 1 to book 2, and so on. A real finger never lands on a
+   whole number, which is the whole point: the strip tracks it 1:1 while it
+   moves and coasts on when it lets go (see settleRoster), the way flicking
+   an actual stack of pads would, rather than snapping the moment a swipe
+   crosses some threshold. */
+let rosterPos = 0, browseIndex = 0, rosterAnim = null;
+/* Where the CENTRE of the picture at position p sits, in the rail's own
+   units — a straight lerp between the two real books either side of p.
+   Reads only offsetLeft/offsetWidth (never a mid-drag bounding rect), so a
+   book's resting layout is what's being interpolated, not wherever the
+   filmstrip currently has it painted. */
+function bookCenterAt(p){
+  const n = books.length, c = i => {
+    const m = books[Math.max(0, Math.min(n - 1, i))].mount;
+    return m.offsetLeft + m.offsetWidth / 2;
+  };
+  const lo = Math.floor(p), hi = Math.ceil(p);
+  return lo === hi ? c(lo) : c(lo) + (c(hi) - c(lo)) * (p - lo);
+}
+/* The sideways twin of railShift, centring on the interpolated point above
+   instead of one book's own box — same screen/rail unit reconciliation, for
+   the same reason (see railShift's own comment). */
+function railShiftForRoster(p){
+  const host = rail.parentElement;
+  const box = host.getBoundingClientRect();
+  const s = host.clientWidth ? box.width / host.clientWidth : 1;
+  return (innerWidth / 2 - box.left) / s - bookCenterAt(p);
+}
+/* #fit's own scale, folded out the same way railShiftForRoster does — a
+   screen-px drag has to be read in the rail's units before it means
+   anything to rosterPos. */
+function railScale(){
+  const host = rail.parentElement, box = host.getBoundingClientRect();
+  return host.clientWidth ? box.width / host.clientWidth : 1;
+}
+/* Real centre-to-centre spacing between two neighbouring books, in rail
+   units — the flex row's own gap plus their width, not a guess. Both the
+   drag conversion and the resting peek below are read off this, so a wider
+   or narrower book (a different breakpoint, a resize) can never leave them
+   disagreeing with each other. */
+function rosterUnit(){
+  if(books.length < 2) return books[0].mount.offsetWidth || 300;
+  const c = i => books[i].mount.offsetLeft + books[i].mount.offsetWidth / 2;
+  return Math.abs(c(1) - c(0)) || 300;
+}
+/* Hands every book back to the plain .book/.book:not(.active) CSS the
+   moment one is actually picked (see centreActive) — inline styles beat any
+   selector in the sheet for as long as they're set, so leaving one behind
+   would freeze that book at whatever the filmstrip last painted it. */
+function clearRosterStyles(){
+  books.forEach(b => {
+    const s = b.mount.style;
+    s.transform = ''; s.opacity = ''; s.zIndex = ''; s.transition = '';
+  });
+}
+function stopRosterAnim(){
+  if(rosterAnim){ cancelAnimationFrame(rosterAnim); rosterAnim = null; }
+}
+/* How close a neighbour rests once the drag lets go, as a fraction of a
+   book's own width — small on purpose. Left at pure natural spacing, the
+   next book sits a whole pad-width away, off the edge of a phone screen
+   entirely; this is what turns that into "the next one peeks out from
+   behind this one", the same reading the desktop tuck already has once a
+   product opens beside it. */
+const ROSTER_PEEK = .3;
+/* Paints rosterPos. Never through a CSS transition — this runs once per
+   drag event and once per animation frame during the coast, and a
+   transition restarting on every one of those would lag a frame behind the
+   value it's chasing rather than showing it. transform/opacity/z-index are
+   set with transition:none instead, so every call lands instantly and the
+   motion comes entirely from rosterPos changing smoothly beneath it. */
+function renderRoster(){
+  rail.style.transition = 'none';
+  rail.style.transform = 'translateX(' + railShiftForRoster(rosterPos) + 'px)';
+  /* railShiftForRoster already re-centres whichever book rosterPos is
+     nearest, using each book's true natural spacing — so AT the centre
+     (d=0) nothing more is needed. A neighbour still sitting at its own true
+     offset from there is a whole book away, which is what `pull` claws
+     back: every book gets an extra nudge TOWARD the centre, scaled by how
+     far it is from it, that fades to exactly nothing right at d=0 (so the
+     book actually being centred is never distorted by it) and reaches its
+     full amount at |d|=1, landing a resting neighbour at ROSTER_PEEK of a
+     book-width away instead of a full one. */
+  const pull = rosterUnit() - books[0].mount.offsetWidth * ROSTER_PEEK;
+  books.forEach((b, i) => {
+    const d = i - rosterPos, ad = Math.min(Math.abs(d), 1);
+    const extra = -Math.sign(d) * ad * pull;
+    const s = b.mount.style;
+    s.transition = 'none';
+    s.transform = `translateX(${extra}px) scale(${1 - ad * (1 - IDLE_SCALE)})`;
+    /* full opacity right at centre, never the washed-out .5 an ordinary
+       waiting book gets — two books both dimmed is what read as one fading
+       into the other; only the one NOT being read should ever be. */
+    s.opacity = 1 - ad * .5;
+    s.zIndex = ad <= .5 ? 2 : 1;
+  });
+}
+/* Keeps rosterPos inside [0, books.length-1] — with a little give while a
+   finger is actually dragging past the end (rubber === true), so pulling
+   past the last book still moves *something* instead of going dead against
+   a hard wall, and springs back once settleRoster takes over. */
+function clampRoster(p, rubber){
+  const max = books.length - 1;
+  if(p < 0) return rubber ? p * .35 : 0;
+  if(p > max) return rubber ? max + (p - max) * .35 : max;
+  return p;
+}
+/* Friction while it's still coasting, a light spring pulling it onto the
+   nearest book once it's nearly stopped — the spring is what guarantees it
+   always ends up EXACTLY on a book rather than wherever friction happened to
+   run out. v0 is in roster-units per ms (see the drag handler, which tracks
+   the same units so the coast picks up at the speed the finger was actually
+   moving). Kept brief on purpose — "slightly", not a real flick-scroll — so
+   a fast swipe reads as a nudge with a bit of natural give, not a spin. */
+function settleRoster(v0){
+  stopRosterAnim();
+  let v = v0, vSpring = 0, last = performance.now();
+  const FRICTION = .006, SPRING = .05, DAMP = .78;
+  function step(now){
+    const dt = Math.min(now - last, 40); last = now;
+    v *= Math.max(0, 1 - FRICTION * dt);
+    let p = rosterPos + v * dt;
+    const settled = Math.abs(v) < .0008;
+    if(settled || p < 0 || p > books.length - 1){
+      v = 0;
+      const target = Math.round(clampRoster(p, false));
+      const dx = target - p;
+      vSpring = vSpring * DAMP + dx * SPRING;
+      p += vSpring;
+      if(Math.abs(dx) < .002 && Math.abs(vSpring) < .0006){
+        rosterPos = browseIndex = target;
+        renderRoster();
+        rosterAnim = null;
+        return;
+      }
+    }
+    rosterPos = p;
+    renderRoster();
+    rosterAnim = requestAnimationFrame(step);
+  }
+  rosterAnim = requestAnimationFrame(step);
 }
 /* ---------- where the waiting books stand ----------
    Picking a book puts every other one BEHIND AND TO THE RIGHT of it, always
@@ -2270,19 +2400,17 @@ const IDLE_SCALE =
    shallower tuck. That clamp stays only as a safety net for a narrow window. */
 const ORBIT_PEEK = .28, ORBIT_FAR = .58, ORBIT_TUCK = .85;
 function orbitTarget(i){
-  /* On a wide screen, tucking behind is what the product window needs — it is
-     the thing making room on the left, so nothing should move for it before
-     there is a window to make room FOR. Selecting a book alone leaves both
-     where they always sat: the chosen one full size, the other at rest in
-     the row exactly as it was before any of this existed.
-     On a phone there is no such spare moment — there was never room to show
-     the pair at rest size side by side, so the one that isn't front tucks in
-     from the start, which is what makes the roster read as a roster rather
-     than two books fighting for the same strip of screen. */
-  const fi = frontIndex();
-  if(fi === -1 || i === fi) return 0;
-  if(!isMobile() && !modalOpen) return 0;
-  const act = books[fi].mount, me = books[i].mount;
+  /* Tucking behind is what the product window needs — it is the thing making
+     room on the left, so nothing should move for it before there is a window
+     to make room FOR. Selecting a book alone leaves both where they always
+     sat: the chosen one full size, the other at rest in the row exactly as it
+     was before any of this existed. Gated on modalOpen rather than
+     activeIndex, which is true the instant a book is picked — tying it to
+     that pulled the waiting book in behind on every open, product or not.
+     On a phone this never runs at all while nothing is chosen — see
+     centreActive, which hands that state to the filmstrip instead. */
+  if(!modalOpen || activeIndex < 0 || i === activeIndex) return 0;
+  const act = books[activeIndex].mount, me = books[i].mount;
   /* Everything here is layout, then shifted by the rail's own target offset —
      never getBoundingClientRect, which mid-swing reports where the animation
      has the book rather than where its resting place is, and would fold the
@@ -2290,9 +2418,7 @@ function orbitTarget(i){
      edges inside its layout box, so the visible edge is `inset` in from it. */
   const shown = me.offsetWidth * IDLE_SCALE;
   const inset = (me.offsetWidth - shown) / 2;
-  /* the front book — chosen, or just standing at the head of a phone's
-     roster — is never scaled, so its own edge is its layout edge (see
-     .book.front:not(.active) overriding the shared idle-scale rule) */
+  /* the chosen book is never scaled, so its own edge is its layout edge */
   const natural =
     (act.offsetLeft + act.offsetWidth - shown * ORBIT_TUCK - inset) - me.offsetLeft;
   const restLeft = railShift() + me.offsetLeft + inset;
@@ -2399,7 +2525,7 @@ function deselect(){
   /* the picker reopens on the book you were just in, not back at the first
      one — on a stack that is the difference between staying where you were
      and being thrown to the top of the pile */
-  browseIndex = activeIndex;
+  browseIndex = rosterPos = activeIndex;
   activeIndex = -1;
   activeBook = null;
   books.forEach(b => b.mount.classList.remove('active'));
@@ -2433,38 +2559,53 @@ document.addEventListener('click', e => {
   }
 });
 books.forEach((b, i) => b.mount.addEventListener('click', () => {
-  /* a swipe through the stack ends with a tap-like event on whatever was
+  /* a drag through the filmstrip ends with a tap-like event on whatever was
      under the finger; without this, browsing to the next book would open it */
-  if(justSwiped){ justSwiped = false; return; }
+  if(justDragged){ justDragged = false; return; }
   /* already the selected book and still showing its cover — just open it,
      no reselect (and no second wait) needed */
   if(i === activeIndex){ if(b.atCover()) b.next(); return; }
   setActive(i);
 }));
-/* ---------- swiping through the roster ----------
+/* ---------- dragging through the roster ----------
    Only while nothing is chosen, and only sideways — a page flip (see cal's
    own touch handlers) reads up/down instead, so the two gestures never
    collide even leaving activeIndex out of it. An inactive book's stage is
    click-through anyway, which is the other half of why they never contend
-   for the same touch. */
-let pickX = null, justSwiped = false;
+   for the same touch.
+   Tracks the finger 1:1 rather than waiting for a threshold and jumping: a
+   book-to-book distance in SCREEN px is converted to one unit of rosterPos
+   on every move, so the filmstrip is always exactly under the finger.
+   dragV keeps a running roster-units-per-ms reading off the last two
+   samples, which is what settleRoster picks the coast up at — a fast flick
+   and a slow drag that end at the same point should not release the same. */
+let dragging = false, dragStartX = 0, dragStartPos = 0, dragLastX = 0,
+    dragLastT = 0, dragV = 0, justDragged = false;
 rail.parentElement.addEventListener('touchstart', e => {
-  /* cleared here rather than only when a click arrives: a swipe does not
-     always produce one, and a flag left standing would eat the next real tap */
-  justSwiped = false;
-  pickX = (activeIndex === -1 && isMobile()) ? e.touches[0].clientX : null;
+  justDragged = false;
+  if(activeIndex !== -1 || !isMobile()){ dragging = false; return; }
+  stopRosterAnim();
+  dragging = true;
+  dragStartX = dragLastX = e.touches[0].clientX;
+  dragStartPos = rosterPos;
+  dragLastT = performance.now();
+  dragV = 0;
 }, {passive:true});
-rail.parentElement.addEventListener('touchend', e => {
-  if(pickX === null) return;
-  const dx = e.changedTouches[0].clientX - pickX;
-  pickX = null;
-  if(Math.abs(dx) < 40) return;              /* a tap, not a swipe */
-  const to = browseIndex + (dx < 0 ? 1 : -1);
-  if(to < 0 || to >= books.length) return;   /* nothing past either end */
-  browseIndex = to;
-  justSwiped = true;
-  centreActive();
-  updateOrbits();
+rail.parentElement.addEventListener('touchmove', e => {
+  if(!dragging) return;
+  const x = e.touches[0].clientX, now = performance.now();
+  const unit = rosterUnit() * railScale();
+  rosterPos = clampRoster(dragStartPos - (x - dragStartX) / unit, true);
+  const dt = Math.max(1, now - dragLastT);
+  dragV = -(x - dragLastX) / dt / unit;
+  dragLastX = x; dragLastT = now;
+  if(Math.abs(x - dragStartX) > 6) justDragged = true;
+  renderRoster();
+}, {passive:true});
+rail.parentElement.addEventListener('touchend', () => {
+  if(!dragging) return;
+  dragging = false;
+  if(justDragged) settleRoster(dragV);
 }, {passive:true});
 /* a resize re-measures where things belong; it is not a move, so the orbit
    lands on the new number rather than swinging to it */
@@ -2472,12 +2613,8 @@ addEventListener('resize', () => { centreActive(); updateOrbits(true); });
 /* Neither book starts selected — both wait, dimmed and arrow-less, until
    pressed. Still needs centring once up front, or the pair would sit at
    whatever the flex layout landed on until the first resize or click moved
-   it, which would read as a jump rather than as having been placed there.
-   updateOrbits(true) is the other half of that on a phone — without it the
-   second book would sit at its bare flex position, ungapped, until the first
-   resize event happened to tuck it behind the front one. */
+   it, which would read as a jump rather than as having been placed there. */
 centreActive();
-updateOrbits(true);
 /* One listener for both pads — without routing, a single arrow key would turn
    a page in each book at once. It drives whichever book the pointer last
    entered, falling back to the first. */
