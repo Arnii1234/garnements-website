@@ -835,15 +835,25 @@
      suggestion was the last thing still asking to be scrolled.
      No overflow here any more, which retires the padding/negative-margin
      pair that used to buy the hover lift room to grow: nothing clips it. */
-  /* one figure under the next, scrolled through rather than laid across —
-     the same reading as the piece's own photographs above, which are also
-     looked at one at a time. 26px is the row gap the four-across version
-     had, kept unchanged. */
-  .also-row{display:flex;flex-direction:column;align-items:center;gap:26px;}
+  /* A roster: every figure standing in one line, side by side, with the
+     ones past the panel's edge scrolled to rather than wrapped or stacked.
+     22px apart — the gap the four-across version had.
+     overflow-x:auto quietly drags overflow-y along with it (a spec rule:
+     one axis cannot clip while the other stays visible), which would
+     guillotine the hover lift at the row's top edge. A scrollport can't be
+     told to let vertical growth out, so the row borrows room on every side
+     for the lift and its shadow to land in, and hands it straight back with
+     negative margins so nothing else on the page moves. */
+  .also-row{
+    display:flex;align-items:flex-start;gap:22px;overflow-x:auto;
+    padding:14px 10px 8px;
+    margin:-10px -10px -8px;
+  }
   .also-card{
-    /* the four-across width, held to it as the column widens so a figure
-       never inflates to fill a panel it was never sized for */
-    width:clamp(150px, 46%, 200px);
+    /* four in view at the panel's usual width, the rest a scroll away;
+       0 0 so they keep that size instead of squeezing to fit the row */
+    flex:0 0 calc(25% - 17px);
+    min-width:150px;   /* below this a figure stops reading as a figure */
     text-align:center;cursor:pointer;
   }
   /* A fixed BOX, not a fixed height with the width left free: every card
