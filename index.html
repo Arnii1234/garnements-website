@@ -893,16 +893,23 @@
       drop-shadow(0 3px 4px rgba(35,31,32,.22))
       drop-shadow(0 10px 14px rgba(35,31,32,.20));
   }
+  /* three lines under a figure: what it is called, what it is, what it
+     costs. Splitting the garment word onto its own line is what lets the
+     name keep one line at this card width — it was the word that pushed
+     names like Cowboy Shootout Sweater into wrapping, and the prices out
+     of alignment with each other. */
   .also-card .also-name{
     display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink);
-    /* room for two lines whether or not a name needs them: with the
-       garment word in every name, some wrap at this card width and some
-       do not, and without the reserve the prices under a row of figures
-       sat at whatever height each name happened to end on. */
-    line-height:1.35;min-height:2.7em;
+    line-height:1.35;
+  }
+  /* quieter than the name and quieter than the price: it is the one line
+     here a visitor already knows the answer to from the photograph */
+  .also-card .also-type{
+    display:block;font-size:10px;letter-spacing:.05em;color:var(--grey);
+    line-height:1.35;margin-top:1px;
   }
   .also-card .also-price{
-    display:block;font-size:11px;color:var(--grey);margin-top:2px;
+    display:block;font-size:11px;color:var(--grey);margin-top:5px;
   }
 
   /* ---------- cart drawer ---------- */
@@ -1136,34 +1143,34 @@ const DESC = {
    hand-cropped figure-*.png) still sits untouched in assets/, so going
    back is only ever re-pointing `photos` and removing the flag. */
 const PRODUCTS = {
-  "pink-tee":     {name:"Suprised Tee",              price:55,  img:"assets/prod-pink-tee.svg",
+  "pink-tee":     {name:"Suprised", type:"Tee",                     price:55,  img:"assets/prod-pink-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/pink tee front cutout.webp","assets/pink tee back cutout.webp"]},
-  "brown-jeans":  {name:"Brown Embroidery Denim",    price:140, img:"assets/prod-brown-jeans.svg",
+  "brown-jeans":  {name:"Brown Embroidery", type:"Denim",           price:140, img:"assets/prod-brown-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
-  "cream-hoodie": {name:"Cowboy Shootout Sweater",   price:95,  img:"assets/prod-cream-hoodie.svg",
+  "cream-hoodie": {name:"Cowboy Shootout", type:"Sweater",          price:95,  img:"assets/prod-cream-hoodie.svg",
                    desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
                    photos:["assets/beige hoodie front cutout.webp","assets/beige hoodie back cutout.webp"]},
-  "pink-hoodie":  {name:"Head & Heart Zip Up",       price:95,  img:"assets/prod-pink-hoodie.svg",
+  "pink-hoodie":  {name:"Head & Heart", type:"Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
                    desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
                    photos:["assets/pink hoodie front cutout.webp","assets/pink hoodie back cutout.webp"]},
-  "black-tee":    {name:"Kritzlich Tee",             price:55,  img:"assets/prod-black-tee.svg",
+  "black-tee":    {name:"Kritzlich", type:"Tee",                    price:55,  img:"assets/prod-black-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/black tee 1 front cutout.webp","assets/black tee 1 back cutout.webp"]},
-  "rose-tee":     {name:"Verstähe Tee",              price:55,  img:"assets/prod-rose-tee.svg",
+  "rose-tee":     {name:"Verstähe", type:"Tee",                     price:55,  img:"assets/prod-rose-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/black tee 2 front cutout.webp","assets/black tee 2 back cutout.webp"]},
-  "vest":         {name:"Stiffi Vest",               price:110, img:"assets/prod-vest.svg",
+  "vest":         {name:"Stiffi", type:"Vest",                      price:110, img:"assets/prod-vest.svg",
                    desc:DESC.vest, sizeType:"vest", cutout:true,
                    photos:["assets/black vest front cutout.webp","assets/black vest back cutout.webp"]},
-  "walker-jeans": {name:"Brown Embroidery Denim II", price:140, img:"assets/prod-walker-jeans.svg",
+  "walker-jeans": {name:"Brown Embroidery", type:"Denim II",        price:140, img:"assets/prod-walker-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
-  "jorts":        {name:"Embroidered Jorts",         price:95,  img:"assets/prod-jorts.svg",
+  "jorts":        {name:"Embroidered", type:"Cropped Denim",        price:95,  img:"assets/prod-jorts.svg",
                    desc:DESC.shorts, sizeType:"shorts"},
   /* was "White Tee" — the drawing in the sketchbook is not the tee that was
      shot, so it keeps the drawing under a new name and the photographed white
      tee becomes its own piece below */
-  "jumping-tee":  {name:"Jumping Tee",               price:55,  img:"assets/prod-white-tee.svg",
+  "jumping-tee":  {name:"Jumping", type:"Tee",                      price:55,  img:"assets/prod-white-tee.svg",
                    desc:DESC.tee, sizeType:"tee"},
 
   /* ---- photographed on a model, drawn later ----------------------------
@@ -1172,12 +1179,12 @@ const PRODUCTS = {
      with another garment, so there is no drawing that shows them alone and
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
-  "black-jeans":   {name:"Rigid Fig Denim",          price:140,
+  "black-jeans":   {name:"Rigid Fig", type:"Denim",                 price:140,
                     desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front cutout.webp","assets/black jeans back cutout.webp",
     "assets/black jeans left cutout.webp","assets/black jeans right cutout.webp"]},
-  "beige-jeans":   {name:"Beige Denim",              price:140,
+  "beige-jeans":   {name:"Beige", type:"Denim",                     price:140,
                     desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/beige jeans drawing 1.svg", photos:[
     "assets/beige jeans front cutout.webp","assets/beige jeans back cutout.webp",
@@ -1186,19 +1193,19 @@ const PRODUCTS = {
      assets ("purple-jeans-front.jpg" / "-back.jpg"); nothing else referred
      to it — no sketchbook page opened it and no cluster named it — so this
      entry is all there was to take out, and all there is to put back. */
-  "beige-tee":     {name:"Nosy Tee",                 price:55,
+  "beige-tee":     {name:"Nosy", type:"Tee",                        price:55,
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front cutout.webp","assets/beige tee back cutout.webp"]},
-  "white-tee":     {name:"White Tee",                price:55,
+  "white-tee":     {name:"White", type:"Tee",                       price:55,
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front cutout.webp","assets/white tee back cutout.webp"]},
-  "pink-jorts":    {name:"Is This to Smoke? Jorts",  price:95,
+  "pink-jorts":    {name:"Is This to Smoke?", type:"Cropped Denim", price:95,
                     desc:DESC.shorts, sizeType:"shorts", cutout:true,
                     photos:[
     "assets/pink jorts front cutout.webp","assets/pink jorts back cutout.webp"]},
-  "beige-duffle":  {name:"Beige Duffle",             price:120,
+  "beige-duffle":  {name:"Beige", type:"Duffle",                    price:120,
                     desc:DESC.bag, cutout:true,
                     img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag cutout.webp"]},
@@ -1208,7 +1215,7 @@ const PRODUCTS = {
      its own photographs. A cart line records the colourway by name.
      pairsWith for both colours is set below, by CLUSTERS — the black bag
      belongs with one outfit, the brown with a completely different one. */
-  "backpack":      {name:"Fig Bag",                  price:110,
+  "backpack":      {name:"Fig", type:"Bag",                         price:110,
                     desc:DESC.bag, cutout:true,
                     img:"assets/backpack drawing.svg", colours:[
     {name:"Black", swatch:"#242021", photos:["assets/black backpack cutout.webp"]},
@@ -1271,6 +1278,13 @@ const isCutout = (p, ci) => {
    silently turn someone's black bag brown */
 const colourIdx = (p, name) =>
   Math.max(0, (p.colours || []).findIndex(c => c.name === name));
+/* A piece is stored as its name and what it IS, kept apart — "Cowboy
+   Shootout" and "Sweater" — because the roster sets them on two lines and
+   there is no reliable way back to that split from one joined string
+   ("Brown Embroidery Denim II" could break in three places). Everywhere
+   else wants them joined, and joins them here rather than each caller
+   remembering the space between. */
+const fullName = p => p.type ? `${p.name} ${p.type}` : p.name;
 /* What stands in the roster under a piece: EVERY photographed piece in the
    catalogue, not only the ones shot alongside this one. Each figure is a
    way into another piece, so carrying the whole set under all of them means
@@ -3229,7 +3243,7 @@ function renderItem(){
     const cell = document.createElement('div');
     cell.className = 'gal-cell';
     const img = document.createElement('img');
-    img.src = src; img.alt = p.name;
+    img.src = src; img.alt = fullName(p);
     img.decoding = 'async';
     /* the shot the panel opens ON is the only one worth racing for
        bandwidth; the rest can arrive as they are reached */
@@ -3281,7 +3295,7 @@ function renderItem(){
   galCount = shots.length;
   galPos = galCount > 1 ? 1 : 0;   /* cell 1 is the real first shot; 0 is the leading clone */
   galRender(true);
-  document.getElementById('pName').textContent = p.name;
+  document.getElementById('pName').textContent = fullName(p);
   document.getElementById('pPrice').textContent = '€' + p.price + '  ·  incl. VAT';
   document.getElementById('pDesc').textContent = p.desc || '';
   const tabs = document.getElementById('itemTabs');
@@ -3289,7 +3303,7 @@ function renderItem(){
   if(curItems.length > 1){
     curItems.forEach((id, i) => {
       const b = document.createElement('button');
-      b.textContent = PRODUCTS[id].name;
+      b.textContent = fullName(PRODUCTS[id]);
       b.className = i === curIdx ? 'on' : '';
       /* a different piece taking over the window, same as openModal — see
          resetFolds' own comment for why this one resets and the colourway
@@ -3365,7 +3379,8 @@ function renderItem(){
       b.className = 'also-card';
       b.innerHTML = `
         <img src="${heroOf(rp, rci)}"${isCutout(rp, rci) ? ' class="cutout"' : ''} alt="" loading="lazy" decoding="async">
-        <span class="also-name">${rp.name}${rp.colours ? ' · ' + rp.colours[rci].name : ''}</span>
+        <span class="also-name">${rp.name}</span>
+        <span class="also-type">${rp.type || ''}${rp.colours ? ' · ' + rp.colours[rci].name : ''}</span>
         <span class="also-price">€${rp.price}</span>`;
       b.onclick = () => goToProduct(id, colour);
       row.appendChild(b);
@@ -3580,7 +3595,7 @@ function renderCart(){
     const d = document.createElement('div');
     d.className = 'cart-item';
     d.innerHTML = `<img src="${heroOf(p, ci)}"${isCutout(p, ci) ? ' class="cutout"' : ''} alt="">
-      <div><div class="ci-name">${p.name}</div>
+      <div><div class="ci-name">${fullName(p)}</div>
         <div class="ci-size">${it.colour ? it.colour + ' · ' : ''}Size ${it.size}</div></div>
       <div class="ci-price">€${p.price}</div>`;
     const rm = document.createElement('button');
@@ -3602,7 +3617,7 @@ function checkout(){
   let total = 0;
   cart.forEach(it => { const p = PRODUCTS[it.id]; total += p.price;
     const spec = (it.colour ? it.colour + ', ' : '') + 'Size ' + it.size;
-    body += `- ${p.name} (${spec}) - EUR ${p.price}\r\n`; });
+    body += `- ${fullName(p)} (${spec}) - EUR ${p.price}\r\n`; });
   body += `\r\nTotal: EUR ${total}\r\n\r\nMy shipping address:\r\n\r\nThank you`;
   window.location.href = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent('Order - garnements 2026')}&body=${encodeURIComponent(body)}`;
 }
