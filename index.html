@@ -339,6 +339,48 @@
   }
   .binding svg{width:100%;height:100%;display:block;overflow:visible;}
 
+  /* ---------- coming soon (book 2) ----------
+     A veil over the whole stage rather than re-toning the materials: the
+     grey has to hold through DOM rest states, WebGL flips and the binding
+     alike, and one translucent layer above all three is the only place a
+     single source of truth exists. Deliberately NOT a filter on .book or
+     .stage — filter is a grouping property and flattens the 3D scene it
+     wraps (same class of breakage as the .board-over transform, see there).
+     backdrop-filter touches nothing in the tree; it just greys whatever
+     happens to be painted behind it.
+     The recipe is white-safe on purpose: grayscale() maps white to white
+     and the wash is pure white, so over the bare page the veil is
+     invisible and needs no clipping to the book's silhouette — contrast()
+     was tried and rejected, it pulls white toward grey and drew a faint
+     box around the whole stage. Over the book, grayscale kills the warm
+     board and the wash fades the ink — drawings read ghosted, unfinished.
+     Oversized at the top so the sheet arcing over the coil mid-flip stays
+     under it; the overshoot lands on bare page, where the veil is a no-op.
+     z-index 4: above the binding (3), which must grey with everything
+     else. pointer-events:none — the book underneath stays fully usable;
+     what makes a soon book inert is buildLeaf never marking its pages
+     clickable, not the veil. */
+  .soon-veil{
+    position:absolute;inset:-60px 0 0;z-index:4;
+    pointer-events:none;
+    background:rgba(255,255,255,.3);
+    backdrop-filter:grayscale(.9);
+    -webkit-backdrop-filter:grayscale(.9);
+  }
+  /* a printed slip laid on the cover, in the colophon's voice. Only for the
+     closed book: once the reader is inside, the veil already says "not yet"
+     and a label floating over the drawings would just be in the way. */
+  .soon-tag{
+    position:absolute;left:50%;top:82%;transform:translate(-50%,-50%);
+    font-size:10.5px;font-weight:500;letter-spacing:.34em;
+    text-transform:uppercase;color:#5d5a57;white-space:nowrap;
+    background:rgba(244,243,241,.92);
+    border:.5px solid rgba(35,31,32,.28);
+    padding:9px 15px 9px 19px;   /* uneven: letter-spacing trails the last glyph */
+    transition:opacity .45s;
+  }
+  .book.reading .soon-tag{opacity:0;}
+
   /* colophon */
   .colophon{
     position:absolute;inset:0;
@@ -1351,7 +1393,7 @@ function fitDesignSpots(leaf, p){
    and buys flipMs/stiffFor closing over that book's own PAGES.
    Products, the modal and the cart stay global — one cart for both books.
    ============================================================ */
-function makeBook(mount, PAGES, onClose){
+function makeBook(mount, PAGES, onClose, {soon = false} = {}){
 const stage = document.createElement('div');
 stage.className = 'stage';
 const cal = document.createElement('div');
@@ -1359,6 +1401,16 @@ cal.className = 'calendar';
 const glc = document.createElement('canvas');
 glc.className = 'glc';
 stage.append(cal, glc);
+/* a book that isn't out yet: greyed by the veil, browsable, but never
+   clickable-into — see the .soon-veil comment for why a veil and not a
+   filter, and buildLeaf below for where the clicks actually go away */
+if(soon){
+  mount.classList.add('soon');
+  const veil = document.createElement('div');
+  veil.className = 'soon-veil';
+  veil.innerHTML = '<span class="soon-tag">Coming soon</span>';
+  stage.appendChild(veil);
+}
 const nav = document.createElement('div');
 nav.className = 'nav';
 nav.innerHTML =
@@ -1407,11 +1459,14 @@ PAGES.forEach((p, i) => {
   } else if(p.type === 'placeholder'){
     /* named, and clickable like any product page, until its drawing exists */
     inner = `
-      <div class="page-art clickable" data-page="${i}">
+      <div class="page-art ${soon ? '' : 'clickable'}" ${soon ? '' : `data-page="${i}"`}>
         <div class="page-label">${p.label}</div>
       </div>`;
   } else {
-    const clickable = p.products && p.products.length;
+    /* in a soon book nothing is for sale yet, so no page is a doorway:
+       without `clickable` there is no data-page, no pointer cursor and no
+       hover dim — the pages are just pages */
+    const clickable = !soon && p.products && p.products.length;
     inner = `
       <div class="page-art ${clickable ? 'clickable' : ''}" ${clickable ? `data-page="${i}"` : ''}>
         <img src="${encodeURI(p.img)}" alt="drawing">
@@ -1606,6 +1661,10 @@ function updateNav(){
   /* past the cover — see .book.active .nav.on for why this, not .active,
      is what the arrows actually watch */
   nav.classList.toggle('on', cur > 0);
+  /* same signal, book-wide: while reading, the coming-soon slip steps aside
+     (see .book.reading .soon-tag) — on every book, since the class is inert
+     without a .soon-tag to act on */
+  mount.classList.toggle('reading', cur > 0);
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
    passes over the top, then keeps going down the *back* of the pad: one full
@@ -2316,6 +2375,12 @@ ticksEl.addEventListener('click', e => {
    read as the "click outside" that closes the modal it just opened. */
 cal.addEventListener('click', e => {
   e.stopPropagation();
+  /* A soon book has nothing to open — and this return, not the missing
+     `clickable` class, is what actually enforces it: the fallback below
+     never asked for the class, it opens `p.products` for ANY .page-art hit.
+     The class removal in buildLeaf only takes away the cursor and hover
+     that would promise a click does something. */
+  if(soon) return;
   /* Resolve against `cur`, never against whichever sheet caught the click.
      Mid-turn the two disagree: going forward the outgoing sheet is hidden so
      the hit falls through to the right one, but going BACK it stays on top for
@@ -2356,7 +2421,9 @@ return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0, c
 let activeBook = null;
 const books = [
   makeBook(document.getElementById('book1'), BOOK1_PAGES, () => deselect()),
-  makeBook(document.getElementById('book2'), BOOK2_PAGES, () => deselect())
+  /* edition two exists only as drawings — browsable behind its veil, but
+     nothing in it can be opened or bought yet */
+  makeBook(document.getElementById('book2'), BOOK2_PAGES, () => deselect(), {soon:true})
 ];
 
 /* The roster. Books are never rebuilt when you switch — each keeps its own
