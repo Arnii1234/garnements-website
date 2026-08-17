@@ -1062,7 +1062,9 @@
          rather than squeezed into the info column, since it is showing OTHER
          pieces, not detail about the one open (see .also-like's grid-column) -->
     <div class="also-like" id="alsoLike" hidden>
-      <div class="size-label">You may also like</div>
+      <!-- the row carries the whole photographed collection now, led by the
+           pieces shot with this one — "you may also like" undersold that -->
+      <div class="size-label">The collection</div>
       <div class="also-row" id="alsoRow"></div>
     </div>
   </div>
@@ -1265,20 +1267,53 @@ const isCutout = (p, ci) => {
    silently turn someone's black bag brown */
 const colourIdx = (p, name) =>
   Math.max(0, (p.colours || []).findIndex(c => c.name === name));
-/* companion pieces for "you may also like", colourway-aware for the same
-   reason shotsOf is: which pieces actually appear in the photo depends on
-   which colourway that photo is of. Filtered against PRODUCTS rather than
-   trusted outright, so a renamed or retired key quietly drops off the row
-   instead of breaking it. */
-/* An entry is either a bare id or {id, colour} — the latter for backpack,
-   where a plain id would default to Black even when the cluster recommending
-   it is the pink/brown one. Normalised to {id, colour} here so the render
-   side never has to care which shape it started as. */
-const pairsOf = (p, ci) => {
+/* What stands in the roster under a piece: EVERY photographed piece in the
+   catalogue, not only the ones shot alongside this one. Each figure is a
+   way into another piece, so carrying the whole set under all of them means
+   any piece is one step from any other — a visitor who opens a single
+   garment can reach the rest of the collection without going back to the
+   sketchbook to find it.
+   The clusters are not thrown away, they become the ORDER: pieces genuinely
+   worn together in the same photograph lead the row, so what is in view
+   before you scroll still answers "what goes with this", and the rest of
+   the catalogue follows behind them. Takes the piece's id rather than its
+   object because a piece has to leave its own roster, and only the id can
+   say which one it is.
+   Colourway-aware throughout, for the same reason shotsOf is: the two bags
+   are one entry with two sets of photographs, and each colourway stands in
+   the roster on its own. An entry is either a bare id or {id, colour} —
+   normalised to {id, colour} here so the render side never has to care
+   which shape it started as, and keyed on both so a piece cannot appear
+   twice when its cluster already named it. */
+const pairsOf = (id, ci) => {
+  const p = PRODUCTS[id];
+  if(!p) return [];
   const c = p.colours && (p.colours[ci] || p.colours[0]);
-  return ((c ? c.pairsWith : p.pairsWith) || [])
-    .map(x => typeof x === 'string' ? {id:x, colour:null} : x)
-    .filter(x => PRODUCTS[x.id]);
+  const keyOf = x => x.id + '|' + (x.colour || '');
+  /* shot alongside this one — the head of the row */
+  const near = ((c ? c.pairsWith : p.pairsWith) || [])
+    .map(x => typeof x === 'string' ? {id:x, colour:null} : x);
+  /* then everything else that has been photographed, in PRODUCTS' own order.
+     A piece with no photographs stays out: shotsOf would fall back to its
+     drawing, and a line drawing standing in a row of models reads as a
+     missing image rather than as a piece. */
+  const rest = [];
+  Object.entries(PRODUCTS).forEach(([qid, q]) => {
+    if(q.colours) q.colours.forEach(col => {
+      if((col.photos || []).length) rest.push({id:qid, colour:col.name});
+    });
+    else if((q.photos || []).length) rest.push({id:qid, colour:null});
+  });
+  const seen = new Set([keyOf({id, colour: c ? c.name : null})]);   /* never itself */
+  const out = [];
+  [...near, ...rest].forEach(x => {
+    if(!PRODUCTS[x.id]) return;              /* a renamed or retired key drops off quietly */
+    const k = keyOf(x);
+    if(seen.has(k)) return;
+    seen.add(k);
+    out.push(x);
+  });
+  return out;
 };
 const SIZES = ["XS","S","M","L","XL","XXL"];
 /* Placeholder — cm, once Arne sends real measurements. Rows only, no values:
@@ -3314,7 +3349,7 @@ function renderItem(){
      see goToProduct — so the connection between the drawing and the piece
      reads the same way it does everywhere else on the site. */
   const also = document.getElementById('alsoLike');
-  const pairs = pairsOf(p, curColour);
+  const pairs = pairsOf(curItems[curIdx], curColour);
   also.hidden = !pairs.length;
   if(pairs.length){
     const row = document.getElementById('alsoRow');
@@ -3326,7 +3361,7 @@ function renderItem(){
       b.className = 'also-card';
       b.innerHTML = `
         <img src="${heroOf(rp, rci)}"${isCutout(rp, rci) ? ' class="cutout"' : ''} alt="" loading="lazy" decoding="async">
-        <span class="also-name">${rp.name}</span>
+        <span class="also-name">${rp.name}${rp.colours ? ' · ' + rp.colours[rci].name : ''}</span>
         <span class="also-price">€${rp.price}</span>`;
       b.onclick = () => goToProduct(id, colour);
       row.appendChild(b);
