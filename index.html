@@ -6,7 +6,11 @@
 <title>garnements</title>
 <meta name="description" content="garnements 2026, edition one. Hand-drawn embroidery from Berlin.">
 <meta name="theme-color" content="#f4f3f1">
+<!-- Both icons are Arne's own drawing, cropped to what survives the size:
+     the tab gets the face alone, the home screen gets the shoulders too.
+     iOS will not take an SVG here, so that one is a rendered PNG. -->
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="garnements — 2026">
 <meta property="og:description" content="Edition one. Hand-drawn embroidery from Berlin.">
@@ -31,6 +35,12 @@
        white. The two read as the same paper stock at different weights, and
        the join between them is what draws the dividing line down the screen */
     --panel:#f4f3f1;
+    /* How wide the product window is. Shared, because the photo lightbox has
+       to stand in exactly the same column: it cannot live INSIDE .overlay
+       (position:fixed stops meaning "to the viewport" inside a transformed
+       ancestor, and .overlay slides on a transform), so the two are separate
+       elements that have to agree, and one number is what makes them. */
+    --panel-w:55vw;
     /* How far back a book sits when it is not the one being read. It is also
        what sets how close the pair stand: scaling pulls each book's edges
        inside its own layout box, so the lower this is the more empty space
@@ -590,15 +600,18 @@
        cannot drift. The sketchbook centres itself in what is left (see
        railShift's `reserve`), so it stays whole and on the right however the
        window is zoomed. */
-    width:55vw;
+    width:var(--panel-w);
     background:var(--panel);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
   }
   .overlay.open{transform:translateX(0);}
+  /* one book's width of screen is not enough to stand a book beside a panel,
+     so the window takes the whole of it — and the lightbox follows, since it
+     reads the same variable */
   @media(max-width:900px){
-    .overlay{width:100%;}
+    :root{ --panel-w:100%; }
   }
   .panel{
     flex:1;min-height:0;
@@ -946,14 +959,19 @@
   .empty-msg{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);}
 
   /* ---------- photo lightbox ----------
-     A clicked photo's own moment in the foreground — dead centre of the
-     whole screen, above the panel it was clicked from (z-index above the
-     cart drawer, the highest anything else reaches). Opacity-driven like
-     the overlay/drawer rather than display:none, so the fade has something
-     to animate; pointer-events off at rest is what keeps it from eating
-     clicks on the page behind it while invisible. */
+     A clicked photo's own moment in the foreground — filling the product
+     window it was clicked from and NOT the whole screen, so the sketchbook
+     stays where it is on the right and the page never blacks out entirely.
+     Same column as .overlay, off the same --panel-w, and a body-level
+     element rather than a child of it: position:fixed stops meaning "to the
+     viewport" inside a transformed ancestor, and .overlay slides on a
+     transform. On a phone --panel-w is the whole width anyway, so there it
+     covers the screen, which is right — there is no book beside it to see.
+     Opacity-driven like the overlay/drawer rather than display:none, so the
+     fade has something to animate; pointer-events off at rest is what keeps
+     it from eating clicks on the page behind it while invisible. */
   .lightbox{
-    position:fixed;inset:0;z-index:200;
+    position:fixed;top:0;left:0;bottom:0;width:var(--panel-w);z-index:200;
     display:flex;align-items:center;justify-content:center;
     background:rgba(20,18,17,.92);
     opacity:0;pointer-events:none;
@@ -970,7 +988,8 @@
   .lightbox.on-cutout{ background:rgba(244,243,241,.97); }
   .lightbox.on-cutout .lightbox-close{ color:var(--ink); }
   .lightbox img{
-    max-width:88vw;max-height:88vh;
+    /* percent, not vw — the box is the product window now, not the screen */
+    max-width:88%;max-height:88vh;
     /* scale/translate are written by the zoom-drag script below; transform
        and cursor both toggle on .zoomed rather than being inferred from the
        scale number itself, so the two can never drift out of step */
