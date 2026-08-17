@@ -603,24 +603,28 @@
     width:100%;height:auto;display:block;
     border:.75px solid var(--ink);
   }
-  /* Cutouts — a photograph with its studio backdrop erased, so what arrives is
-     the model on transparency. Both of the rules above stop making sense on
-     one. The frame goes because that hairline traces the PNG's invisible
-     bounding box rather than the figure, reading as a rectangle drawn around
-     nothing. And the width comes down because the crop threw away all the
-     backdrop the full-frame JPG carried — the figure spanned 814px of a
-     1251px frame (front) and 816 of 1369 (back), so at the column's full
-     width it stood about 1.5x larger than it ever did in its own photograph.
-     62% sits between those two numbers: the model lands back at very close to
-     its original on-screen size, now standing on the panel's own paper
-     instead of inside a window.
-     width, not max-width, and align-self rather than margin:auto — the base
-     rule above already gives every image a definite width, which degrades the
-     column's default stretch to flex-start, so a narrowed image sits hard
-     left unless it is centred explicitly. */
+  /* Cutouts — a photograph with its studio backdrop erased and trimmed to
+     the figure, so what arrives is the model on transparency. Both of the
+     rules above stop making sense on one. The frame goes because that
+     hairline traces the file's invisible bounding box rather than the
+     figure, reading as a rectangle drawn around nothing.
+     Sized by HEIGHT, not width: every cutout is trimmed to its own figure,
+     and each shot cropped differently — width would make a tightly-cropped
+     model a giant and a loose one a doll, while a fixed height stands every
+     figure at the same scale across the whole catalogue, the way the reco
+     shelf already lines its cards up. 700px is where the old full-frame
+     photograph used to put the model (378px column × A4-ish ratio ≈ 780px
+     of frame, of which the figure filled ~90%); the vh clamp keeps shorter
+     screens from cropping the feet off. max-width catches the one wide
+     pose (arms out) and scales it down keeping its ratio, per CSS 2 §10.4.
+     align-self rather than margin:auto — a definite width degrades the
+     column's default stretch to flex-start, so anything narrower than the
+     column sits hard left unless centred explicitly. */
   .panel-img img.cutout{
     border:none;
-    width:62%;
+    width:auto;
+    height:min(700px, 74vh);
+    max-width:100%;
     align-self:center;
   }
   .panel-info{
@@ -772,6 +776,17 @@
       0 3px 6px rgba(35,31,32,.22),
       0 14px 24px -10px rgba(35,31,32,.28);
   }
+  /* a cutout card is the figure itself, not a photo in a plate — so no grey
+     plate behind it, and the hover shadow has to trace the figure's own
+     silhouette (drop-shadow follows alpha) instead of box-shadow drawing a
+     floating rectangle around an invisible box */
+  .also-card img.cutout{ background:none; }
+  .also-card:hover img.cutout{
+    box-shadow:none;
+    filter:
+      drop-shadow(0 3px 4px rgba(35,31,32,.22))
+      drop-shadow(0 10px 14px rgba(35,31,32,.20));
+  }
   .also-card .also-name{
     display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink);
   }
@@ -798,6 +813,8 @@
     padding:14px 0;border-bottom:1px solid var(--line);
   }
   .cart-item img{width:58px;height:58px;object-fit:contain;background:#f7f7f6;padding:5px;}
+  /* same reasoning as the reco cards: a figure stands on the drawer, not in a plate */
+  .cart-item img.cutout{background:none;}
   .ci-name{font-size:12.5px;letter-spacing:.06em;}
   .ci-size{font-size:10px;letter-spacing:.18em;color:var(--grey);margin-top:3px;text-transform:uppercase;}
   .ci-price{margin-left:auto;font-size:12px;letter-spacing:.08em;white-space:nowrap;}
@@ -995,35 +1012,39 @@ const DESC = {
   vest:   "Cotton denim, cropped and sleeveless. Hand embroidered from an original one-line drawing — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
   bag:    "Heavy cotton canvas with leather trim. Hand embroidered from an original one-line drawing. Designed and embroidered in Berlin."
 };
+/* Every model photograph now ships as a "<shot> cutout.webp" — the same
+   frame with the studio backdrop erased, trimmed to the figure, cut by
+   Apple's subject mask and encoded ~90KB apiece against the 200–400KB
+   JPGs and the 1.5MB hand-made PNGs they replace. The one visual language
+   everywhere: figures standing on the page, no photo windows. `cutout` on
+   an entry is what drops the frame and plate treatments — it describes the
+   photographs, so it leaves with them if they are ever swapped back.
+   NOTHING was deleted to get here: every original JPG (and the two
+   hand-cropped figure-*.png) still sits untouched in assets/, so going
+   back is only ever re-pointing `photos` and removing the flag.
+   The exception is purple-jeans: its two shots are flat-lays, not model
+   shots, and the mask fringed them — they stay on their original JPGs. */
 const PRODUCTS = {
   "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg",
-                   desc:DESC.tee, sizeType:"tee",
-                   photos:["assets/pink tee front.JPG","assets/pink tee back.JPG"]},
+                   desc:DESC.tee, sizeType:"tee", cutout:true,
+                   photos:["assets/pink tee front cutout.webp","assets/pink tee back cutout.webp"]},
   "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
   "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
-                   desc:DESC.hoodie, sizeType:"hoodie",
-                   photos:["assets/beige hoodie front.JPG","assets/beige hoodie back.JPG"]},
+                   desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
+                   photos:["assets/beige hoodie front cutout.webp","assets/beige hoodie back cutout.webp"]},
   "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
-                   desc:DESC.hoodie, sizeType:"hoodie",
-                   photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
+                   desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
+                   photos:["assets/pink hoodie front cutout.webp","assets/pink hoodie back cutout.webp"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
-                   desc:DESC.tee, sizeType:"tee",
-                   /* the cutout versions — the same two shots with the studio
-                      backdrop erased, cropped to the model. The full frames
-                      were "assets/black tee 1 front.JPG" / "…back.JPG".
-                      `cutout` is what drops the panel's frame and stands the
-                      figure at its photographic size — see .panel-img
-                      img.cutout. It describes these photos, so it travels with
-                      them if they are ever swapped back. */
-                   cutout:true,
-                   photos:["assets/figure-front-transparent.png","assets/figure-back-transparent.png"]},
+                   desc:DESC.tee, sizeType:"tee", cutout:true,
+                   photos:["assets/black tee 1 front cutout.webp","assets/black tee 1 back cutout.webp"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
-                   desc:DESC.tee, sizeType:"tee",
-                   photos:["assets/black tee 2 front.JPG","assets/black tee 2 back.JPG"]},
+                   desc:DESC.tee, sizeType:"tee", cutout:true,
+                   photos:["assets/black tee 2 front cutout.webp","assets/black tee 2 back cutout.webp"]},
   "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg",
-                   desc:DESC.vest, sizeType:"vest",
-                   photos:["assets/black vest front.JPG","assets/black vest back.JPG"]},
+                   desc:DESC.vest, sizeType:"vest", cutout:true,
+                   photos:["assets/black vest front cutout.webp","assets/black vest back cutout.webp"]},
   "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
   "jorts":        {name:"Embroidered Jean Shorts",  price:95,  img:"assets/prod-jorts.svg",
@@ -1041,34 +1062,34 @@ const PRODUCTS = {
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
   "black-jeans":   {name:"Black Jeans",      price:140,
-                    desc:DESC.jeans, sizeType:"jeans",
+                    desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/black jeans drawing.svg", photos:[
-    "assets/black jeans front.JPG","assets/black jeans back.JPG",
-    "assets/black jeans left.JPG","assets/black jeans right.JPG"]},
+    "assets/black jeans front cutout.webp","assets/black jeans back cutout.webp",
+    "assets/black jeans left cutout.webp","assets/black jeans right cutout.webp"]},
   "beige-jeans":   {name:"Beige Jeans",      price:140,
-                    desc:DESC.jeans, sizeType:"jeans",
+                    desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/beige jeans drawing 1.svg", photos:[
-    "assets/beige jeans front.JPG","assets/beige jeans back.JPG",
-    "assets/beige jeans left.JPG","assets/beige jeans right.JPG"]},
+    "assets/beige jeans front cutout.webp","assets/beige jeans back cutout.webp",
+    "assets/beige jeans left cutout.webp","assets/beige jeans right cutout.webp"]},
   "purple-jeans":  {name:"Purple Jeans",     price:140,
                     desc:DESC.jeans, sizeType:"jeans", photos:[
     "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
   "beige-tee":     {name:"Beige Tee",        price:55,
-                    desc:DESC.tee, sizeType:"tee",
+                    desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/beige tee drawing.svg", photos:[
-    "assets/beige tee front.JPG","assets/beige tee back.JPG"]},
+    "assets/beige tee front cutout.webp","assets/beige tee back cutout.webp"]},
   "white-tee":     {name:"White Tee",        price:55,
-                    desc:DESC.tee, sizeType:"tee",
+                    desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/white tee drawing.svg", photos:[
-    "assets/white tee front.JPG","assets/white tee back.JPG"]},
+    "assets/white tee front cutout.webp","assets/white tee back cutout.webp"]},
   "pink-jorts":    {name:"Pink Jorts",       price:95,
-                    desc:DESC.shorts, sizeType:"shorts",
+                    desc:DESC.shorts, sizeType:"shorts", cutout:true,
                     photos:[
-    "assets/pink jorts front.JPG","assets/pink jorts back.JPG"]},
+    "assets/pink jorts front cutout.webp","assets/pink jorts back cutout.webp"]},
   "beige-duffle":  {name:"Beige Duffle Bag", price:120,
-                    desc:DESC.bag,
+                    desc:DESC.bag, cutout:true,
                     img:"assets/beige bag drawing.svg", photos:[
-    "assets/beige duffle bag.JPG"]},
+    "assets/beige duffle bag cutout.webp"]},
   /* One bag, two colourways. `colours` is what makes a piece offer a swatch
      row instead of a plain photo strip: the drawing is shared, because the
      shape is the same and only the cloth differs, and each colourway brings
@@ -1076,11 +1097,11 @@ const PRODUCTS = {
      pairsWith for both colours is set below, by CLUSTERS — the black bag
      belongs with one outfit, the brown with a completely different one. */
   "backpack":      {name:"Backpack",         price:110,
-                    desc:DESC.bag,
+                    desc:DESC.bag, cutout:true,
                     img:"assets/backpack drawing.svg", colours:[
-    {name:"Black", swatch:"#242021", photos:["assets/black backpack.JPG"]},
+    {name:"Black", swatch:"#242021", photos:["assets/black backpack cutout.webp"]},
     {name:"Brown", swatch:"#6d4a30", photos:[
-      "assets/brown backpack front.JPG","assets/brown backpack.JPG"]}]}
+      "assets/brown backpack front cutout.webp","assets/brown backpack cutout.webp"]}]}
 };
 /* ---------- "you may also like" clusters ----------
    Arne's own groupings, not the narrower per-photo reading pairsWith used to
@@ -1124,6 +1145,14 @@ const shotsOf = (p, ci) => {
 /* the thumbnail a cart line shows — now simply the first shot, since that's
    already a photograph of the right colourway whenever one exists */
 const heroOf  = (p, ci) => shotsOf(p, ci)[0] || '';
+/* whether what shotsOf just returned is cutout PHOTOGRAPHS — false when a
+   piece has no photos and fell back to its drawing, which still wants its
+   frame and plate. Reads the colourway the same way shotsOf does, so the
+   flag can never disagree with the pictures it is describing. */
+const isCutout = (p, ci) => {
+  const c = p.colours && (p.colours[ci] || p.colours[0]);
+  return !!(p.cutout && ((c ? c.photos : p.photos) || []).length);
+};
 /* a cart line stores its colourway by name, so reordering the list cannot
    silently turn someone's black bag brown */
 const colourIdx = (p, name) =>
@@ -2920,13 +2949,15 @@ function renderItem(){
   const shots = shotsOf(p, curColour);
   const gallery = document.getElementById('panelImg');
   gallery.innerHTML = '';
-  shots.forEach(src => {
+  const cut = isCutout(p, curColour);
+  shots.forEach((src, si) => {
     const img = document.createElement('img');
     img.src = src; img.alt = p.name;
-    /* `cutout` describes the PHOTOGRAPHS, so it only applies while they are
-       what is actually being shown — shotsOf falls back to the piece's drawing
-       when a piece has none, and a drawing still wants its frame. */
-    if(p.cutout && p.photos && p.photos.length) img.classList.add('cutout');
+    img.decoding = 'async';
+    /* the first shot is what the panel opens ON — everything below it can
+       wait for the scroll instead of racing it for bandwidth */
+    if(si > 0) img.loading = 'lazy';
+    if(cut) img.classList.add('cutout');
     gallery.appendChild(img);
   });
   document.getElementById('pName').textContent = p.name;
@@ -3012,7 +3043,7 @@ function renderItem(){
       const b = document.createElement('button');
       b.className = 'also-card';
       b.innerHTML = `
-        <img src="${heroOf(rp, rci)}" alt="">
+        <img src="${heroOf(rp, rci)}"${isCutout(rp, rci) ? ' class="cutout"' : ''} alt="" loading="lazy" decoding="async">
         <span class="also-name">${rp.name}</span>
         <span class="also-price">€${rp.price}</span>`;
       b.onclick = () => goToProduct(id, colour);
@@ -3203,7 +3234,7 @@ function renderCart(){
     const ci = it.colour ? colourIdx(p, it.colour) : 0;
     const d = document.createElement('div');
     d.className = 'cart-item';
-    d.innerHTML = `<img src="${heroOf(p, ci)}" alt="">
+    d.innerHTML = `<img src="${heroOf(p, ci)}"${isCutout(p, ci) ? ' class="cutout"' : ''} alt="">
       <div><div class="ci-name">${p.name}</div>
         <div class="ci-size">${it.colour ? it.colour + ' · ' : ''}Size ${it.size}</div></div>
       <div class="ci-price">€${p.price}</div>`;
