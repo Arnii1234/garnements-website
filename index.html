@@ -845,15 +845,19 @@
      for the lift and its shadow to land in, and hands it straight back with
      negative margins so nothing else on the page moves. */
   .also-row{
-    display:flex;align-items:flex-start;gap:22px;overflow-x:auto;
+    display:flex;align-items:flex-start;gap:16px;overflow-x:auto;
     padding:14px 10px 8px;
     margin:-10px -10px -8px;
   }
   .also-card{
-    /* four in view at the panel's usual width, the rest a scroll away;
-       0 0 so they keep that size instead of squeezing to fit the row */
-    flex:0 0 calc(25% - 17px);
-    min-width:150px;   /* below this a figure stops reading as a figure */
+    /* Four and a HALF across, on purpose: a row that ends flush on the
+       fourth figure looks like the whole list, where a fifth cut down its
+       middle can only mean there is more to the right. The row is
+       4.5 cards plus the 4 gaps between them, so a card is what is left of
+       the width once those gaps are taken out, split 4.5 ways.
+       0 0 so they hold that size rather than squeezing to fit the row. */
+    flex:0 0 calc((100% - 64px) / 4.5);   /* 64px = 4 × the 16px gap above */
+    min-width:104px;   /* phones: the calc would go far below a figure's worth */
     text-align:center;cursor:pointer;
   }
   /* A fixed BOX, not a fixed height with the width left free: every card
@@ -1202,8 +1206,10 @@ const PRODUCTS = {
                     desc:DESC.bag, cutout:true,
                     img:"assets/backpack drawing.svg", colours:[
     {name:"Black", swatch:"#242021", photos:["assets/black backpack cutout.webp"]},
-    {name:"Brown", swatch:"#6d4a30", photos:[
-      "assets/brown backpack front cutout.webp","assets/brown backpack cutout.webp"]}]}
+    /* the brown bag's front shot is off the site for now — its file stays
+       in assets, so putting it back is adding
+       "assets/brown backpack front cutout.webp" ahead of this one again */
+    {name:"Brown", swatch:"#6d4a30", photos:["assets/brown backpack cutout.webp"]}]}
 };
 /* ---------- "you may also like" clusters ----------
    Arne's own groupings, not the narrower per-photo reading pairsWith used to
