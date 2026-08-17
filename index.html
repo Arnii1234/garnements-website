@@ -1419,7 +1419,7 @@ const FLIP_MS = REDUCED ? 1 : 1250;
 /* Opening the cover is its own moment — heavy board, taken deliberately — so
    it runs far slower than the pages behind it. The contrast is the point: the
    slow one is getting into the book, the quick ones are the drawings. */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 2200 : FLIP_MS);
+const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 1800 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 /* A cover turn is the one flip that cannot be cut short. Ordinary pages stay
@@ -2895,8 +2895,13 @@ function closeModal(){
 }
 /* The panel has no backdrop margin of its own to click, the way the old
    centred/dimmed version had, so "click away to dismiss" means anywhere
-   outside it. The book is exempted by its own handler stopping propagation
-   (see cal's click listener) rather than reaching here.
+   outside it. The book's own PAGES are exempted by their handler stopping
+   propagation (see cal's click listener), but the nav arrows sit outside
+   cal entirely (see makeBook: `mount.append(stage, nav)`, siblings, not
+   nested) — nothing there stops their click, so flipping a page with the
+   buttons used to bubble here and close the very panel that page belongs
+   to. rail.contains covers the arrows the same explicit way the OTHER
+   outside-click listener (closing the book itself) already does.
    The panel stops its own clicks for a subtler reason: a control that
    REBUILDS the panel — a colourway swatch, an item tab — both calls
    renderItem() and is destroyed by it, all before this listener runs. By
@@ -2908,7 +2913,7 @@ function closeModal(){
 document.getElementById('overlay').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', e => {
   const ov = document.getElementById('overlay');
-  if(ov.classList.contains('open') && !ov.contains(e.target)) closeModal();
+  if(ov.classList.contains('open') && !ov.contains(e.target) && !rail.contains(e.target)) closeModal();
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeModal(); toggleCart(false); } });
 
