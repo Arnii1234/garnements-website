@@ -835,18 +835,26 @@
      suggestion was the last thing still asking to be scrolled.
      No overflow here any more, which retires the padding/negative-margin
      pair that used to buy the hover lift room to grow: nothing clips it. */
-  .also-row{display:flex;flex-wrap:wrap;gap:26px 22px;}
+  /* one figure under the next, scrolled through rather than laid across —
+     the same reading as the piece's own photographs above, which are also
+     looked at one at a time. 26px is the row gap the four-across version
+     had, kept unchanged. */
+  .also-row{display:flex;flex-direction:column;align-items:center;gap:26px;}
   .also-card{
-    flex:0 1 calc(25% - 17px);
-    min-width:120px;   /* below this a figure stops reading as a figure */
-    text-align:left;cursor:pointer;
+    /* the four-across width, held to it as the column widens so a figure
+       never inflates to fill a panel it was never sized for */
+    width:clamp(150px, 46%, 200px);
+    text-align:center;cursor:pointer;
   }
-  /* A fixed BOX now, not a fixed height with the width left free: cards
-     that each take a quarter of the row have to line up on both axes, and
-     with object-fit:contain a fixed box crops nothing — every photo keeps
-     its own ratio inside it and simply centres, which is what the old
-     fixed-height rule was really protecting against (an early object-fit:
-     cover version cropped full-body shots down to a square, faces first). */
+  /* A fixed BOX, not a fixed height with the width left free: every card
+     has to line up on both axes, and with object-fit:contain a fixed box
+     crops nothing — each photo keeps its own ratio inside it and centres,
+     which is what the old fixed-height rule was really protecting against
+     (an early object-fit:cover version cropped full-body shots down to a
+     square, faces first). contain centring is also what puts the caption
+     under the MODEL rather than under the file's box: a figure sits in the
+     middle of this box whatever its own width, so centred text below lands
+     on his centre line, right beneath where his feet stand. */
   .also-card img{
     width:100%;height:230px;object-fit:contain;background:#f7f7f6;
     margin-bottom:12px;display:block;
@@ -2991,22 +2999,67 @@ let curItems = [], curIdx = 0, curSize = null, curColour = 0;
    many there are to look through. Module-level rather than closed over in
    renderItem because the arrows, the dots, the keyboard and the swipe all
    drive the same one, and renderItem rebuilds the carousel from scratch on
-   every piece — a state that lived inside it would reset to a stale count. */
-let galIdx = 0, galCount = 0;
-/* Wraps rather than stops: at four photographs of one garment there is no
-   "end" worth blocking on, and a dead arrow at either extreme reads as
-   broken more often than as informative. `instant` is for a freshly built
-   carousel, where sliding from wherever the last piece was left would be an
-   animation of nothing. */
-function galGo(i, {instant = false} = {}){
+   every piece — a state that lived inside it would reset to a stale count.
+
+   Two indices, not one, and the difference is the whole point. galIdx is the
+   photograph a visitor would name ("the second one"); galPos is which cell of
+   the built strip is parked in the window. They differ because a strip of
+   more than one photograph is built with a CLONE at each end — the last
+   photograph again before the first, the first again after the last:
+
+       [ last' ][ 0 ][ 1 ][ 2 ][ 0' ]        galPos: 0  1  2  3  4
+                  ^--- galIdx 0
+
+   Without those, pressing forward off the end had to send the track from
+   translateX(-200%) back to 0% — the strip visibly raced backwards past
+   every photograph to reach the first, which on a two-shot piece is exactly
+   the "spins back the wrong way" you get pressing next twice. With them,
+   forward off the end simply keeps sliding forward onto the clone, which is
+   pixel-identical to the first photograph; the instant that slide lands, the
+   track jumps to the real first cell with the transition off, which cannot
+   be seen because both cells show the same image. Every press moves the
+   strip the way the arrow points, always. */
+let galIdx = 0, galPos = 0, galCount = 0;
+/* paints galPos; `instant` suppresses the slide, for both the silent
+   post-wrap jump and a freshly built strip */
+function galRender(instant){
   const track = document.querySelector('#panelImg .gal-track');
-  if(!track || !galCount) return;
-  galIdx = ((i % galCount) + galCount) % galCount;
+  if(!track) return;
   if(instant) track.style.transition = 'none';
-  track.style.transform = `translateX(${-galIdx * 100}%)`;
+  track.style.transform = `translateX(${-galPos * 100}%)`;
   if(instant){ track.offsetHeight; track.style.transition = ''; }
+  galIdx = galCount > 1
+    ? (((galPos - 1) % galCount) + galCount) % galCount
+    : 0;
   document.querySelectorAll('#panelImg .gal-dots button')
     .forEach((d, k) => d.classList.toggle('on', k === galIdx));
+}
+/* standing on a clone is a momentary state, never a resting one — swap to
+   the real cell it duplicates, with no transition so the swap is invisible */
+function galSettle(){
+  if(galCount < 2) return;
+  if(galPos < 1)            galPos = galCount;
+  else if(galPos > galCount) galPos = 1;
+  else return;
+  galRender(true);
+}
+/* one step in the pressed direction. Settling FIRST matters: clicking again
+   before the previous wrap has landed would otherwise walk off the end of
+   the strip onto a cell that does not exist, and the window would go blank. */
+function galSlide(delta){
+  if(galCount < 2) return;
+  galSettle();
+  galPos += delta;
+  galRender(false);
+}
+/* a dot names a photograph outright, so it goes straight there — always a
+   real cell, never a clone, and the direction is whatever the shorter
+   reading of "go to number three" implies */
+function galJump(k){
+  if(galCount < 2) return;
+  galSettle();
+  galPos = k + 1;
+  galRender(false);
 }
 /* Size Guide and Shipping & Returns always start closed for whichever piece
    is now showing — opening one while looking at a tee and having it still
@@ -3117,7 +3170,7 @@ function renderItem(){
   view.className = 'gal-view';
   const track = document.createElement('div');
   track.className = 'gal-track';
-  shots.forEach((src, si) => {
+  const cells = shots.map((src, si) => {
     const cell = document.createElement('div');
     cell.className = 'gal-cell';
     const img = document.createElement('img');
@@ -3128,8 +3181,21 @@ function renderItem(){
     if(si > 0) img.loading = 'lazy';
     if(cut) img.classList.add('cutout');
     cell.appendChild(img);
-    track.appendChild(cell);
+    return cell;
   });
+  /* the clones that let a wrap keep travelling forwards — see galPos. They
+     cost no bandwidth: same src, so the browser serves both from cache. */
+  if(cells.length > 1){
+    track.appendChild(cells[cells.length - 1].cloneNode(true));
+    cells.forEach(c => track.appendChild(c));
+    track.appendChild(cells[0].cloneNode(true));
+    /* the moment a slide lands, step off any clone onto its real twin */
+    track.addEventListener('transitionend', e => {
+      if(e.propertyName === 'transform' && e.target === track) galSettle();
+    });
+  } else {
+    cells.forEach(c => track.appendChild(c));
+  }
   view.appendChild(track);
   gal.appendChild(view);
   /* A single-shot piece gets no arrows and no dots — controls that can only
@@ -3141,7 +3207,7 @@ function renderItem(){
       b.type = 'button';
       b.textContent = glyph;
       b.setAttribute('aria-label', delta < 0 ? 'Previous photo' : 'Next photo');
-      b.addEventListener('click', ev => { ev.stopPropagation(); galGo(galIdx + delta); });
+      b.addEventListener('click', ev => { ev.stopPropagation(); galSlide(delta); });
       return b;
     };
     gal.append(mk('gal-prev', '‹', -1), mk('gal-next', '›', +1));
@@ -3151,14 +3217,15 @@ function renderItem(){
       const d = document.createElement('button');
       d.type = 'button';
       d.setAttribute('aria-label', `Photo ${si+1} of ${shots.length}`);
-      d.addEventListener('click', ev => { ev.stopPropagation(); galGo(si); });
+      d.addEventListener('click', ev => { ev.stopPropagation(); galJump(si); });
       dots.appendChild(d);
     });
     gal.appendChild(dots);
   }
   gallery.appendChild(gal);
   galCount = shots.length;
-  galGo(0, {instant:true});
+  galPos = galCount > 1 ? 1 : 0;   /* cell 1 is the real first shot; 0 is the leading clone */
+  galRender(true);
   document.getElementById('pName').textContent = p.name;
   document.getElementById('pPrice').textContent = '€' + p.price + '  ·  incl. VAT';
   document.getElementById('pDesc').textContent = p.desc || '';
@@ -3304,7 +3371,7 @@ document.addEventListener('keydown', e => {
   if(lightbox.classList.contains('open')) return;
   if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   e.preventDefault();
-  galGo(galIdx + (e.key === 'ArrowRight' ? 1 : -1));
+  galSlide(e.key === 'ArrowRight' ? 1 : -1);
 });
 /* swipe the strip on a phone, the same 46px throw the sketchbook uses */
 let galTx = null;
@@ -3314,7 +3381,7 @@ document.getElementById('panelImg').addEventListener('touchstart', e => {
 document.getElementById('panelImg').addEventListener('touchend', e => {
   if(galTx === null || galCount < 2) return;
   const dx = e.changedTouches[0].clientX - galTx;
-  if(dx < -46) galGo(galIdx + 1); else if(dx > 46) galGo(galIdx - 1);
+  if(dx < -46) galSlide(1); else if(dx > 46) galSlide(-1);
   galTx = null;
 }, {passive:true});
 /* stopped here for the same reason #overlay stops its own clicks — lightbox
