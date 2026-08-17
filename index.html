@@ -40,6 +40,15 @@
        book slightly wrong. */
     --idle:.88;
     --idle-hover:.92;
+    /* the covers' board tone — shared at :root rather than scoped to
+       .leaf.cover so .board (a sibling of the leaves, not a descendant of
+       any one of them) can paint the exact same colour behind them. Kept
+       as one value for both: any gap along a cover's true edge — sub-pixel
+       rounding once #fit's transform:scale gets involved, see BOARD_OVER —
+       used to bare .board's own slightly different grey-beige, which read
+       as a stray light line. Same colour on both sides of the gap and
+       there is nothing left to see. */
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d0cabe 0%, #c8c2b6 44%, #beb8ac 100%);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -144,7 +153,7 @@
   .board{
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
-    background:linear-gradient(160deg,#dedcd9 0%, #d4d2cf 55%, #c9c7c3 100%);
+    background:var(--board-face);
     box-shadow:
       0 1px 2px rgba(35,31,32,.10),
       0 10px 20px -8px rgba(35,31,32,.20),
@@ -695,7 +704,7 @@
      keep its own ratio shows the whole picture AND lines every card up
      along the same shelf, just at different widths. */
   .also-card img{
-    height:260px;width:auto;background:#f7f7f6;
+    height:520px;width:auto;background:#f7f7f6;
     margin-bottom:14px;display:block;
     transition:transform .3s cubic-bezier(.34,.08,.24,1), box-shadow .3s;
   }
@@ -753,6 +762,44 @@
     line-height:1.8;margin-top:14px;
   }
   .empty-msg{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);}
+
+  /* ---------- photo lightbox ----------
+     A clicked photo's own moment in the foreground — dead centre of the
+     whole screen, above the panel it was clicked from (z-index above the
+     cart drawer, the highest anything else reaches). Opacity-driven like
+     the overlay/drawer rather than display:none, so the fade has something
+     to animate; pointer-events off at rest is what keeps it from eating
+     clicks on the page behind it while invisible. */
+  .lightbox{
+    position:fixed;inset:0;z-index:200;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(20,18,17,.92);
+    opacity:0;pointer-events:none;
+    transition:opacity .35s cubic-bezier(.3,.1,.25,1);
+  }
+  .lightbox.open{opacity:1;pointer-events:auto;}
+  .lightbox img{
+    max-width:88vw;max-height:88vh;
+    /* scale/translate are written by the zoom-drag script below; transform
+       and cursor both toggle on .zoomed rather than being inferred from the
+       scale number itself, so the two can never drift out of step */
+    transition:transform .25s cubic-bezier(.3,.1,.25,1);
+    cursor:zoom-in;
+    user-select:none;-webkit-user-select:none;
+  }
+  .lightbox img.zoomed{cursor:grab;}
+  .lightbox img.dragging{cursor:grabbing;transition:none;}
+  .lightbox-close{
+    position:absolute;top:22px;right:28px;
+    font-size:32px;font-weight:300;color:#fff;
+    opacity:.8;transition:opacity .2s;
+  }
+  .lightbox-close:hover{opacity:1;}
+  /* the photo itself is the thing being clicked into, not just labelled as
+     clickable — the same lift language as everywhere else on the page, kept
+     small so a gallery of them doesn't feel like a wall of buttons */
+  .panel-img img{cursor:zoom-in;transition:opacity .2s;}
+  .panel-img img:hover{opacity:.92;}
 </style>
 </head>
 <body>
@@ -841,6 +888,13 @@
   <div class="cart-total"><span>Total</span><span id="cartTotal">€0</span></div>
   <button class="checkout-btn" onclick="checkout()">Order by E-Mail</button>
   <p class="checkout-note">Online payment is coming soon. For now your order reaches us by e-mail and we reply with payment &amp; shipping details.</p>
+</div>
+
+<!-- A clicked photo's own foreground moment — see openLightbox. Scroll/pinch
+     to zoom, drag to pan once zoomed, click the scrim/X/Escape to leave. -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" aria-label="close">×</button>
+  <img id="lightboxImg" alt="">
 </div>
 
 <!-- Optional: if it fails to load the site falls back to the flat CSS flip.
@@ -2568,6 +2622,10 @@ function deselect(){
   /* handing back to the picker, the parked book swings home the same way it
      left rather than blinking back to the pair */
   updateOrbits();
+  /* the book closing is what "leaving the piece" means — a panel left open
+     over an unselected picker read as the page only half going back, so it
+     goes with the book rather than surviving on its own */
+  if(modalOpen) closeModal();
 }
 /* Clicking away from an open book closes it — the same "click outside to
    dismiss" the product panel already has. rail.contains covers both the
@@ -2893,6 +2951,127 @@ function closeModal(){
   centreActive();
   updateOrbits();
 }
+/* ---------- photo lightbox ----------
+   Delegated to #panelImg itself rather than to each <img> — renderItem
+   rebuilds the gallery's innerHTML on every switch, and a listener on the
+   photos themselves would need re-attaching every time; the column they
+   sit in never gets replaced.
+   Scale and pan are plain numbers rather than reading the transform back
+   off the element — this can get set a dozen times in a drag, and a
+   string round-trip on every one of those is real work for nothing. */
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const LB_MIN = 1, LB_MAX = 4;
+let lbScale = 1, lbX = 0, lbY = 0;
+function lbApply(){
+  lightboxImg.style.transform = `translate(${lbX}px, ${lbY}px) scale(${lbScale})`;
+  lightboxImg.classList.toggle('zoomed', lbScale > 1.001);
+}
+function openLightbox(src, alt){
+  lightboxImg.src = src;
+  lightboxImg.alt = alt || '';
+  lbScale = 1; lbX = 0; lbY = 0;
+  lbApply();
+  lightbox.classList.add('open');
+  document.body.classList.add('modal-open');   /* the same footer-fade the product panel already gets */
+}
+function closeLightbox(){
+  lightbox.classList.remove('open');
+  /* the product panel might still be open behind it — only drop the
+     footer-fade if nothing else is still asking for it */
+  if(!modalOpen) document.body.classList.remove('modal-open');
+}
+document.getElementById('panelImg').addEventListener('click', e => {
+  const img = e.target.closest('img');
+  if(img) openLightbox(img.src, img.alt);
+});
+/* stopped here for the same reason #overlay stops its own clicks — lightbox
+   is a sibling of #overlay, not nested inside it, so nothing already
+   catches this before it reaches the document-level "click outside the
+   panel closes it" listener. Left alone, closing the lightbox by clicking
+   its scrim was also closing the product panel behind it. */
+lightbox.addEventListener('click', e => {
+  e.stopPropagation();
+  if(e.target === lightbox) closeLightbox();
+});
+document.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox();
+});
+/* wheel to zoom, toward wherever the pointer already is rather than the
+   photo's own centre — the usual read for "zoom in on this part of it" */
+lightboxImg.addEventListener('wheel', e => {
+  e.preventDefault();
+  const prev = lbScale;
+  lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbScale * (1 - e.deltaY * .0016)));
+  if(lbScale === LB_MIN){ lbX = 0; lbY = 0; }
+  else{
+    const r = lightboxImg.getBoundingClientRect();
+    const px = e.clientX - (r.left + r.width/2), py = e.clientY - (r.top + r.height/2);
+    const grow = lbScale / prev - 1;
+    lbX -= px * grow; lbY -= py * grow;
+  }
+  lbApply();
+}, {passive:false});
+/* a plain click toggles a fixed zoom level — the drag below suppresses the
+   click a mouseup still fires afterward, so panning never also zooms */
+let lbDragging = false, lbDragged = false, lbStartX = 0, lbStartY = 0, lbFromX = 0, lbFromY = 0;
+lightboxImg.addEventListener('mousedown', e => {
+  if(lbScale <= 1.001) return;
+  lbDragging = true; lbDragged = false;
+  lbStartX = e.clientX; lbStartY = e.clientY;
+  lbFromX = lbX; lbFromY = lbY;
+  lightboxImg.classList.add('dragging');
+  e.preventDefault();
+});
+addEventListener('mousemove', e => {
+  if(!lbDragging) return;
+  lbX = lbFromX + (e.clientX - lbStartX);
+  lbY = lbFromY + (e.clientY - lbStartY);
+  if(Math.abs(e.clientX - lbStartX) + Math.abs(e.clientY - lbStartY) > 4) lbDragged = true;
+  lbApply();
+});
+addEventListener('mouseup', () => {
+  if(!lbDragging) return;
+  lbDragging = false;
+  lightboxImg.classList.remove('dragging');
+});
+lightboxImg.addEventListener('click', () => {
+  if(lbDragged){ lbDragged = false; return; }
+  if(lbScale > 1.001){ lbScale = 1; lbX = 0; lbY = 0; }
+  else lbScale = 2.2;
+  lbApply();
+});
+/* touch: pinch to zoom, one finger to pan once zoomed, same as the mouse */
+let lbPinchDist = 0, lbPinchScale = 1;
+lightboxImg.addEventListener('touchstart', e => {
+  if(e.touches.length === 2){
+    lbPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    lbPinchScale = lbScale;
+  } else if(e.touches.length === 1 && lbScale > 1.001){
+    lbDragging = true; lbDragged = false;
+    lbStartX = e.touches[0].clientX; lbStartY = e.touches[0].clientY;
+    lbFromX = lbX; lbFromY = lbY;
+  }
+}, {passive:true});
+lightboxImg.addEventListener('touchmove', e => {
+  if(e.touches.length === 2){
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbPinchScale * (d / lbPinchDist)));
+    if(lbScale === LB_MIN){ lbX = 0; lbY = 0; }
+    lbApply();
+  } else if(lbDragging && e.touches.length === 1){
+    e.preventDefault();
+    lbX = lbFromX + (e.touches[0].clientX - lbStartX);
+    lbY = lbFromY + (e.touches[0].clientY - lbStartY);
+    lbDragged = true;
+    lbApply();
+  }
+}, {passive:false});
+lightboxImg.addEventListener('touchend', e => {
+  if(e.touches.length === 0) lbDragging = false;
+});
 /* The panel has no backdrop margin of its own to click, the way the old
    centred/dimmed version had, so "click away to dismiss" means anywhere
    outside it. The book's own PAGES are exempted by their handler stopping
