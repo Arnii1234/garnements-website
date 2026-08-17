@@ -367,15 +367,21 @@
     backdrop-filter:grayscale(.9);
     -webkit-backdrop-filter:grayscale(.9);
   }
-  /* a printed slip laid on the cover, in the colophon's voice. Only for the
-     closed book: once the reader is inside, the veil already says "not yet"
-     and a label floating over the drawings would just be in the way. */
+  /* a red stamp dead-centre on the cover — red is the one colour this page
+     otherwise refuses, which is exactly what makes it read as an official
+     interruption rather than part of the artwork. The wash behind it stays
+     translucent so the cover art ghosts through like ink stamped over a
+     print. Children of the veil are NOT filtered by its backdrop-filter
+     (that only greys what is painted behind), so the red keeps its blood.
+     Only for the closed book: once the reader is inside, the veil already
+     says "not yet" and a stamp floating over the drawings would just be in
+     the way — see .book.reading below. */
   .soon-tag{
-    position:absolute;left:50%;top:82%;transform:translate(-50%,-50%);
-    font-size:10.5px;font-weight:500;letter-spacing:.34em;
-    text-transform:uppercase;color:#5d5a57;white-space:nowrap;
-    background:rgba(244,243,241,.92);
-    border:.5px solid rgba(35,31,32,.28);
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font-size:11px;font-weight:600;letter-spacing:.34em;
+    text-transform:uppercase;color:#b23b31;white-space:nowrap;
+    background:rgba(255,255,255,.55);
+    border:1px solid rgba(178,59,49,.6);
     padding:9px 15px 9px 19px;   /* uneven: letter-spacing trails the last glyph */
     transition:opacity .45s;
   }
@@ -646,28 +652,26 @@
     border:.75px solid var(--ink);
   }
   /* Cutouts — a photograph with its studio backdrop erased and trimmed to
-     the figure, so what arrives is the model on transparency. Both of the
-     rules above stop making sense on one. The frame goes because that
-     hairline traces the file's invisible bounding box rather than the
-     figure, reading as a rectangle drawn around nothing.
-     Sized by HEIGHT, not width: every cutout is trimmed to its own figure,
-     and each shot cropped differently — width would make a tightly-cropped
-     model a giant and a loose one a doll, while a fixed height stands every
-     figure at the same scale across the whole catalogue, the way the reco
-     shelf already lines its cards up. 700px is where the old full-frame
-     photograph used to put the model (378px column × A4-ish ratio ≈ 780px
-     of frame, of which the figure filled ~90%); the vh clamp keeps shorter
-     screens from cropping the feet off. max-width catches the one wide
-     pose (arms out) and scales it down keeping its ratio, per CSS 2 §10.4.
-     align-self rather than margin:auto — a definite width degrades the
-     column's default stretch to flex-start, so anything narrower than the
-     column sits hard left unless centred explicitly. */
+     the figure. The hairline frame goes (it would trace the file's invisible
+     bounding box, a rectangle drawn around nothing) and in its place every
+     figure gets a PLATE: a full-column box in the page's own white, laid on
+     the panel's warmer paper like a print. Fixed height so every figure
+     stands at the same scale across the catalogue regardless of how tight
+     its crop was — 700px is where the old full-frame photograph put the
+     model; the vh clamp keeps short screens from cropping the feet off.
+     object-fit:contain, and NOT width:auto + max-width — an explicit height
+     against a max-width is resolved by Safari by squeezing the width while
+     KEEPING the height, which stretched the wide arms-out shots vertically
+     (the §10.4 re-derivation only applies while the height is still auto).
+     contain can never distort: the figure is matted inside the plate,
+     centred both ways, and whatever room a wide pose doesn't use simply
+     reads as more white matting. */
   .panel-img img.cutout{
     border:none;
-    width:auto;
+    width:100%;
     height:min(700px, 74vh);
-    max-width:100%;
-    align-self:center;
+    object-fit:contain;
+    background:var(--bg);
   }
   .panel-info{
     padding:52px 46px 40px;display:flex;flex-direction:column;
@@ -818,17 +822,11 @@
       0 3px 6px rgba(35,31,32,.22),
       0 14px 24px -10px rgba(35,31,32,.28);
   }
-  /* a cutout card is the figure itself, not a photo in a plate — so no grey
-     plate behind it, and the hover shadow has to trace the figure's own
-     silhouette (drop-shadow follows alpha) instead of box-shadow drawing a
-     floating rectangle around an invisible box */
-  .also-card img.cutout{ background:none; }
-  .also-card:hover img.cutout{
-    box-shadow:none;
-    filter:
-      drop-shadow(0 3px 4px rgba(35,31,32,.22))
-      drop-shadow(0 10px 14px rgba(35,31,32,.20));
-  }
+  /* a cutout card stands its figure in a plate of the page's own white —
+     matching the panel's plates — instead of the old photo-grey. The plate
+     is a real box again, so the default rectangular hover shadow above is
+     exactly right and needs no override. */
+  .also-card img.cutout{ background:var(--bg); }
   .also-card .also-name{
     display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink);
   }
@@ -855,8 +853,8 @@
     padding:14px 0;border-bottom:1px solid var(--line);
   }
   .cart-item img{width:58px;height:58px;object-fit:contain;background:#f7f7f6;padding:5px;}
-  /* same reasoning as the reco cards: a figure stands on the drawer, not in a plate */
-  .cart-item img.cutout{background:none;}
+  /* same plate as the reco cards: the page's white, not the photo-grey */
+  .cart-item img.cutout{background:var(--bg);}
   .ci-name{font-size:12.5px;letter-spacing:.06em;}
   .ci-size{font-size:10px;letter-spacing:.18em;color:var(--grey);margin-top:3px;text-transform:uppercase;}
   .ci-price{margin-left:auto;font-size:12px;letter-spacing:.08em;white-space:nowrap;}
