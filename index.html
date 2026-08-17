@@ -1065,24 +1065,24 @@ const DESC = {
    The exception is purple-jeans: its two shots are flat-lays, not model
    shots, and the mask fringed them — they stay on their original JPGs. */
 const PRODUCTS = {
-  "pink-tee":     {name:"Pink Tee",                 price:55,  img:"assets/prod-pink-tee.svg",
+  "pink-tee":     {name:"Suprised Tee",             price:55,  img:"assets/prod-pink-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/pink tee front cutout.webp","assets/pink tee back cutout.webp"]},
   "brown-jeans":  {name:"Brown Embroidery Jeans",   price:140, img:"assets/prod-brown-jeans.svg",
                    desc:DESC.jeans, sizeType:"jeans"},
-  "cream-hoodie": {name:"Beige Hoodie",             price:95,  img:"assets/prod-cream-hoodie.svg",
+  "cream-hoodie": {name:"Cowboy Shootout Hoodie",   price:95,  img:"assets/prod-cream-hoodie.svg",
                    desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
                    photos:["assets/beige hoodie front cutout.webp","assets/beige hoodie back cutout.webp"]},
-  "pink-hoodie":  {name:"Pink Zip Up",              price:95,  img:"assets/prod-pink-hoodie.svg",
+  "pink-hoodie":  {name:"Head & Heart Zip-Up",      price:95,  img:"assets/prod-pink-hoodie.svg",
                    desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
                    photos:["assets/pink hoodie front cutout.webp","assets/pink hoodie back cutout.webp"]},
-  "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
+  "black-tee":    {name:"Kritzlich Tee",            price:55,  img:"assets/prod-black-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/black tee 1 front cutout.webp","assets/black tee 1 back cutout.webp"]},
-  "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
+  "rose-tee":     {name:"Verstähe Tee",             price:55,  img:"assets/prod-rose-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/black tee 2 front cutout.webp","assets/black tee 2 back cutout.webp"]},
-  "vest":         {name:"Cropped Denim Vest",       price:110, img:"assets/prod-vest.svg",
+  "vest":         {name:"Stiffi Vest",              price:110, img:"assets/prod-vest.svg",
                    desc:DESC.vest, sizeType:"vest", cutout:true,
                    photos:["assets/black vest front cutout.webp","assets/black vest back cutout.webp"]},
   "walker-jeans": {name:"Brown Embroidery Jeans II",price:140, img:"assets/prod-walker-jeans.svg",
@@ -1101,7 +1101,7 @@ const PRODUCTS = {
      with another garment, so there is no drawing that shows them alone and
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
-  "black-jeans":   {name:"Black Jeans",      price:140,
+  "black-jeans":   {name:"Rigid Fig Jeans",  price:140,
                     desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front cutout.webp","assets/black jeans back cutout.webp",
@@ -1114,7 +1114,7 @@ const PRODUCTS = {
   "purple-jeans":  {name:"Purple Jeans",     price:140,
                     desc:DESC.jeans, sizeType:"jeans", photos:[
     "assets/purple-jeans-front.jpg","assets/purple-jeans-back.jpg"]},
-  "beige-tee":     {name:"Beige Tee",        price:55,
+  "beige-tee":     {name:"Nosy Tee",         price:55,
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front cutout.webp","assets/beige tee back cutout.webp"]},
@@ -1122,11 +1122,11 @@ const PRODUCTS = {
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front cutout.webp","assets/white tee back cutout.webp"]},
-  "pink-jorts":    {name:"Pink Jorts",       price:95,
+  "pink-jorts":    {name:"Is This to Smoke? Jorts", price:95,
                     desc:DESC.shorts, sizeType:"shorts", cutout:true,
                     photos:[
     "assets/pink jorts front cutout.webp","assets/pink jorts back cutout.webp"]},
-  "beige-duffle":  {name:"Beige Duffle Bag", price:120,
+  "beige-duffle":  {name:"Beige Duffle",     price:120,
                     desc:DESC.bag, cutout:true,
                     img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag cutout.webp"]},
@@ -1136,7 +1136,7 @@ const PRODUCTS = {
      its own photographs. A cart line records the colourway by name.
      pairsWith for both colours is set below, by CLUSTERS — the black bag
      belongs with one outfit, the brown with a completely different one. */
-  "backpack":      {name:"Backpack",         price:110,
+  "backpack":      {name:"Fig Bag",          price:110,
                     desc:DESC.bag, cutout:true,
                     img:"assets/backpack drawing.svg", colours:[
     {name:"Black", swatch:"#242021", photos:["assets/black backpack cutout.webp"]},
@@ -3313,13 +3313,18 @@ function renderCart(){
 function toggleCart(open){ document.getElementById('drawer').classList.toggle('open', open); }
 function checkout(){
   if(!cart.length) return;
-  let body = 'Hello garnements,%0D%0A%0D%0AI would like to order:%0D%0A';
+  /* Written as plain text and encoded ONCE at the end, instead of the old
+     hand-sprinkled %0D%0A: piece names go into this URL, and a name with an
+     ampersand (Head & Heart Zip-Up) read as a parameter separator, cutting
+     the order off mid-list. encodeURIComponent cannot be fooled by any
+     future name. */
+  let body = 'Hello garnements,\r\n\r\nI would like to order:\r\n';
   let total = 0;
   cart.forEach(it => { const p = PRODUCTS[it.id]; total += p.price;
     const spec = (it.colour ? it.colour + ', ' : '') + 'Size ' + it.size;
-    body += `- ${p.name} (${spec}) - EUR ${p.price}%0D%0A`; });
-  body += `%0D%0ATotal: EUR ${total}%0D%0A%0D%0AMy shipping address:%0D%0A%0D%0AThank you`;
-  window.location.href = `mailto:${ORDER_EMAIL}?subject=Order - garnements 2026&body=${body}`;
+    body += `- ${p.name} (${spec}) - EUR ${p.price}\r\n`; });
+  body += `\r\nTotal: EUR ${total}\r\n\r\nMy shipping address:\r\n\r\nThank you`;
+  window.location.href = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent('Order - garnements 2026')}&body=${encodeURIComponent(body)}`;
 }
 renderCart();
 
