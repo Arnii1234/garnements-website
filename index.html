@@ -541,6 +541,22 @@
   .panel-img{
     display:flex;flex-direction:column;gap:28px;
     padding:34px;
+    /* rest state for the swap below — a slow-fast-slow ease so arriving at a
+       recommended piece reads as travel, not a cut. See switchLeftPanel. */
+    transition:opacity .5s cubic-bezier(.45,0,.15,1), transform .5s cubic-bezier(.45,0,.15,1);
+  }
+  /* the piece being left — quick and one-directional, it only has to clear
+     the way before switchLeftPanel swaps the photos underneath it */
+  .panel-img.panel-leaving{
+    opacity:0; transform:translateX(-22px);
+    transition-duration:.22s; transition-timing-function:ease-in;
+  }
+  /* the new piece's start position, set with no transition so it can jump
+     there unseen — switchLeftPanel then drops this class the same frame,
+     which is what makes the rule above animate it in from here */
+  .panel-img.panel-entering{
+    opacity:0; transform:translateX(22px);
+    transition:none;
   }
   /* width:100% is doing the real work for both photos and drawings alike,
      which is what makes this simpler than the old rule it replaces: a
@@ -670,16 +686,26 @@
     padding:56px 46px 64px;
   }
   .also-row{display:flex;gap:32px;overflow-x:auto;padding-top:4px;}
-  .also-card{flex:0 0 auto;width:190px;text-align:left;}
-  /* height:auto rather than a fixed box + object-fit:cover — cover was
-     cropping these to fill a squarer box than a full-body photo actually is,
-     which meant the crop line landed wherever it landed and often took the
-     model's face with it. Letting the height follow the photo's own ratio
-     shows the whole picture; every card in a row ends up a different height
-     for the same reason, which reads fine in a horizontally scrolling shelf. */
+  .also-card{flex:0 0 auto;text-align:left;cursor:pointer;}
+  /* height fixed, width:auto rather than the other way round — a fixed
+     WIDTH is what used to make every card a different height; object-fit:
+     cover forcing a fixed box was worse still, cropping a full-body photo
+     into whatever squarer shape the box happened to be, often taking the
+     model's face with it. Fixing the height instead and letting each photo
+     keep its own ratio shows the whole picture AND lines every card up
+     along the same shelf, just at different widths. */
   .also-card img{
-    width:190px;height:auto;background:#f7f7f6;
+    height:260px;width:auto;background:#f7f7f6;
     margin-bottom:14px;display:block;
+    transition:transform .3s cubic-bezier(.34,.08,.24,1), box-shadow .3s;
+  }
+  /* the same "lifts toward you" read the sketchbook drawings give on hover —
+     picking a recommendation should feel like the same kind of touch */
+  .also-card:hover img{
+    transform:scale(1.035);
+    box-shadow:
+      0 3px 6px rgba(35,31,32,.22),
+      0 14px 24px -10px rgba(35,31,32,.28);
   }
   .also-card .also-name{
     display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink);
@@ -2147,11 +2173,11 @@ cal.addEventListener('click', e => {
   const spot = e.target.closest('.design-spot');
   if(spot){
     if(p && p.designs && p.designs.some(d => d.product === spot.dataset.product))
-      openModal([spot.dataset.product]);
+      openModalSmooth([spot.dataset.product]);
     return;
   }
   if(!e.target.closest('.page-art')) return;
-  if(p && p.products && p.products.length) openModal(p.products);
+  if(p && p.products && p.products.length) openModalSmooth(p.products);
 });
 /* touch swipe — bound to this book's own pad, so each answers only to itself */
 let ty = null;
@@ -2562,7 +2588,13 @@ function deselect(){
    wave is built to look right composing under a simultaneous shrink, so
    nothing here needs to wait for it to finish first. */
 document.addEventListener('click', e => {
-  if(activeIndex !== -1 && !rail.contains(e.target)){
+  /* Only while there's no product open — with one open, the white space
+     around the book belongs to ITS "click away to dismiss" (see the
+     overlay's own listener below), and closing the book underneath it at
+     the same time reads as the whole page resetting rather than the piece
+     just closing. Left open, the book stays exactly where it was once the
+     panel is gone. */
+  if(activeIndex !== -1 && !modalOpen && !rail.contains(e.target)){
     books[activeIndex].closeRapidly();
     deselect();
   }
@@ -2684,6 +2716,35 @@ function pageOf(id){
   }
   return null;
 }
+/* ---------- moving the panel between pieces ----------
+   A fresh open already has its own arrival, the overlay sliding in from the
+   edge — switching to ANOTHER piece while one is already open has no such
+   moment, so without this the photos underneath it just cut. Every "open
+   this piece" click now goes through openModalSmooth instead of openModal
+   directly — a design hotspot, book2's whole-page fallback, a
+   recommendation — so clicking any of them reads the same way: swiping the
+   sketchbook's own pages is deliberately NOT one of these (see cal's touch
+   handlers) — the panel is only ever supposed to move on an actual click. */
+function sameItems(ids){
+  return modalOpen && curItems.length === ids.length && curItems.every((id, i) => id === ids[i]);
+}
+function switchLeftPanel(mutate){
+  const gal = document.getElementById('panelImg');
+  gal.classList.add('panel-leaving');
+  setTimeout(() => {
+    mutate();
+    document.querySelector('.panel').scrollTop = 0;
+    gal.classList.remove('panel-leaving');
+    gal.classList.add('panel-entering');
+    gal.offsetHeight;                 /* land the entering state before transitioning out of it */
+    gal.classList.remove('panel-entering');
+  }, 220);
+}
+function openModalSmooth(ids, after){
+  if(sameItems(ids)){ if(after) after(); return; }    /* already showing this — nothing to move to */
+  if(!modalOpen){ openModal(ids); if(after) after(); return; }
+  switchLeftPanel(() => { openModal(ids); if(after) after(); });
+}
 /* The click handler for every "open this piece" moment that ISN'T already
    standing on its page — a recommendation, mainly. Turns the sketchbook to
    where the piece is actually drawn (switching books first if it lives in
@@ -2701,8 +2762,9 @@ function goToProduct(id, colour){
     if(activeIndex !== loc.book) setActive(loc.book, {autoOpen:false});
     books[loc.book].jumpTo(loc.page);
   }
-  openModal([id]);
-  if(colour) { curColour = colourIdx(PRODUCTS[id], colour); renderItem(); }
+  openModalSmooth([id], () => {
+    if(colour) { curColour = colourIdx(PRODUCTS[id], colour); renderItem(); }
+  });
 }
 function openModal(ids){
   curItems = ids; curIdx = 0; curSize = null; curColour = 0;
