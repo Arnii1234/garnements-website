@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>garnements</title>
-<meta name="description" content="garnements 2026, edition one. Hand-drawn embroidery from Berlin — each piece begins as a one-line drawing.">
+<meta name="description" content="garnements 2026, edition one. Hand-drawn embroidery from Berlin.">
 <meta name="theme-color" content="#f4f3f1">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
@@ -1107,8 +1107,9 @@
    of use (see shotsOf/heroOf); do not hand-encode them here. */
 /* `desc` is written per GARMENT TYPE, not per piece — every one of them draws
    on the same facts already published in the colophon (100% cotton, hand
-   embroidered from a one-line drawing, made in Berlin) rather than inventing
-   anything specific to a single SKU. `sizeType` points a piece at its rows in
+   embroidered, made in Berlin) rather than inventing anything specific to a
+   single SKU. Deliberately says nothing about HOW a design originates —
+   Arne is writing that copy; until it lands, silence beats a wrong claim. `sizeType` points a piece at its rows in
    SIZE_GUIDES below; a bag has none, so its fold never renders (see
    renderSizeGuide). What a piece recommends is no longer stored here at all
    — the roster carries the whole photographed catalogue in a random order,
@@ -1116,12 +1117,12 @@
    photo shows nothing else in the catalogue, gets no list at all rather than
    a manufactured one. */
 const DESC = {
-  tee:    "Midweight cotton jersey, boxy cropped fit. The design is hand embroidered from one of the original one-line drawings — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
-  hoodie: "Midweight cotton fleece, oversized fit. Hand embroidered from an original one-line drawing — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
-  jeans:  "Heavyweight cotton denim, wide leg. The embroidered panel is worked directly into the denim from an original one-line drawing. Designed and embroidered in Berlin.",
-  shorts: "Heavyweight cotton denim, wide fit. The embroidered panel is worked directly into the denim from an original one-line drawing. Designed and embroidered in Berlin.",
-  vest:   "Cotton denim, cropped and sleeveless. Hand embroidered from an original one-line drawing — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
-  bag:    "Heavy cotton canvas with leather trim. Hand embroidered from an original one-line drawing. Designed and embroidered in Berlin."
+  tee:    "Midweight cotton jersey, boxy cropped fit. Hand embroidered — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  hoodie: "Midweight cotton fleece, oversized fit. Hand embroidered — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  jeans:  "Heavyweight cotton denim, wide leg. The embroidered panel is worked directly into the denim. Designed and embroidered in Berlin.",
+  shorts: "Heavyweight cotton denim, wide fit. The embroidered panel is worked directly into the denim. Designed and embroidered in Berlin.",
+  vest:   "Cotton denim, cropped and sleeveless. Hand embroidered — thread worked into the cloth, not printed. Designed and embroidered in Berlin.",
+  bag:    "Heavy cotton canvas with leather trim. Hand embroidered — thread worked into the cloth, not printed. Designed and embroidered in Berlin."
 };
 /* Every model photograph now ships as a "<shot> cutout.webp" — the same
    frame with the studio backdrop erased, trimmed to the figure, cut by
@@ -1581,7 +1582,6 @@ PAGES.forEach((p, i) => {
         <p>
           <span class="cline">2026 — edition one</span>
           <span class="cline">designed &amp; embroidered in berlin</span>
-          <span class="cline">each piece begins as a one-line drawing</span>
           <span class="cline">embroidery — 100% cotton</span>
           <span class="cline">200–300 gsm</span>
           <span class="cline cgap"></span>
