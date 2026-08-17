@@ -150,25 +150,16 @@
      sheets against it, and what casts the pad's drop shadow. Sized to the
      covers rather than the sheets so the shadow falls at the pad's true outer
      edge; the back cover sits in front of it and hides it completely.
-     It carries the covers' own cut line, because "completely" turns out to be
-     by 0.019px. Depth is what decides: a cover plate is only as proud of this
-     backing as its leaf's z, and the LAST leaf rests at leafZ = 0.25px, the
-     smallest in the stack — measured, the title cover's plate stands 0.53
-     device px clear of this edge while the back cover's stands 0.038. Under a
-     tenth of a pixel, the two edges rasterise into the same pixel, and this
-     one being borderless filled it with plain board and wiped the back cover's
-     hairline out — the last page read as a board with no cut line at all while
-     the title cover kept a crisp one. Giving the same hairline to both means
-     that shared pixel comes out dark whichever of them wins it.
-     Note this can never double: wherever a cover plate stands properly proud
-     (the closed book) it is opaque and covers this edge outright.
-     Not fixed by nudging the back cover's z instead — leafZ sets the whole
-     stack's order, and the sheets' 0.25px spacing is what keeps them sorted. */
+     Borderless, like .board-over: the covers are edged by their own shadow
+     now, not by a drawn line. (This used to carry the same hairline they did,
+     for a sub-pixel reason — the back cover's plate stands only 0.038 device
+     px clear of this edge against the title cover's 0.53, so the two
+     rasterise into one pixel and a borderless backing wiped the back cover's
+     line out. With no line on either, there is nothing left to lose.) */
   .board{
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
-    border:.25px solid #3d2b1f;   /* same cut line as .board-over */
     box-shadow:
       0 1px 2px rgba(35,31,32,.10),
       0 10px 20px -8px rgba(35,31,32,.20),
@@ -234,14 +225,14 @@
     background:linear-gradient(#c1bbaf 0%, #bbb5a9 55%, #b4aea2 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
-     so the two read as one piece of card. A hairline traces its true outer
-     edge — the cover's actual cut line — thin enough to read as definition,
-     not a frame. */
+     so the two read as one piece of card. No drawn edge: the pad's own
+     shadow is what separates a cover from the page behind it, and a hairline
+     on top of that read as an outline around the book rather than as the
+     thickness of card. */
   .board-over{
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
-    border:.25px solid #3d2b1f;
     /* No transform here, however tempting a translateZ nudge looks: giving
        this plate its own 3D layer threw the whole books scene's compositing
        off (both pads rendered displaced and mis-projected). The stacking
@@ -1119,9 +1110,9 @@
    embroidered from a one-line drawing, made in Berlin) rather than inventing
    anything specific to a single SKU. `sizeType` points a piece at its rows in
    SIZE_GUIDES below; a bag has none, so its fold never renders (see
-   renderSizeGuide). `pairsWith` is not a merchandising guess — every one of
-   these was read directly off that piece's own model photo, listing only
-   OTHER catalogue pieces actually worn in it. A piece with no photo, or whose
+   renderSizeGuide). What a piece recommends is no longer stored here at all
+   — the roster carries the whole photographed catalogue in a random order,
+   see pairsOf. A piece with no photo, or whose
    photo shows nothing else in the catalogue, gets no list at all rather than
    a manufactured one. */
 const DESC = {
@@ -1213,8 +1204,8 @@ const PRODUCTS = {
      row instead of a plain photo strip: the drawing is shared, because the
      shape is the same and only the cloth differs, and each colourway brings
      its own photographs. A cart line records the colourway by name.
-     pairsWith for both colours is set below, by CLUSTERS — the black bag
-     belongs with one outfit, the brown with a completely different one. */
+     Each colourway stands in the roster on its own, so the black bag can be
+     recommended while the brown one is open — see pairsOf. */
   "backpack":      {name:"Fig", type:"Bag",                         price:101.15,
                     desc:DESC.bag, cutout:true,
                     img:"assets/backpack drawing.svg", colours:[
@@ -1224,32 +1215,12 @@ const PRODUCTS = {
        "assets/brown backpack front cutout.webp" ahead of this one again */
     {name:"Brown", swatch:"#6d4a30", photos:["assets/brown backpack cutout.webp"]}]}
 };
-/* ---------- "you may also like" clusters ----------
-   Arne's own groupings, not the narrower per-photo reading pairsWith used to
-   be limited to — everything in one cluster recommends everything else in
-   it. Built from a flat member list rather than typed out pairwise on each
-   entry: at 8 members that is 56 cross-references, and handwriting them
-   risked exactly one getting missed or mistyped somewhere in the set.
-   `colour` narrows WHICH of backpack's two colourways belongs to this
-   cluster — recommending it without one would default to Black even from
-   inside the pink cluster, showing the wrong bag for the outfit standing
-   next to it. */
-function applyCluster(members){
-  members.forEach(({id, colour}) => {
-    const others = members.filter(m => !(m.id === id && m.colour === colour));
-    const target = colour
-      ? PRODUCTS[id].colours.find(c => c.name === colour)
-      : PRODUCTS[id];
-    target.pairsWith = others.map(m => m.colour ? {id:m.id, colour:m.colour} : m.id);
-  });
-}
-applyCluster([
-  {id:"cream-hoodie"}, {id:"beige-tee"}, {id:"pink-tee"}, {id:"vest"},
-  {id:"black-tee"}, {id:"black-jeans"}, {id:"backpack", colour:"Black"}, {id:"beige-duffle"}
-]);
-applyCluster([
-  {id:"pink-jorts"}, {id:"white-tee"}, {id:"pink-hoodie"}, {id:"backpack", colour:"Brown"}
-]);
+/* The two CLUSTERS that used to live here — Arne's groupings of the pieces
+   photographed together, one beige/black set and one pink/brown set — are
+   gone with the ordering that read them: the roster now carries the whole
+   catalogue in a random order, so there is no head of the row for them to
+   lead. They are in the history if that ordering is ever wanted back
+   (git log -S applyCluster). */
 /* Every picture of a piece — model photographs only, front then back, in the
    order PRODUCTS lists them. The digital drawing was only ever a stand-in
    for photography that didn't exist yet, so once real photos are in, it
@@ -1298,53 +1269,55 @@ const fullName = p => p.type ? `${p.name} ${p.type}` : p.name;
    middle of that is a slip, not a localisation. */
 const cents = p => Math.round(p.price * 100);
 const euro  = c => '€' + (c / 100).toFixed(2);
-/* What stands in the roster under a piece: EVERY photographed piece in the
-   catalogue, not only the ones shot alongside this one. Each figure is a
-   way into another piece, so carrying the whole set under all of them means
-   any piece is one step from any other — a visitor who opens a single
-   garment can reach the rest of the collection without going back to the
-   sketchbook to find it.
-   The clusters are not thrown away, they become the ORDER: pieces genuinely
-   worn together in the same photograph lead the row, so what is in view
-   before you scroll still answers "what goes with this", and the rest of
-   the catalogue follows behind them. Takes the piece's id rather than its
-   object because a piece has to leave its own roster, and only the id can
-   say which one it is.
-   Colourway-aware throughout, for the same reason shotsOf is: the two bags
-   are one entry with two sets of photographs, and each colourway stands in
-   the roster on its own. An entry is either a bare id or {id, colour} —
-   normalised to {id, colour} here so the render side never has to care
-   which shape it started as, and keyed on both so a piece cannot appear
-   twice when its cluster already named it. */
+/* ---------- the roster ----------
+   What stands under a piece: EVERY photographed piece in the catalogue, in
+   a fresh random order each time the window opens. Each figure is a way
+   into another piece, so carrying the whole set under all of them means any
+   piece is one step from any other, and shuffling means the row is a
+   different walk through the collection every time rather than the same
+   procession — which is also what keeps whatever happens to sit early in
+   PRODUCTS from being the only thing anyone ever sees.
+   The order is a WEIGHT PER PIECE, drawn once per opening and kept, not a
+   shuffle of the finished list. renderItem runs again whenever a colourway
+   swatch is clicked, and re-shuffling there would reorder the row under the
+   visitor's hand for a click that had nothing to do with it. Weights are
+   stable across those re-renders, so switching the bag from Black to Brown
+   swaps exactly that one card and leaves everything else standing still. */
+let rosterWeight = new Map();
+function reshuffleRoster(){
+  rosterWeight = new Map();
+  Object.entries(PRODUCTS).forEach(([id, q]) => {
+    if(q.colours) q.colours.forEach(c => rosterWeight.set(id + '|' + c.name, Math.random()));
+    else rosterWeight.set(id + '|', Math.random());
+  });
+}
+reshuffleRoster();
+/* Takes the piece's id rather than its object because a piece has to leave
+   its own roster, and only the id can say which one it is.
+   Colourway-aware for the same reason shotsOf is: the two bags are one
+   entry with two sets of photographs, and each colourway stands in the
+   roster on its own — so the black bag can be recommended while you are
+   looking at the brown one. */
 const pairsOf = (id, ci) => {
   const p = PRODUCTS[id];
   if(!p) return [];
   const c = p.colours && (p.colours[ci] || p.colours[0]);
-  const keyOf = x => x.id + '|' + (x.colour || '');
-  /* shot alongside this one — the head of the row */
-  const near = ((c ? c.pairsWith : p.pairsWith) || [])
-    .map(x => typeof x === 'string' ? {id:x, colour:null} : x);
-  /* then everything else that has been photographed, in PRODUCTS' own order.
-     A piece with no photographs stays out: shotsOf would fall back to its
+  const self = id + '|' + (c ? c.name : '');
+  /* A piece with no photographs stays out: shotsOf would fall back to its
      drawing, and a line drawing standing in a row of models reads as a
      missing image rather than as a piece. */
-  const rest = [];
+  const out = [];
   Object.entries(PRODUCTS).forEach(([qid, q]) => {
     if(q.colours) q.colours.forEach(col => {
-      if((col.photos || []).length) rest.push({id:qid, colour:col.name});
+      if((col.photos || []).length) out.push({id:qid, colour:col.name});
     });
-    else if((q.photos || []).length) rest.push({id:qid, colour:null});
+    else if((q.photos || []).length) out.push({id:qid, colour:null});
   });
-  const seen = new Set([keyOf({id, colour: c ? c.name : null})]);   /* never itself */
-  const out = [];
-  [...near, ...rest].forEach(x => {
-    if(!PRODUCTS[x.id]) return;              /* a renamed or retired key drops off quietly */
-    const k = keyOf(x);
-    if(seen.has(k)) return;
-    seen.add(k);
-    out.push(x);
-  });
-  return out;
+  return out
+    .filter(x => (x.id + '|' + (x.colour || '')) !== self)
+    .sort((a, b) =>
+      (rosterWeight.get(a.id + '|' + (a.colour || '')) ?? 0) -
+      (rosterWeight.get(b.id + '|' + (b.colour || '')) ?? 0));
 };
 const SIZES = ["XS","S","M","L","XL","XXL"];
 /* Placeholder — cm, once Arne sends real measurements. Rows only, no values:
@@ -3221,6 +3194,10 @@ function goToProduct(id, colour){
   });
 }
 function openModal(ids){
+  /* a new walk through the collection for every piece opened — see
+     reshuffleRoster for why the weights are drawn here and not in
+     renderItem, which also runs on a colourway click */
+  reshuffleRoster();
   curItems = ids; curIdx = 0; curSize = null; curColour = 0;
   resetFolds();
   renderItem();
@@ -3369,10 +3346,10 @@ function renderItem(){
       </table>`;
   }
 
-  /* you may also like — Arne's own clusters (see applyCluster), not a per-
-     photo guess; switches curItems outright rather than adding a tab, since
+  /* the roster — the whole photographed catalogue, shuffled (see pairsOf);
+     switches curItems outright rather than adding a tab, since
      clicking one is choosing to look at THAT piece, not comparing it against
-     this one. A pair carrying a colour (backpack, from either cluster) opens
+     this one. An entry carrying a colour (either bag) opens
      on ITS colourway rather than the default — the thumbnail here already
      shows that colourway's own photo, so the panel it opens into should
      match what was just clicked rather than reverting to Black. Clicking one
