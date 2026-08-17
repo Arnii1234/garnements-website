@@ -149,11 +149,26 @@
   /* Cardboard backing of the pad — a real element so Safari depth-sorts the
      sheets against it, and what casts the pad's drop shadow. Sized to the
      covers rather than the sheets so the shadow falls at the pad's true outer
-     edge; the back cover sits in front of it and hides it completely. */
+     edge; the back cover sits in front of it and hides it completely.
+     It carries the covers' own cut line, because "completely" turns out to be
+     by 0.019px. Depth is what decides: a cover plate is only as proud of this
+     backing as its leaf's z, and the LAST leaf rests at leafZ = 0.25px, the
+     smallest in the stack — measured, the title cover's plate stands 0.53
+     device px clear of this edge while the back cover's stands 0.038. Under a
+     tenth of a pixel, the two edges rasterise into the same pixel, and this
+     one being borderless filled it with plain board and wiped the back cover's
+     hairline out — the last page read as a board with no cut line at all while
+     the title cover kept a crisp one. Giving the same hairline to both means
+     that shared pixel comes out dark whichever of them wins it.
+     Note this can never double: wherever a cover plate stands properly proud
+     (the closed book) it is opaque and covers this edge outright.
+     Not fixed by nudging the back cover's z instead — leafZ sets the whole
+     stack's order, and the sheets' 0.25px spacing is what keeps them sorted. */
   .board{
     position:absolute;
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
+    border:.25px solid #3d2b1f;   /* same cut line as .board-over */
     box-shadow:
       0 1px 2px rgba(35,31,32,.10),
       0 10px 20px -8px rgba(35,31,32,.20),
@@ -588,6 +603,26 @@
     width:100%;height:auto;display:block;
     border:.75px solid var(--ink);
   }
+  /* Cutouts — a photograph with its studio backdrop erased, so what arrives is
+     the model on transparency. Both of the rules above stop making sense on
+     one. The frame goes because that hairline traces the PNG's invisible
+     bounding box rather than the figure, reading as a rectangle drawn around
+     nothing. And the width comes down because the crop threw away all the
+     backdrop the full-frame JPG carried — the figure spanned 814px of a
+     1251px frame (front) and 816 of 1369 (back), so at the column's full
+     width it stood about 1.5x larger than it ever did in its own photograph.
+     62% sits between those two numbers: the model lands back at very close to
+     its original on-screen size, now standing on the panel's own paper
+     instead of inside a window.
+     width, not max-width, and align-self rather than margin:auto — the base
+     rule above already gives every image a definite width, which degrades the
+     column's default stretch to flex-start, so a narrowed image sits hard
+     left unless it is centred explicitly. */
+  .panel-img img.cutout{
+    border:none;
+    width:62%;
+    align-self:center;
+  }
   .panel-info{
     padding:52px 46px 40px;display:flex;flex-direction:column;
   }
@@ -799,6 +834,15 @@
     transition:opacity .35s cubic-bezier(.3,.1,.25,1);
   }
   .lightbox.open{opacity:1;pointer-events:auto;}
+  /* A cutout carries no backdrop of its own, so whatever is behind it becomes
+     its background — and this piece is a black tee over black jeans, which on
+     the near-black scrim above came out a silhouette with nothing readable
+     inside it. Cutouts get the panel's own paper behind them instead, the
+     same field they were standing on in the panel they were clicked from.
+     The close cross has to come back to ink here for the same reason: white
+     on white is not a button. */
+  .lightbox.on-cutout{ background:rgba(244,243,241,.97); }
+  .lightbox.on-cutout .lightbox-close{ color:var(--ink); }
   .lightbox img{
     max-width:88vw;max-height:88vh;
     /* scale/translate are written by the zoom-drag script below; transform
@@ -965,9 +1009,14 @@ const PRODUCTS = {
                    photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
                    desc:DESC.tee, sizeType:"tee",
-                   /* trying the cutout versions — the same two shots, cropped
-                      to the model. The full frames were
-                      "assets/black tee 1 front.JPG" / "assets/black tee 1 back.JPG". */
+                   /* the cutout versions — the same two shots with the studio
+                      backdrop erased, cropped to the model. The full frames
+                      were "assets/black tee 1 front.JPG" / "…back.JPG".
+                      `cutout` is what drops the panel's frame and stands the
+                      figure at its photographic size — see .panel-img
+                      img.cutout. It describes these photos, so it travels with
+                      them if they are ever swapped back. */
+                   cutout:true,
                    photos:["assets/figure-front-transparent.png","assets/figure-back-transparent.png"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
                    desc:DESC.tee, sizeType:"tee",
@@ -2874,6 +2923,10 @@ function renderItem(){
   shots.forEach(src => {
     const img = document.createElement('img');
     img.src = src; img.alt = p.name;
+    /* `cutout` describes the PHOTOGRAPHS, so it only applies while they are
+       what is actually being shown — shotsOf falls back to the piece's drawing
+       when a piece has none, and a drawing still wants its frame. */
+    if(p.cutout && p.photos && p.photos.length) img.classList.add('cutout');
     gallery.appendChild(img);
   });
   document.getElementById('pName').textContent = p.name;
@@ -2991,9 +3044,10 @@ function lbApply(){
   lightboxImg.style.transform = `translate(${lbX}px, ${lbY}px) scale(${lbScale})`;
   lightboxImg.classList.toggle('zoomed', lbScale > 1.001);
 }
-function openLightbox(src, alt){
+function openLightbox(src, alt, cutout){
   lightboxImg.src = src;
   lightboxImg.alt = alt || '';
+  lightbox.classList.toggle('on-cutout', !!cutout);
   lbScale = 1; lbX = 0; lbY = 0;
   lbApply();
   lightbox.classList.add('open');
@@ -3007,7 +3061,7 @@ function closeLightbox(){
 }
 document.getElementById('panelImg').addEventListener('click', e => {
   const img = e.target.closest('img');
-  if(img) openLightbox(img.src, img.alt);
+  if(img) openLightbox(img.src, img.alt, img.classList.contains('cutout'));
 });
 /* stopped here for the same reason #overlay stops its own clicks — lightbox
    is a sibling of #overlay, not nested inside it, so nothing already
