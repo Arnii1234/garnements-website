@@ -180,7 +180,14 @@
     background:
       radial-gradient(128% 92% at 50% 10%, #f8f7f5 0%, #f4f3f1 44%, #eeedea 100%);
     overflow:hidden;
-    transform:translateZ(.4px); /* keep the two faces off each other's plane (Safari) */
+    /* Off the other face's plane (Safari), but deliberately UNDER the .25px
+       leaf spacing (leafZ). At .4px the first sheet's face rode .15px in
+       front of the closed cover's board-over plate, and its lighter paper
+       bled through the cover face's anti-aliased edge as thin pale lines
+       tracing the cover's border. Below .25 every sheet tucks back behind
+       the plate, which is board-toned for exactly this kind of sub-pixel
+       gap — see --board-face at :root. Keep in step with .rear below. */
+    transform:translateZ(.2px);
   }
   /* fine paper tooth — kept faint so the drawings stay clean */
   .leaf-face::before{
@@ -191,7 +198,7 @@
   }
   /* reverse side of a page — plain paper, seen as it comes over the top */
   .leaf-face.rear{
-    transform:rotateX(180deg) translateZ(.4px);
+    transform:rotateX(180deg) translateZ(.2px);
     background:linear-gradient(#e3e2e0 0%, #dcdbd8 55%, #d5d4d1 100%);
   }
   .leaf-face.rear::after{
@@ -220,6 +227,10 @@
     inset:calc(-1 * var(--over-y)) calc(-1 * var(--over-x));
     background:var(--board-face);
     border:.25px solid #3d2b1f;
+    /* No transform here, however tempting a translateZ nudge looks: giving
+       this plate its own 3D layer threw the whole books scene's compositing
+       off (both pads rendered displaced and mis-projected). The stacking
+       problem it would have solved is handled in .leaf-face's lift instead. */
   }
   /* heavier stock shows more fibre: coarser grain (lower frequency, bigger
      tile) and a little more of it than the inner sheets carry */
@@ -694,7 +705,17 @@
     border-top:1px solid var(--line);
     padding:56px 46px 64px;
   }
-  .also-row{display:flex;gap:32px;overflow-x:auto;padding-top:4px;}
+  /* overflow-x:auto quietly drags overflow-y along with it (a spec rule:
+     one axis can't clip while the other stays visible), so the hover scale
+     below was guillotined at the row's top edge. The scrollport can't be
+     told to let vertical growth out — instead the row borrows room on every
+     side with padding for the lift and shadow to land in, and hands it
+     straight back with negative margins so nothing else moves. */
+  .also-row{
+    display:flex;gap:32px;overflow-x:auto;
+    padding:14px 10px 8px;
+    margin:-10px -10px -8px;
+  }
   .also-card{flex:0 0 auto;text-align:left;cursor:pointer;}
   /* height fixed, width:auto rather than the other way round — a fixed
      WIDTH is what used to make every card a different height; object-fit:
@@ -944,7 +965,10 @@ const PRODUCTS = {
                    photos:["assets/pink hoodie front.JPG","assets/pink hoodie back.JPG"]},
   "black-tee":    {name:"Black Tee I",              price:55,  img:"assets/prod-black-tee.svg",
                    desc:DESC.tee, sizeType:"tee",
-                   photos:["assets/black tee 1 front.JPG","assets/black tee 1 back.JPG"]},
+                   /* trying the cutout versions — the same two shots, cropped
+                      to the model. The full frames were
+                      "assets/black tee 1 front.JPG" / "assets/black tee 1 back.JPG". */
+                   photos:["assets/figure-front-transparent.png","assets/figure-back-transparent.png"]},
   "rose-tee":     {name:"Black Tee II",             price:55,  img:"assets/prod-rose-tee.svg",
                    desc:DESC.tee, sizeType:"tee",
                    photos:["assets/black tee 2 front.JPG","assets/black tee 2 back.JPG"]},
