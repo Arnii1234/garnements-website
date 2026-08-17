@@ -617,17 +617,14 @@
   @media(max-width:760px){
     .panel{grid-template-columns:1fr;}
   }
-  /* Every photo, full width, one after another — a normal-flow block rather
-     than the earlier single sticky hero image. That single image behind a
-     thumbnail switcher is also what the whole sticky/align-self/min-height
-     apparatus above used to exist for: keeping ONE photo in view while a
-     fold opened beside it. With every photo simply stacked in the document
-     instead, the entire problem it was solving is gone rather than fixed —
-     nothing here pins to anything, so there is nothing left that can drift
-     out of sync with panel-info's own height the way three straight rounds
-     of that bug did. */
+  /* One image space, looked through with an arrow at either side of the
+     model — not the earlier column of every photograph stacked, and not the
+     sticky hero behind a thumbnail switcher before that. What made the
+     sticky version fragile was that it pinned itself against panel-info's
+     height; nothing here pins to anything, so the drift bug that took three
+     rounds to kill cannot come back. */
   .panel-img{
-    display:flex;flex-direction:column;gap:28px;
+    display:flex;flex-direction:column;
     padding:34px;
     /* rest state for the swap below — a slow-fast-slow ease so arriving at a
        recommended piece reads as travel, not a cut. See switchLeftPanel. */
@@ -675,6 +672,44 @@
     height:min(700px, 74vh);
     object-fit:contain;
   }
+  /* the strip of photographs and the window onto it. Only the window clips;
+     the arrows and dots sit outside it, on .gal, so nothing can cut them
+     off the way .also-row's own overflow once cut off its hover lift. */
+  .gal{position:relative;}
+  .gal-view{overflow:hidden;}
+  .gal-track{
+    display:flex;align-items:center;
+    transition:transform .5s cubic-bezier(.4,0,.2,1);
+  }
+  .gal-cell{
+    flex:0 0 100%;   /* one photograph per screenful of the window, always */
+    display:flex;align-items:center;justify-content:center;
+  }
+  /* At the model's sides, vertically centred, laid over the image rather
+     than in gutters beside it — a cutout is a figure on transparency with
+     empty room at its left and right, so this is genuinely beside the
+     model, and the image keeps the column's full width. The paper disc is
+     what makes that safe on the one wide arms-out pose and over the dark
+     garments: a bare glyph would sink into black denim. */
+  .gal-arrow{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:34px;height:34px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:19px;line-height:1;color:var(--grey);
+    background:rgba(244,243,241,.66);
+    opacity:.75;
+    transition:opacity .2s, color .2s, background .2s;
+  }
+  .gal:hover .gal-arrow{opacity:1;}
+  .gal-arrow:hover{color:var(--ink);background:rgba(244,243,241,.95);}
+  .gal-prev{left:0;}
+  .gal-next{right:0;}
+  .gal-dots{display:flex;justify-content:center;gap:7px;margin-top:18px;}
+  .gal-dots button{
+    width:5px;height:5px;border-radius:50%;
+    background:rgba(35,31,32,.2);transition:background .25s;
+  }
+  .gal-dots button.on{background:var(--ink);}
   .panel-info{
     padding:52px 46px 40px;display:flex;flex-direction:column;
   }
@@ -792,28 +827,29 @@
     border-top:1px solid var(--line);
     padding:56px 46px 64px;
   }
-  /* overflow-x:auto quietly drags overflow-y along with it (a spec rule:
-     one axis can't clip while the other stays visible), so the hover scale
-     below was guillotined at the row's top edge. The scrollport can't be
-     told to let vertical growth out — instead the row borrows room on every
-     side with padding for the lift and shadow to land in, and hands it
-     straight back with negative margins so nothing else moves. */
-  .also-row{
-    display:flex;gap:32px;overflow-x:auto;
-    padding:14px 10px 8px;
-    margin:-10px -10px -8px;
+  /* Every recommendation side by side and in view at once — four to a row,
+     wrapping to a second if a cluster runs long. It used to be a shelf that
+     scrolled sideways at 520px a card, which was the right shape when a
+     piece's own photographs were a tall stack above it; now that a piece
+     fits one screen, a shelf you had to drag through to see the third
+     suggestion was the last thing still asking to be scrolled.
+     No overflow here any more, which retires the padding/negative-margin
+     pair that used to buy the hover lift room to grow: nothing clips it. */
+  .also-row{display:flex;flex-wrap:wrap;gap:26px 22px;}
+  .also-card{
+    flex:0 1 calc(25% - 17px);
+    min-width:120px;   /* below this a figure stops reading as a figure */
+    text-align:left;cursor:pointer;
   }
-  .also-card{flex:0 0 auto;text-align:left;cursor:pointer;}
-  /* height fixed, width:auto rather than the other way round — a fixed
-     WIDTH is what used to make every card a different height; object-fit:
-     cover forcing a fixed box was worse still, cropping a full-body photo
-     into whatever squarer shape the box happened to be, often taking the
-     model's face with it. Fixing the height instead and letting each photo
-     keep its own ratio shows the whole picture AND lines every card up
-     along the same shelf, just at different widths. */
+  /* A fixed BOX now, not a fixed height with the width left free: cards
+     that each take a quarter of the row have to line up on both axes, and
+     with object-fit:contain a fixed box crops nothing — every photo keeps
+     its own ratio inside it and simply centres, which is what the old
+     fixed-height rule was really protecting against (an early object-fit:
+     cover version cropped full-body shots down to a square, faces first). */
   .also-card img{
-    height:520px;width:auto;background:#f7f7f6;
-    margin-bottom:14px;display:block;
+    width:100%;height:230px;object-fit:contain;background:#f7f7f6;
+    margin-bottom:12px;display:block;
     transition:transform .3s cubic-bezier(.34,.08,.24,1), box-shadow .3s;
   }
   /* the same "lifts toward you" read the sketchbook drawings give on hover —
@@ -2951,6 +2987,27 @@ document.addEventListener('keydown', e => {
 
 /* ---------- product modal ---------- */
 let curItems = [], curIdx = 0, curSize = null, curColour = 0;
+/* which of the open piece's photographs the image space is showing, and how
+   many there are to look through. Module-level rather than closed over in
+   renderItem because the arrows, the dots, the keyboard and the swipe all
+   drive the same one, and renderItem rebuilds the carousel from scratch on
+   every piece — a state that lived inside it would reset to a stale count. */
+let galIdx = 0, galCount = 0;
+/* Wraps rather than stops: at four photographs of one garment there is no
+   "end" worth blocking on, and a dead arrow at either extreme reads as
+   broken more often than as informative. `instant` is for a freshly built
+   carousel, where sliding from wherever the last piece was left would be an
+   animation of nothing. */
+function galGo(i, {instant = false} = {}){
+  const track = document.querySelector('#panelImg .gal-track');
+  if(!track || !galCount) return;
+  galIdx = ((i % galCount) + galCount) % galCount;
+  if(instant) track.style.transition = 'none';
+  track.style.transform = `translateX(${-galIdx * 100}%)`;
+  if(instant){ track.offsetHeight; track.style.transition = ''; }
+  document.querySelectorAll('#panelImg .gal-dots button')
+    .forEach((d, k) => d.classList.toggle('on', k === galIdx));
+}
 /* Size Guide and Shipping & Returns always start closed for whichever piece
    is now showing — opening one while looking at a tee and having it still
    open when you land on a bag (which does not even carry a size guide) would
@@ -3041,27 +3098,67 @@ function openModal(ids){
 }
 function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
-  /* every photograph, stacked in order (front, back, left, right — however
-     PRODUCTS lists them), rather than one hero image behind a thumbnail
-     switcher. Arne asked for exactly this: all of them on the page, scrolled
-     through rather than selected between. It also quietly removes the whole
-     problem the last three rounds of fixes were chasing — nothing here is
-     pinned or height-matched to anything else, so there is nothing left that
-     CAN drift out of sync with panel-info. */
+  /* Every photograph of the piece in ONE image space — front, back, left,
+     right, however PRODUCTS lists them — looked through with an arrow on
+     either side of the model rather than stacked down the page. One piece
+     is now one screen: the figure, its details beside it, and the
+     recommendations below, instead of a column you had to scroll through
+     photo by photo to reach anything.
+     Still nothing here is pinned or height-matched to panel-info, which is
+     what three earlier rounds of drift bugs were about — the cells take
+     their height from the image box and nothing else. */
   const shots = shotsOf(p, curColour);
   const gallery = document.getElementById('panelImg');
   gallery.innerHTML = '';
   const cut = isCutout(p, curColour);
+  const gal = document.createElement('div');
+  gal.className = 'gal';
+  const view = document.createElement('div');
+  view.className = 'gal-view';
+  const track = document.createElement('div');
+  track.className = 'gal-track';
   shots.forEach((src, si) => {
+    const cell = document.createElement('div');
+    cell.className = 'gal-cell';
     const img = document.createElement('img');
     img.src = src; img.alt = p.name;
     img.decoding = 'async';
-    /* the first shot is what the panel opens ON — everything below it can
-       wait for the scroll instead of racing it for bandwidth */
+    /* the shot the panel opens ON is the only one worth racing for
+       bandwidth; the rest can arrive as they are reached */
     if(si > 0) img.loading = 'lazy';
     if(cut) img.classList.add('cutout');
-    gallery.appendChild(img);
+    cell.appendChild(img);
+    track.appendChild(cell);
   });
+  view.appendChild(track);
+  gal.appendChild(view);
+  /* A single-shot piece gets no arrows and no dots — controls that can only
+     ever return you to the picture you are already looking at. */
+  if(shots.length > 1){
+    const mk = (cls, glyph, delta) => {
+      const b = document.createElement('button');
+      b.className = 'gal-arrow ' + cls;
+      b.type = 'button';
+      b.textContent = glyph;
+      b.setAttribute('aria-label', delta < 0 ? 'Previous photo' : 'Next photo');
+      b.addEventListener('click', ev => { ev.stopPropagation(); galGo(galIdx + delta); });
+      return b;
+    };
+    gal.append(mk('gal-prev', '‹', -1), mk('gal-next', '›', +1));
+    const dots = document.createElement('div');
+    dots.className = 'gal-dots';
+    shots.forEach((_, si) => {
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.setAttribute('aria-label', `Photo ${si+1} of ${shots.length}`);
+      d.addEventListener('click', ev => { ev.stopPropagation(); galGo(si); });
+      dots.appendChild(d);
+    });
+    gal.appendChild(dots);
+  }
+  gallery.appendChild(gal);
+  galCount = shots.length;
+  galGo(0, {instant:true});
   document.getElementById('pName').textContent = p.name;
   document.getElementById('pPrice').textContent = '€' + p.price + '  ·  incl. VAT';
   document.getElementById('pDesc').textContent = p.desc || '';
@@ -3196,6 +3293,30 @@ document.getElementById('panelImg').addEventListener('click', e => {
   const img = e.target.closest('img');
   if(img) openLightbox(img.src, img.alt, img.classList.contains('cutout'));
 });
+/* Left/right while a piece is open look through ITS photographs. The book's
+   own arrow keys bow out whenever the panel is open (see that handler's
+   first line), so the same two keys mean the nearest thing in view rather
+   than turning a page you cannot see. The lightbox keeps them for itself —
+   it is showing one photograph full-screen and moving the strip underneath
+   it would swap the image out from under the zoom. */
+document.addEventListener('keydown', e => {
+  if(!modalOpen || galCount < 2) return;
+  if(lightbox.classList.contains('open')) return;
+  if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault();
+  galGo(galIdx + (e.key === 'ArrowRight' ? 1 : -1));
+});
+/* swipe the strip on a phone, the same 46px throw the sketchbook uses */
+let galTx = null;
+document.getElementById('panelImg').addEventListener('touchstart', e => {
+  galTx = e.touches[0].clientX;
+}, {passive:true});
+document.getElementById('panelImg').addEventListener('touchend', e => {
+  if(galTx === null || galCount < 2) return;
+  const dx = e.changedTouches[0].clientX - galTx;
+  if(dx < -46) galGo(galIdx + 1); else if(dx > 46) galGo(galIdx - 1);
+  galTx = null;
+}, {passive:true});
 /* stopped here for the same reason #overlay stops its own clicks — lightbox
    is a sibling of #overlay, not nested inside it, so nothing already
    catches this before it reaches the document-level "click outside the
