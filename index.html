@@ -2327,10 +2327,11 @@ function renderRoster(){
     const s = b.mount.style;
     s.transition = 'none';
     s.transform = `translateX(${extra}px) scale(${1 - ad * (1 - IDLE_SCALE)})`;
-    /* full opacity right at centre, never the washed-out .5 an ordinary
-       waiting book gets — two books both dimmed is what read as one fading
-       into the other; only the one NOT being read should ever be. */
-    s.opacity = 1 - ad * .5;
+    /* both fully opaque, always — even a dimmed tucked book reads as it
+       fading into the one in front the moment they overlap mid-drag. Depth
+       comes from scale and z-index alone, the same read a stack of solid
+       movie covers gives turning past one another. */
+    s.opacity = 1;
     s.zIndex = ad <= .5 ? 2 : 1;
   });
 }
