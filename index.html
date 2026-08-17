@@ -990,15 +990,17 @@
   .lightbox img{
     /* percent, not vw — the box is the product window now, not the screen */
     max-width:88%;max-height:88vh;
-    /* scale/translate are written by the zoom-drag script below; transform
-       and cursor both toggle on .zoomed rather than being inferred from the
+    /* scale/translate are written by the zoom script below; transform and
+       cursor both toggle on .zoomed rather than being inferred from the
        scale number itself, so the two can never drift out of step */
-    transition:transform .25s cubic-bezier(.3,.1,.25,1);
+    transition:transform .3s cubic-bezier(.3,.1,.25,1);
+    /* the magnifier with a +, and with a − once it is enlarged: the pointer
+       is the only instruction this needs, since a press is the only thing
+       it does (see LB_ZOOM). Nothing grabs or drags any more. */
     cursor:zoom-in;
     user-select:none;-webkit-user-select:none;
   }
-  .lightbox img.zoomed{cursor:grab;}
-  .lightbox img.dragging{cursor:grabbing;transition:none;}
+  .lightbox img.zoomed{cursor:zoom-out;}
   .lightbox-close{
     position:absolute;top:22px;right:28px;
     font-size:32px;font-weight:300;color:#fff;
@@ -3409,9 +3411,8 @@ function closeModal(){
    rebuilds the gallery's innerHTML on every switch, and a listener on the
    photos themselves would need re-attaching every time; the column they
    sit in never gets replaced.
-   Scale and pan are plain numbers rather than reading the transform back
-   off the element — this can get set a dozen times in a drag, and a
-   string round-trip on every one of those is real work for nothing. */
+   Scale and offset are plain numbers rather than read back off the element:
+   a transform string round-trip on every change is work for nothing. */
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightboxImg');
 const LB_MIN = 1, LB_MAX = 4;
@@ -3476,79 +3477,45 @@ document.querySelector('.lightbox-close').addEventListener('click', closeLightbo
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox();
 });
-/* wheel to zoom, toward wherever the pointer already is rather than the
-   photo's own centre — the usual read for "zoom in on this part of it" */
-lightboxImg.addEventListener('wheel', e => {
-  e.preventDefault();
-  const prev = lbScale;
-  lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbScale * (1 - e.deltaY * .0016)));
-  if(lbScale === LB_MIN){ lbX = 0; lbY = 0; }
-  else{
+/* ---------- one zoom step, toggled by clicking ----------
+   Press once to go in, press again to come back out, and nothing else. The
+   photo used to take a wheel AND a drag as well: the wheel left it at
+   arbitrary in-between scales, and once it was enlarged the only way to see
+   any of it was to drag the picture around, which is fiddly with a mouse
+   and kept leaving the photo at odd offsets over its own scrim. One step
+   each way needs no dragging at all, so none of that can happen.
+   The cursor is the whole instruction — zoom-in and zoom-out are real CSS
+   cursors, the magnifier with a + and with a −, so the pointer always says
+   which of the two a press will do.
+   It zooms toward the POINT PRESSED rather than the photo's centre, so
+   pressing an embroidery detail brings that detail to you. */
+const LB_ZOOM = 2.4;
+/* Hold the picture over its own box. Past the point where the enlarged photo
+   still covers the window there is nothing to show but scrim, and drifting
+   into it is what made the old zoom feel like it had lost its dimensions —
+   so an anchored zoom near an edge gives back only as much as it has. */
+function lbClamp(){
+  if(lbScale <= 1.001){ lbX = 0; lbY = 0; return; }
+  const box = lightbox.getBoundingClientRect();
+  const maxX = Math.max(0, (lightboxImg.offsetWidth  * lbScale - box.width ) / 2);
+  const maxY = Math.max(0, (lightboxImg.offsetHeight * lbScale - box.height) / 2);
+  lbX = Math.min(maxX, Math.max(-maxX, lbX));
+  lbY = Math.min(maxY, Math.max(-maxY, lbY));
+}
+/* one handler for mouse and touch alike — a tap raises a click too, so a
+   phone gets the same single step without pinch or pan of its own */
+lightboxImg.addEventListener('click', e => {
+  if(lbScale > 1.001){
+    lbScale = 1; lbX = 0; lbY = 0;
+  } else {
     const r = lightboxImg.getBoundingClientRect();
-    const px = e.clientX - (r.left + r.width/2), py = e.clientY - (r.top + r.height/2);
-    const grow = lbScale / prev - 1;
-    lbX -= px * grow; lbY -= py * grow;
+    const grow = LB_ZOOM - 1;
+    lbX = -(e.clientX - (r.left + r.width  / 2)) * grow;
+    lbY = -(e.clientY - (r.top  + r.height / 2)) * grow;
+    lbScale = LB_ZOOM;
+    lbClamp();
   }
   lbApply();
-}, {passive:false});
-/* a plain click toggles a fixed zoom level — the drag below suppresses the
-   click a mouseup still fires afterward, so panning never also zooms */
-let lbDragging = false, lbDragged = false, lbStartX = 0, lbStartY = 0, lbFromX = 0, lbFromY = 0;
-lightboxImg.addEventListener('mousedown', e => {
-  if(lbScale <= 1.001) return;
-  lbDragging = true; lbDragged = false;
-  lbStartX = e.clientX; lbStartY = e.clientY;
-  lbFromX = lbX; lbFromY = lbY;
-  lightboxImg.classList.add('dragging');
-  e.preventDefault();
-});
-addEventListener('mousemove', e => {
-  if(!lbDragging) return;
-  lbX = lbFromX + (e.clientX - lbStartX);
-  lbY = lbFromY + (e.clientY - lbStartY);
-  if(Math.abs(e.clientX - lbStartX) + Math.abs(e.clientY - lbStartY) > 4) lbDragged = true;
-  lbApply();
-});
-addEventListener('mouseup', () => {
-  if(!lbDragging) return;
-  lbDragging = false;
-  lightboxImg.classList.remove('dragging');
-});
-lightboxImg.addEventListener('click', () => {
-  if(lbDragged){ lbDragged = false; return; }
-  if(lbScale > 1.001){ lbScale = 1; lbX = 0; lbY = 0; }
-  else lbScale = 2.2;
-  lbApply();
-});
-/* touch: pinch to zoom, one finger to pan once zoomed, same as the mouse */
-let lbPinchDist = 0, lbPinchScale = 1;
-lightboxImg.addEventListener('touchstart', e => {
-  if(e.touches.length === 2){
-    lbPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    lbPinchScale = lbScale;
-  } else if(e.touches.length === 1 && lbScale > 1.001){
-    lbDragging = true; lbDragged = false;
-    lbStartX = e.touches[0].clientX; lbStartY = e.touches[0].clientY;
-    lbFromX = lbX; lbFromY = lbY;
-  }
-}, {passive:true});
-lightboxImg.addEventListener('touchmove', e => {
-  if(e.touches.length === 2){
-    e.preventDefault();
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    lbScale = Math.min(LB_MAX, Math.max(LB_MIN, lbPinchScale * (d / lbPinchDist)));
-    if(lbScale === LB_MIN){ lbX = 0; lbY = 0; }
-    lbApply();
-  } else if(lbDragging && e.touches.length === 1){
-    e.preventDefault();
-    lbX = lbFromX + (e.touches[0].clientX - lbStartX);
-    lbY = lbFromY + (e.touches[0].clientY - lbStartY);
-    lbDragged = true;
-    lbApply();
-  }
-}, {passive:false});
-lightboxImg.addEventListener('touchend', e => {
-  if(e.touches.length === 0) lbDragging = false;
 });
 /* The panel has no backdrop margin of its own to click, the way the old
    centred/dimmed version had, so "click away to dismiss" means anywhere
