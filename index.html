@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover lets the page fill the whole screen INCLUDING the
+     strips a notch, a rounded corner or a home indicator sit in — which is
+     also the only way env(safe-area-inset-*) reports anything but zero. The
+     masthead and colophon then pad themselves back out of those strips, so
+     the paper runs edge to edge while no text ever sits under the hardware. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>garnements</title>
 <meta name="description" content="garnements 2026, edition one. Hand-drawn embroidery from Berlin.">
 <meta name="theme-color" content="#f4f3f1">
@@ -145,9 +150,26 @@
      as the sketchbook itself on a narrow screen. Padding comes down with it,
      or the now-smaller type just leaves the same gap looking oversized. */
   @media(max-width:900px){
-    header{ padding:20px 24px 0; }
-    .brand{ font-size:17px; }
-    .cart-btn{ font-size:9.5px; }
+    /* Centred, not baseline-aligned. On a laptop the masthead sets a 22px
+       serif against an 11px sans and shares their baseline, which is the
+       typographically right answer at that size. On a phone the same rule
+       put CART ten pixels lower than the wordmark — measured — and at this
+       scale that does not read as a shared baseline, it reads as the cart
+       having slipped. Centring puts both on one line in their own corners,
+       which is what the eye is looking for here.
+       Padding carries the safe-area insets so that a notch, a rounded
+       corner or a home indicator pushes the row inward instead of cropping
+       it. The env() terms are simply 0 on hardware without them. */
+    header{
+      align-items:center;
+      padding:
+        calc(16px + env(safe-area-inset-top))
+        calc(20px + env(safe-area-inset-right))
+        0
+        calc(20px + env(safe-area-inset-left));
+    }
+    .brand{ font-size:15px; letter-spacing:.12em; }
+    .cart-btn{ font-size:8.5px; letter-spacing:.18em; }
   }
 
   /* ---------- calendar ---------- */
@@ -640,7 +662,13 @@
   body.modal-open footer a{ pointer-events:none; }
   /* the colophon line, same reasoning as the masthead above */
   @media(max-width:900px){
-    footer{ font-size:7.5px; padding:18px 0 26px; }
+    /* It sat one pixel off the bottom of the window, which on a phone means
+       it is the first thing a rounded corner or a home indicator eats into.
+       Room below, and the inset added on top of it. */
+    footer{
+      font-size:7px; letter-spacing:.2em;
+      padding:16px 18px calc(22px + env(safe-area-inset-bottom));
+    }
   }
   footer a:hover{border-color:var(--ink);}
 
@@ -1646,6 +1674,10 @@ const BOOK2_PAGES = [
   {type:"art", img:"assets/S2P4.svg", ar:0.7071},
   {type:"art", img:"assets/S2P5.svg", ar:0.7071},
   {type:"art", img:"assets/S2P6.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P7.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P8.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P9.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P10.svg", ar:0.7071},
   {type:"back", board:true}
 ];
 
@@ -2983,7 +3015,7 @@ function measureRoster(){
     /* screen px of drag per whole rosterPos unit — a book-width's worth of
        finger travel to fully swap the pair, which is what keeps a small
        peek (above) from also making the drag itself feel twitchy */
-    dragUnit: width * s,
+    dragUnit: width * s * ROSTER_TRAVEL,
   };
   rail.style.transition = 'none';
   rail.style.transform =
@@ -3009,6 +3041,16 @@ function stopRosterAnim(){
    behind this one", the same reading the desktop tuck already has once a
    product opens beside it. */
 const ROSTER_PEEK = .3;
+/* How far a finger travels to bring the next book in, as a share of a
+   book's width. It used to be the whole width — on a phone that is ~345px
+   of a 375px screen, so changing books meant dragging almost the entire
+   display while the strip barely moved under the thumb. That reach, not
+   the frame rate, is the whole of the "cloggy" feeling. At .42 a swap
+   costs about 145px — an ordinary swipe — and since velocity is measured
+   in these same units, a flick now carries into the coast instead of
+   dying where it started. The filmstrip is phone-only (see centreActive),
+   so this never touches the laptop. */
+const ROSTER_TRAVEL = .42;
 /* Paints rosterPos — pure arithmetic against the geometry measureRoster
    cached, no DOM reads, so this is cheap enough to call every animation
    frame. Never through a CSS transition either, for the same reason
