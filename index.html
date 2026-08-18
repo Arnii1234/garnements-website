@@ -87,7 +87,7 @@
        used to bare .board's own slightly different grey-beige, which read
        as a stray light line. Same colour on both sides of the gap and
        there is nothing left to see. */
-    --board-face:radial-gradient(128% 92% at 50% 10%, #d0cabe 0%, #c8c2b6 44%, #beb8ac 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #cacaca 0%, #c2c2c2 44%, #b8b8b8 100%);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -274,11 +274,11 @@
      outline you see around an inner page is the back cover genuinely showing
      past it. Stiffness is handled in the flip itself (see stiffFor/flipMs). */
   .leaf.cover{
-    --board-face:radial-gradient(128% 92% at 50% 10%, #d0cabe 0%, #c8c2b6 44%, #beb8ac 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #cacaca 0%, #c2c2c2 44%, #b8b8b8 100%);
   }
   .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#c1bbaf 0%, #bbb5a9 55%, #b4aea2 100%);
+    background:linear-gradient(#bbbbbb 0%, #b6b6b6 55%, #aeaeae 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
      so the two read as one piece of card. No drawn edge: the pad's own
@@ -466,7 +466,16 @@
   .soon-veil{
     position:absolute;inset:-60px 0 0;z-index:4;
     pointer-events:none;
-    background:rgba(255,255,255,.3);
+    /* Grey only — the white wash is gone, and it was doing two unwanted
+       things. It lightened edition two's covers, so the two books stopped
+       reading as the same board. And it was the pale strip beside the book:
+       this veil reaches 11px past the pad on each side, and over there the
+       wash was lifting the pad's own drop shadow off the page, leaving a
+       washed band down both edges. grayscale alone has nothing to show over
+       a white page or a near-neutral shadow, so the overhang goes invisible
+       without needing to be measured or clipped.
+       And with the covers themselves now neutral (see --board-face), greying
+       them is a no-op — which is precisely why both books' covers match. */
     backdrop-filter:grayscale(.9);
     -webkit-backdrop-filter:grayscale(.9);
   }
@@ -966,22 +975,30 @@
        4.5 cards plus the 4 gaps between them, so a card is what is left of
        the width once those gaps are taken out, split 4.5 ways.
        0 0 so they hold that size rather than squeezing to fit the row. */
-    flex:0 0 calc((100% - 64px) / 4.5);   /* 64px = 4 × the 16px gap above */
-    min-width:104px;   /* phones: the calc would go far below a figure's worth */
+    /* each card is only as wide as its own figure needs, so the gap between
+       figures stays the one constant across the shelf. min-width is for the
+       CAPTION, not the figure: a narrow pose comes out under 70px wide and
+       "Is This to Smoke?" underneath it would break across four lines. The
+       figure simply centres in whatever the caption asks for. */
+    flex:0 0 auto; width:auto; min-width:118px;
     text-align:center;cursor:pointer;
   }
-  /* A fixed BOX, not a fixed height with the width left free: every card
-     has to line up on both axes, and with object-fit:contain a fixed box
-     crops nothing — each photo keeps its own ratio inside it and centres,
-     which is what the old fixed-height rule was really protecting against
-     (an early object-fit:cover version cropped full-body shots down to a
-     square, faces first). contain centring is also what puts the caption
-     under the MODEL rather than under the file's box: a figure sits in the
-     middle of this box whatever its own width, so centred text below lands
-     on his centre line, right beneath where his feet stand. */
+  /* Height is the ONLY thing fixed here, and that is what makes every model
+     the same size. The fixed box with object-fit:contain that used to be
+     here fits the whole image inside the box, so a wide pose — the sweater
+     with both arms out — runs out of WIDTH first and is scaled down until it
+     fits, losing height it never needed to lose, while a narrow standing
+     pose is stopped by height and keeps all of it. Two poses, two different
+     limits, two different sized men on one shelf.
+     Sizing by height alone has one answer for every pose, and since the
+     cutouts are trimmed to the figure, equal image height is equal model
+     height, head to feet. Width follows from the pose and is allowed to.
+     max-width:none matters: a max-width against an explicit height is what
+     Safari resolves by squeezing the width and keeping the height, which
+     stretches a wide figure — the same trap as the panel photo. */
   .also-card img{
-    width:100%;height:230px;object-fit:contain;background:#f7f7f6;
-    margin-bottom:12px;display:block;
+    height:230px; width:auto; max-width:none;
+    margin:0 auto 12px; display:block;
     transition:transform .3s cubic-bezier(.34,.08,.24,1), box-shadow .3s;
   }
   /* the same "lifts toward you" read the sketchbook drawings give on hover —
@@ -2315,7 +2332,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#c1bbaf', '#bbb5a9', '#b4aea2']);
+    texCoverBack = paperTexture(['#bbbbbb', '#b6b6b6', '#aeaeae']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -2397,7 +2414,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#d0cabe', '#c8c2b6', '#beb8ac']
+    ? ['#cacaca', '#c2c2c2', '#b8b8b8']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
