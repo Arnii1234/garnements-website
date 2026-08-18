@@ -331,6 +331,46 @@
     filter:
       drop-shadow(0 1px 2px rgba(35,31,32,.24));
   }
+  /* ---- the hotspot's real shape, on a pointer that can hover ----
+     A design's box is mostly empty paper — a standing figure fills maybe a
+     third of the rectangle around it — so a box-shaped hotspot lit the piece
+     up while the cursor was still nowhere near any ink, and two designs on
+     one page had boxes that overlapped in places neither drawing reaches.
+     Here the INK is the target. The paths carry the whole drawing's shape
+     (they are filled outlines of brush strokes, no strokes of their own —
+     see any "<page> <piece> design.svg"), so handing hit-testing to them
+     follows every curve for free, at whatever zoom, with no second copy of
+     the geometry to keep in step.
+     pointer-events:all rather than the default: it hit-tests a path's fill
+     AND the band its stroke-width would cover, regardless of whether either
+     is actually painted — which is what buys the tolerance. A drawn line is
+     a couple of screen pixels wide and nobody can be asked to land on that,
+     so the band is the reach: land within it and the piece lifts.
+     non-scaling-stroke keeps that reach in SCREEN pixels. Without it the
+     band is in the drawing's own units, and since every design SVG shares
+     one 2480x3508 artboard while the pieces on it differ hugely in size, a
+     fixed number would mean a generous reach around a large drawing and
+     almost none around a small one.
+     Gated on a pointer that can hover and is fine: a finger has no hover
+     state to give and is far wider than this reach, so on a touchscreen the
+     plain rectangle stays the tap target. */
+  @media (hover:hover) and (pointer:fine){
+    .design-spot{ pointer-events:none; }
+    .design-art{ pointer-events:none; }
+    .design-art path, .design-art polygon, .design-art rect,
+    .design-art circle, .design-art ellipse, .design-art polyline{
+      pointer-events:all;
+      /* the reach is GEOMETRY ONLY — stroke:none is not a default worth
+         trusting here, because `stroke` is an inherited SVG property and
+         these paths sit inside a page that sets one; without this the
+         stroke-width below paints an 11px ink outline around every line
+         and the drawing goes bold. */
+      stroke:none;
+      stroke-width:11;
+      vector-effect:non-scaling-stroke;
+      cursor:pointer;
+    }
+  }
   /* title art fills whole page (it includes its own spiral + margins) */
   .title-art{position:absolute;inset:0;}
   .title-art img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -2592,6 +2632,14 @@ let activeIndex = -1;
 let modalOpen = false;
 const mobileMQ = matchMedia('(max-width:900px)');
 const isMobile = () => mobileMQ.matches;
+/* The viewport's width in CSS pixels — the SAME number the media queries
+   above resolve against, which window.innerWidth is not: innerWidth counts
+   a classic scrollbar's gutter, and on a phone it tracks the VISUAL
+   viewport, so it changes under a pinch-zoom or a raised keyboard while the
+   layout the books are centred in does not. Every "centre this on screen"
+   sum below reads it, so the geometry can never disagree with the layout
+   that CSS actually built. */
+const viewW = () => document.documentElement.clientWidth;
 /* Before either book is picked there is nothing to centre ON — .books (this
    same element `rail` points to) is centred within its own parent instead,
    so the pair sits together rather than one arbitrarily standing in for
@@ -2617,7 +2665,7 @@ function railShift(){
   const box = host.getBoundingClientRect();
   const s = host.clientWidth ? box.width / host.clientWidth : 1;
   const reserve = modalOpen ? document.getElementById('overlay').offsetWidth : 0;
-  const centreScreen = reserve + (innerWidth - reserve) / 2;
+  const centreScreen = reserve + (viewW() - reserve) / 2;
   return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
 function centreActive(){
@@ -2689,7 +2737,7 @@ function measureRoster(){
   };
   rail.style.transition = 'none';
   rail.style.transform =
-    'translateX(' + ((innerWidth / 2 - box.left) / s - (lefts[0] + width / 2)) + 'px)';
+    'translateX(' + ((viewW() / 2 - box.left) / s - (lefts[0] + width / 2)) + 'px)';
 }
 /* Hands every book back to the plain .book/.book:not(.active) CSS the
    moment one is actually picked (see centreActive) — inline styles beat any
@@ -2840,7 +2888,7 @@ function orbitTarget(i){
      scale 1, which is exactly the case that hides the mistake. */
   const box = rail.parentElement.getBoundingClientRect();
   const s = rail.parentElement.clientWidth ? box.width / rail.parentElement.clientWidth : 1;
-  const edge = (innerWidth - box.left) / s;
+  const edge = (viewW() - box.left) / s;
   return Math.min(natural, (edge - shown * ORBIT_PEEK) - restLeft);
 }
 /* The path is an arc, not a slide: it shrinks away to .58 at the midpoint and
