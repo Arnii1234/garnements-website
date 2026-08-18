@@ -670,7 +670,10 @@
     display:grid;grid-template-columns:1.15fr 1fr;
     overflow-y:auto;position:relative;
   }
-  @media(max-width:760px){
+  /* One number for "this is a phone", the same one isMobile() and the phone
+     block use. At 760 a landscape phone kept the laptop's two columns inside
+     a block that had already gone full width. */
+  @media(max-width:900px){
     .panel{grid-template-columns:1fr;}
   }
   /* One image space, looked through with an arrow at either side of the
@@ -725,7 +728,7 @@
   .panel-img img.cutout{
     border:none;
     width:100%;
-    height:min(700px, 74vh);
+    height:min(700px, 74svh);
     object-fit:contain;
   }
   /* the strip of photographs and the window onto it. Only the window clips;
@@ -1064,6 +1067,33 @@
     }
     .also-card{ width:auto; min-width:0; flex:none; }
     .also-like{ padding:38px 20px 44px; }
+    /* 7 — the way out. On a laptop the × sits in the panel's top corner and
+       the panel is always fully on screen, so it is always there. Here the
+       panel is metres of page and its top corner scrolls away immediately —
+       and tapping the page around it no longer closes anything (that rule
+       has no "outside" to mean on a column, see the click listener). So the
+       × leaves the flow and stands still in the corner a thumb actually
+       reaches. Bottom, not top: the masthead's own CART sits top-right, and
+       two tap targets in one corner is how a reader closes the wrong thing. */
+    .close-x{
+      position:fixed; top:auto; bottom:18px; right:16px;
+      width:44px; height:44px;              /* a real target, not a glyph */
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; line-height:1;
+      background:rgba(244,243,241,.94);
+      border:.5px solid rgba(35,31,32,.18);
+      border-radius:50%;
+      backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+      z-index:110;
+    }
+    /* 8 — the piece-to-piece swap moves the way this page moves. The panel
+       slides its photo sideways on a laptop; here that is the one direction
+       nothing is allowed to travel, so it rises and falls instead, matching
+       panelRise. The .22s on the leaving half is load-bearing whatever the
+       axis — switchLeftPanel swaps the content on a 220ms timer and a slower
+       exit would swap it in plain view. */
+    .panel-img.panel-leaving{ transform:translateY(-14px); }
+    .panel-img.panel-entering{ transform:translateY(14px); }
   }
 
   /* ---------- cart drawer ---------- */
@@ -1139,7 +1169,11 @@
   .lightbox.on-cutout .lightbox-close{ color:var(--ink); }
   .lightbox img{
     /* percent, not vw — the box is the product window now, not the screen */
-    max-width:88%;max-height:88vh;
+    /* svh after vh, in that order, so an engine that knows neither svh nor
+       the address bar still gets the old behaviour. The lightbox is fixed and
+       cannot scroll, so at 88vh — the window at its TALLEST, chrome hidden —
+       a photo loses its top and bottom the moment the address bar returns. */
+    max-width:88%;max-height:88vh;max-height:88svh;
     /* scale/translate are written by the zoom script below; transform and
        cursor both toggle on .zoomed rather than being inferred from the
        scale number itself, so the two can never drift out of step */
@@ -2707,7 +2741,23 @@ cal.addEventListener('click', e => {
 });
 /* touch swipe — bound to this book's own pad, so each answers only to itself */
 let ty = null;
-cal.addEventListener('touchstart', e => ty = e.touches[0].clientY, {passive:true});
+cal.addEventListener('touchstart', e => {
+  /* one finger only: a second one means a pinch or a system gesture, and
+     reading either as a page turn is how a book flips while someone is
+     trying to zoom */
+  if(e.touches.length !== 1){ ty = null; return; }
+  ty = e.touches[0].clientY;
+}, {passive:true});
+/* Abandon the swipe the moment it turns out to be something else. iOS keeps
+   delivering touchend through a gesture the system has taken over (the
+   left-edge back-swipe, the notification shade), so without this the page
+   turns as the reader leaves — and a second finger arriving mid-drag has
+   the same effect. */
+cal.addEventListener('touchmove', e => {
+  if(ty === null) return;
+  if(e.touches.length !== 1) ty = null;
+}, {passive:true});
+cal.addEventListener('touchcancel', () => { ty = null; }, {passive:true});
 cal.addEventListener('touchend', e => {
   if(ty === null) return;
   const dy = e.changedTouches[0].clientY - ty;
@@ -2996,6 +3046,14 @@ function orbitTarget(i){
      that pulled the waiting book in behind on every open, product or not.
      On a phone this never runs at all while nothing is chosen — see
      centreActive, which hands that state to the filmstrip instead. */
+  /* Never on a phone. The orbit exists to tuck the waiting book behind the
+     chosen one because the product window takes the LEFT of a laptop screen
+     — but on a phone that window is below the book, nothing is competing for
+     width, and there is nothing to make room for. All it did there was slide
+     a second sketchbook in from the right edge every time a drawing was
+     tapped, which is the one movement this layout has promised never to
+     make. */
+  if(isMobile()) return 0;
   if(!modalOpen || activeIndex < 0 || i === activeIndex) return 0;
   const act = books[activeIndex].mount, me = books[i].mount;
   /* Everything here is layout, then shifted by the rail's own target offset —
@@ -3739,6 +3797,14 @@ lightboxImg.addEventListener('click', e => {
    document at all is what actually holds. */
 document.getElementById('overlay').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', e => {
+  /* "Click outside to dismiss" needs an outside. On a laptop the panel is a
+     window with the page around it, so there is one. On a phone it is a
+     block in the middle of a column — everything is either above it or
+     below it, and both of those are "outside": a tap on the colophon, or on
+     the page's own margin, closed the panel the reader was reading. The
+     close × is the way out there (made reachable in the phone block), not
+     the whole rest of the document. */
+  if(isMobile()) return;
   const ov = document.getElementById('overlay');
   if(ov.classList.contains('open') && !ov.contains(e.target) && !rail.contains(e.target)) closeModal();
 });
@@ -3827,17 +3893,17 @@ function fitToViewport(){
      redo that math, so this re-fires it instead of duplicating their logic */
   window.dispatchEvent(new Event('resize'));
 }
-addEventListener('resize', fitToViewport);
-document.fonts?.ready.then(fitToViewport);
-fitToViewport();
-/* --chrome rides along with the same three moments the fit does: the
-   masthead and colophon change height with the window and again when the
-   serif finally lands, and the book's one-screen height is worked out from
-   them. Before fitToViewport on the initial call, so the first paint is
-   already right rather than corrected a frame later. */
-addEventListener('resize', setChrome);
-document.fonts?.ready.then(setChrome);
-setChrome();
+/* Order matters and is the whole point of this pairing: #fit's height is
+   calc(100svh - var(--chrome)), so setChrome decides the room that
+   fitToViewport then measures with clientHeight. Registered the other way
+   round the fit was computed against the room the chrome had BEFORE the
+   serif landed, and fitToViewport's own scale cache meant it never
+   recomputed — the book stayed fitted to a room that had since changed,
+   which on a shorter phone is visible as the page resettling after load. */
+function relayout(){ setChrome(); fitToViewport(); }
+addEventListener('resize', relayout);
+document.fonts?.ready.then(relayout);
+relayout();
 </script>
 </body>
 </html>
