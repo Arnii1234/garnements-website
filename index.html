@@ -2373,6 +2373,7 @@ function layoutGL(){
 function pageTexture(i){
   if(i in glTex) return glTex[i];
   const p = PAGES[i];
+  let drewImage = false;
   const TW = Math.min(1536, Math.round(cal.offsetWidth * Math.min(window.devicePixelRatio||1, 2) * 1.15));
   const TH = Math.round(TW * PAGE_H / PAGE_W);
   const c = document.createElement('canvas');
@@ -2433,7 +2434,8 @@ function pageTexture(i){
     x.fillText(p.label, TW/2, TH*.5);
   }else if(p.type !== 'back'){                      /* the back cover is bare */
     const img = leaves[i].querySelector('img');
-    if(!img || !img.complete) return null;          /* try again next flip */
+    if(!img || !img.complete || !img.naturalWidth) return null;   /* try again next flip */
+    drewImage = true;
     if(p.type === 'title'){
       /* Pressed into the board rather than printed on it. Light reads from the
          top left, so the far wall of the recess catches it (highlight down-
@@ -2465,10 +2467,23 @@ function pageTexture(i){
   }
   /* punched last: the holes go through whatever is printed on the sheet */
   drawHoles(x, TW / PAGE_W);
-  /* a file:// page taints the canvas the moment an image is drawn on it, and
-     WebGL refuses tainted textures. Detect it here and fall back for good. */
-  try{ x.getImageData(0, 0, 1, 1); }
-  catch(e){ glTex[i] = false; return false; }
+  /* A file:// page taints the canvas the moment an image is drawn on it, and
+     WebGL refuses a tainted texture — so it has to be detected before upload.
+     getImageData is how, and it is expensive out of all proportion: it forces
+     the rasteriser to finish everything queued above before it can answer,
+     which measured as most of the whole texture build. It was being paid on
+     every page, inside the tap that starts the flip, for a question whose
+     answer cannot change during a session — the document either came off a
+     file:// origin or it did not. Asked once now, on the first page that
+     actually draws an image (a page that draws none cannot taint anything,
+     and would answer "clean" for the wrong reason). */
+  if(drewImage){
+    if(canvasTainted === null){
+      try{ x.getImageData(0, 0, 1, 1); canvasTainted = false; }
+      catch(e){ canvasTainted = true; }
+    }
+    if(canvasTainted){ glTex[i] = false; return false; }
+  }
 
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
@@ -2595,6 +2610,34 @@ function glSettle(){
   done();
   /* the lock may have been held open by this run rather than by the clock */
   if(wasBoard) updateNav();
+  trimTextures();
+  warmNeighbours();
+}
+/* A page texture is a few megabytes of GPU memory, and every page ever
+   turned kept one for good. Two books of a dozen sheets is enough of that to
+   push a phone past what it will hold, and what a phone does then is evict
+   things and repaint — which is seen as pages flickering mid-turn, or a turn
+   dropping to the plain CSS path partway through a book. Only the pages
+   within reach of the reader are worth holding. */
+function trimTextures(){
+  Object.keys(glTex).forEach(k => {
+    const t = glTex[k];
+    if(t === false) return;                  /* a taint marker, not a texture */
+    if(Math.abs(k - cur) <= 2) return;
+    if(t && t.dispose) t.dispose();
+    delete glTex[k];
+  });
+}
+/* Build the pages either side before they are asked for. Rasterising a sheet
+   is the slowest thing a page turn does and it was being done inside the tap
+   that starts the turn — so the first turn onto any page paused before it
+   moved. Done here instead, in the idle time right after a turn lands, the
+   next tap finds the texture already made and starts immediately. */
+function warmNeighbours(){
+  const idle = window.requestIdleCallback || (f => setTimeout(f, 200));
+  idle(() => { [cur + 1, cur - 1].forEach(n => {
+    if(n >= 0 && n < PAGES.length && !(n in glTex)) pageTexture(n);
+  }); });
 }
 function glFlip(i, dir, done){
   const tex = pageTexture(i);
@@ -2905,6 +2948,13 @@ const viewW = () => document.documentElement.clientWidth;
    again instead of closing. Same question, asked where the answer is
    needed. */
 const PREFERS_REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* null until the first page that draws an image has been asked; then true on
+   a file:// origin (tainted, so WebGL will refuse every texture) or false.
+   Out here rather than inside makeBook on purpose: the question is about the
+   DOCUMENT's origin, so it has one answer for both books and the whole
+   session — asked once, in pageTexture, where it used to be asked on every
+   page of every flip. */
+let canvasTainted = null;
 /* The height the masthead and colophon take between them, published to CSS
    as --chrome. The phone block sizes the book to `100svh - var(--chrome)`
    so that, with nothing open, the page comes to exactly one screen and has
@@ -3091,29 +3141,44 @@ function renderRoster(){
    endless loop; there is no edge here left to hit. */
 function settleRoster(v0){
   stopRosterAnim();
-  let v = v0, vSpring = 0, last = performance.now();
-  const FRICTION = .006, SPRING = .05, DAMP = .78;
-  function step(now){
-    const dt = Math.min(now - last, 40); last = now;
-    v *= Math.max(0, 1 - FRICTION * dt);
-    let p = rosterPos + v * dt;
-    if(Math.abs(v) < .0008){
-      v = 0;
-      const target = Math.round(p);
-      const dx = target - p;
-      vSpring = vSpring * DAMP + dx * SPRING;
-      p += vSpring;
-      if(Math.abs(dx) < .002 && Math.abs(vSpring) < .0006){
-        const n = books.length;
-        rosterPos = browseIndex = ((target % n) + n) % n;
-        renderRoster();
-        rosterAnim = null;
-        return;
-      }
-    }
-    rosterPos = p;
+  /* Where the strip comes to rest is DECIDED here, once, and then it is
+     simply moved there — it is not coasted and left to land wherever
+     friction runs out. The free coast this replaces travelled about 1.6
+     books past the finger on a normal flick once the drag was made light
+     enough to be pleasant (see ROSTER_TRAVEL), and with only two books to
+     choose from that reads as the picker refusing to go where you sent it:
+     you flick toward edition one and arrive somewhere arbitrary.
+     A flick therefore means "the next book that way", never more, and a
+     slow release means "the nearest one". Both are reachable every time,
+     which is the whole job of a picker. */
+  const from = rosterPos;
+  const FLICK = .0016;                       /* units/ms — a deliberate throw */
+  const target = Math.abs(v0) > FLICK
+    ? (v0 > 0 ? Math.floor(from) + 1 : Math.ceil(from) - 1)
+    : Math.round(from);
+  const dist = Math.abs(target - from);
+  if(dist < .0005){
+    const n = books.length;
+    rosterPos = browseIndex = ((target % n) + n) % n;
     renderRoster();
-    rosterAnim = requestAnimationFrame(step);
+    return;
+  }
+  /* long enough to read as travel, short enough not to feel like waiting;
+     a little longer when it has further to go */
+  const ms = 260 + Math.min(dist, 1) * 120;
+  const t0 = performance.now();
+  /* out-cubic: leaves at speed, arrives without a bounce — a stack of pads
+     settling, not a spring */
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function step(now){
+    const t = Math.min(1, (now - t0) / ms);
+    rosterPos = from + (target - from) * ease(t);
+    renderRoster();
+    if(t < 1){ rosterAnim = requestAnimationFrame(step); return; }
+    const n = books.length;
+    rosterPos = browseIndex = ((target % n) + n) % n;
+    renderRoster();
+    rosterAnim = null;
   }
   rosterAnim = requestAnimationFrame(step);
 }
