@@ -403,8 +403,19 @@
   @media (hover:hover) and (pointer:fine){
     .design-spot{ pointer-events:none; }
     .design-art{ pointer-events:none; }
-    .design-art path, .design-art polygon, .design-art rect,
-    .design-art circle, .design-art ellipse, .design-art polyline{
+    /* Scoped to the CHOSEN book, and that scope is load-bearing rather than
+       tidy. A waiting book is made click-through by .book:not(.active)
+       .stage{pointer-events:none} so that clicking anywhere on it selects
+       it — but pointer-events on a descendant OVERRIDES that none, and
+       these paths set it. So the ink of every inner sheet, stacked unseen
+       behind the cover, went on quietly catching clicks aimed at the book:
+       the hit landed on a path, bubbled to the pad, and the pad's own
+       handler stops propagation before anything reaches the book. Clicking
+       edition one did nothing at all, which is exactly what it looked
+       like. Ink is only a target once its book has been opened. */
+    .book.active .design-art path, .book.active .design-art polygon,
+    .book.active .design-art rect, .book.active .design-art circle,
+    .book.active .design-art ellipse, .book.active .design-art polyline{
       pointer-events:all;
       /* the reach is GEOMETRY ONLY — stroke:none is not a default worth
          trusting here, because `stroke` is an inherited SVG property and
