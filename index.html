@@ -14,8 +14,20 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="garnements — 2026">
 <meta property="og:description" content="Edition one. Hand-drawn embroidery from Berlin.">
-<meta property="og:image" content="assets/og-image.png">
+<!-- Absolute, and not by preference: every scraper that builds a link
+     preview (iMessage, WhatsApp, Slack, Instagram) fetches this from its own
+     servers, where a site-relative path resolves against nothing and the
+     card comes back with no picture at all. A new filename rather than a new
+     version of the old one, because those same scrapers cache a URL's image
+     hard and for a long time. -->
+<meta property="og:url" content="https://garnements.de/">
+<meta property="og:site_name" content="garnements">
+<meta property="og:image" content="https://garnements.de/assets/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="garnements — edition one, Berlin">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://garnements.de/assets/og-card.png">
 <!-- The cover art is created by script, so its download would otherwise not
      start until the whole script had run. Preloading fetches it in parallel
      with the HTML, which is what actually gets the first page on screen. -->
