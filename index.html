@@ -78,7 +78,10 @@
        (see IDLE_SCALE) — two copies of it drifting apart would put the parked
        book slightly wrong. */
     --idle:.88;
-    --idle-hover:.92;
+    /* the lift a waiting book takes under the pointer — well clear of --idle,
+       so "this is the one you'd press" is legible from across the page
+       instead of something you confirm by looking twice */
+    --idle-hover:.965;
     /* the covers' board tone — shared at :root rather than scoped to
        .leaf.cover so .board (a sibling of the leaves, not a descendant of
        any one of them) can paint the exact same colour behind them. Kept
@@ -87,7 +90,7 @@
        used to bare .board's own slightly different grey-beige, which read
        as a stray light line. Same colour on both sides of the gap and
        there is nothing left to see. */
-    --board-face:radial-gradient(128% 92% at 50% 10%, #cacaca 0%, #c2c2c2 44%, #b8b8b8 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #cdcac5 0%, #c5c2bd 44%, #bbb8b3 100%);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -274,11 +277,11 @@
      outline you see around an inner page is the back cover genuinely showing
      past it. Stiffness is handled in the flip itself (see stiffFor/flipMs). */
   .leaf.cover{
-    --board-face:radial-gradient(128% 92% at 50% 10%, #cacaca 0%, #c2c2c2 44%, #b8b8b8 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #cdcac5 0%, #c5c2bd 44%, #bbb8b3 100%);
   }
   .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#bbbbbb 0%, #b6b6b6 55%, #aeaeae 100%);
+    background:linear-gradient(#bdbbb7 0%, #b8b6b2 55%, #b0aeaa 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
      so the two read as one piece of card. No drawn edge: the pad's own
@@ -464,7 +467,7 @@
      what makes a soon book inert is buildLeaf never marking its pages
      clickable, not the veil. */
   .soon-veil{
-    position:absolute;inset:-60px 0 0;z-index:4;
+    position:absolute;z-index:4;   /* box set in layoutBinding, off the pad */
     pointer-events:none;
     /* Grey only — the white wash is gone, and it was doing two unwanted
        things. It lightened edition two's covers, so the two books stopped
@@ -1861,12 +1864,13 @@ stage.append(cal, glc);
 /* a book that isn't out yet: greyed by the veil, browsable, but never
    clickable-into — see the .soon-veil comment for why a veil and not a
    filter, and buildLeaf below for where the clicks actually go away */
+let veilEl = null;
 if(soon){
   mount.classList.add('soon');
-  const veil = document.createElement('div');
-  veil.className = 'soon-veil';
-  veil.innerHTML = '<span class="soon-tag">Coming soon</span>';
-  stage.appendChild(veil);
+  veilEl = document.createElement('div');
+  veilEl.className = 'soon-veil';
+  veilEl.innerHTML = '<span class="soon-tag">Coming soon</span>';
+  stage.appendChild(veilEl);
 }
 const nav = document.createElement('div');
 nav.className = 'nav';
@@ -2061,6 +2065,21 @@ function layoutBinding(){
   bindEl.style.width  = w + 'px';
   bindEl.style.top    = (cal.offsetTop - h * 0.02861) + 'px';   /* viewBox y −40 */
   bindEl.style.height = (h * 0.11801) + 'px';                   /* 165 tall      */
+  /* The coming-soon veil is parked on the pad the same way, and for a reason
+     worth stating: it greys whatever is painted BEHIND it, so wherever its
+     edge falls is where greyed and ungreyed meet. Stretched across the whole
+     stage, those edges landed out on the open page in the middle of the soft
+     shadow the pad casts — and a seam drawn through a gradient is a line you
+     can see, which is the pale bar that kept appearing down both sides of
+     edition two. Sized to the pad, both edges land on opaque board instead,
+     where there is nothing to notice. It still reaches above the pad so the
+     coil greys with everything else; that overhang sits on flat page. */
+  if(veilEl){
+    veilEl.style.left   = cal.offsetLeft + 'px';
+    veilEl.style.width  = w + 'px';
+    veilEl.style.top    = (cal.offsetTop - h * 0.05) + 'px';
+    veilEl.style.height = (h * 1.05) + 'px';
+  }
 }
 function layoutOverlays(){
   layoutBinding();
@@ -2332,7 +2351,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#bbbbbb', '#b6b6b6', '#aeaeae']);
+    texCoverBack = paperTexture(['#bdbbb7', '#b8b6b2', '#b0aeaa']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -2414,7 +2433,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#cacaca', '#c2c2c2', '#b8b8b8']
+    ? ['#cdcac5', '#c5c2bd', '#bbb8b3']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
