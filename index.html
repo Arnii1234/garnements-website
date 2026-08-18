@@ -1094,6 +1094,28 @@
        exit would swap it in plain view. */
     .panel-img.panel-leaving{ transform:translateY(-14px); }
     .panel-img.panel-entering{ transform:translateY(14px); }
+    /* 9 — every sheet of both books is permanently promoted to its own
+       compositor layer by will-change, which on a phone is tens of
+       megabytes of layer backing for nineteen pages of which one moves at a
+       time — and on the WebGL path the one that moves is hidden anyway
+       while the mesh draws it. Once the compositor runs out of budget it
+       starts un-promoting and repainting, which is felt as a stutter on the
+       frame after a tap: the worst possible frame to lose. */
+    .leaf{ will-change:auto; }
+    /* 10 — book two's veil greys whatever is painted behind it, which the
+       compositor must re-read and re-filter every frame the book moves —
+       and on the picker it moves for the whole of every swipe, which is the
+       one interaction that has to stay smooth. While it is not the chosen
+       book, grey the pad itself instead: a filter costs nothing per frame
+       because it is not re-reading a backdrop. It goes on .calendar, not
+       the stage, so the red COMING SOON stamp sitting outside the pad keeps
+       its colour — and only while :not(.active), because filter flattens
+       the 3D context a flip depends on. The active book keeps the backdrop
+       version, where no drag is happening to pay for it. */
+    .book.soon:not(.active) .soon-veil{
+      backdrop-filter:none; -webkit-backdrop-filter:none;
+    }
+    .book.soon:not(.active) .calendar{ filter:grayscale(.92); }
   }
 
   /* ---------- cart drawer ---------- */
@@ -2202,7 +2224,12 @@ function initGL(){
   try{
     const probe = document.createElement('canvas');
     if(!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) return false;
-    glR = new THREE.WebGLRenderer({canvas:glc, alpha:true, antialias:true});
+    /* No multisampling on a phone. The only edges this mesh has are the
+       page's four straight sides, and 4x MSAA over a buffer twice the area
+       of the screen is the single biggest per-frame cost of a flip on a
+       phone GPU — measured at ~10 million samples resolved per frame, spent
+       on edges the texture's own filtering already softens. */
+    glR = new THREE.WebGLRenderer({canvas:glc, alpha:true, antialias:!isMobile()});
     glR.setClearAlpha(0);
     glScene = new THREE.Scene();
     glCam = new THREE.PerspectiveCamera(45, 1, 1, PERSP * 4);
@@ -2262,7 +2289,11 @@ function layoutGL(){
   /* the drawing buffer still has to come out in REAL screen pixels, and those
      are s smaller than the units everything above is written in — so the scale
      rides here instead, leaving the buffer exactly the size it always was */
-  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2) * s);
+  /* 1.5 rather than 2 on a phone: the sheet is only ever seen in motion,
+     over about a second, and the difference is invisible there while the
+     pixel count is not — a third fewer fragments on the hardware with the
+     least to spare. */
+  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2) * s);
   glR.setSize(w, h, false);
   glCam.fov = 2 * Math.atan(hh / PERSP) * 180 / Math.PI;
   glCam.aspect = hw / hh;
