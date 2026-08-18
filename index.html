@@ -1057,6 +1057,26 @@
        stage around it, so the margins either side stay ordinary page to
        scroll from once the panel below has given the page some length. */
     .calendar{ touch-action:none; }
+    /* The page pans ONE WAY, and the browser is told so before any handler
+       of ours runs. overflow-x:clip above stops the document from scrolling
+       sideways; this stops the browser from dragging the VIEW sideways,
+       which is the part a reader actually feels as the page sliding under
+       their thumb — and it is the half that was missing. pinch-zoom is
+       deliberately kept: refusing to let someone magnify a drawing is not
+       tidiness, it is a barrier. */
+    html, body{ touch-action:pan-y pinch-zoom; }
+    /* While a finger is on the books, the browser does nothing whatsoever.
+       Both gestures that live here read movement themselves — the picker
+       drag reads horizontal, the page turn reads vertical — and each was
+       competing with a browser still free to pan underneath it, which is
+       exactly "I meant to flip and the screen moved instead".
+       The whole area can be taken because there is nothing here to give up:
+       with nothing open the page is one screen tall and has no scroll, and
+       once a piece IS open the reader was carried down to it rather than
+       having to drag their way there. #fit, not .rail — the picker's own
+       drag listeners are bound to #fit, so the promise has to cover the
+       same element that reads the gesture. */
+    #fit{ touch-action:none; }
     /* 6 — the roster stops travelling sideways and stacks two abreast, for
        the same reason as everything else here: this page moves one way. */
     .also-row{
@@ -2831,6 +2851,13 @@ const isMobile = () => mobileMQ.matches;
    sum below reads it, so the geometry can never disagree with the layout
    that CSS actually built. */
 const viewW = () => document.documentElement.clientWidth;
+/* Whether the reader has asked their system for less movement. makeBook has
+   its own REDUCED for the flip, but that one is a per-book closure variable
+   and invisible out here — reaching for it from module scope threw, which on
+   a phone meant opening a piece never scrolled to it and closing it threw
+   again instead of closing. Same question, asked where the answer is
+   needed. */
+const PREFERS_REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* The height the masthead and colophon take between them, published to CSS
    as --chrome. The phone block sizes the book to `100svh - var(--chrome)`
    so that, with nothing open, the page comes to exactly one screen and has
@@ -3302,11 +3329,18 @@ rail.parentElement.addEventListener('touchmove', e => {
   if(Math.abs(x - dragStartX) > 6) justDragged = true;
   queueRosterPaint();
 }, {passive:true});
-rail.parentElement.addEventListener('touchend', () => {
+function endRosterDrag(){
   if(!dragging) return;
   dragging = false;
   if(justDragged) settleRoster(dragV);
-}, {passive:true});
+}
+rail.parentElement.addEventListener('touchend', endRosterDrag, {passive:true});
+/* Same ending when the gesture is taken away rather than finished — iOS
+   hands the drag to its own left-edge back-swipe, a notification arrives, a
+   second finger lands. Without this touchend never comes, settleRoster
+   never runs, and the strip stays frozen wherever the finger left it: two
+   half-books on screen with nothing to snap them home until the next drag. */
+rail.parentElement.addEventListener('touchcancel', endRosterDrag, {passive:true});
 /* a resize re-measures where things belong; it is not a move, so the orbit
    lands on the new number rather than swinging to it. rosterGeom is stale
    the instant the window changes size, so it's invalidated here rather than
@@ -3511,7 +3545,7 @@ function revealPanel(){
     const head = document.querySelector('header');
     const top = ov.getBoundingClientRect().top + window.scrollY
               - (head ? head.offsetHeight : 0);
-    window.scrollTo({ top, behavior: REDUCED ? 'auto' : 'smooth' });
+    window.scrollTo({ top, behavior: PREFERS_REDUCED ? 'auto' : 'smooth' });
   });
 }
 function renderItem(){
@@ -3690,7 +3724,7 @@ function closeModal(){
      while there is still something under the scroll to move through, and
      let the panel close behind them. */
   const goingBack = isMobile() && window.scrollY > 0;
-  if(goingBack) window.scrollTo({ top:0, behavior: REDUCED ? 'auto' : 'smooth' });
+  if(goingBack) window.scrollTo({ top:0, behavior: PREFERS_REDUCED ? 'auto' : 'smooth' });
   document.getElementById('overlay').classList.remove('open');
   document.body.classList.remove('modal-open');
   resetFolds();
