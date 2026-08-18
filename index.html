@@ -9,7 +9,19 @@
 <!-- Both icons are Arne's own drawing, cropped to what survives the size:
      the tab gets the face alone, the home screen gets the shoulders too.
      iOS will not take an SVG here, so that one is a rendered PNG. -->
+<!-- Icons, widest support first in the list but SVG preferred by anything
+     that understands it. Safari is the reason there is more than one line
+     here: its support for SVG favicons is unreliable, and when it cannot use
+     one it does not fall back to nothing — it draws its own letter tile from
+     the site name, which is where the stray "G" came from. A PNG it will
+     always take. favicon.ico sits at the site ROOT rather than in assets/
+     because that is the path browsers probe on their own, without being
+     told. -->
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="garnements — 2026">
@@ -1628,9 +1640,12 @@ const BOOK1_PAGES = [
 /* Only-drawn pieces: nothing here has been shot on a model yet. */
 const BOOK2_PAGES = [
   {type:"title", img:"assets/title 2 new.svg", ar:0.7071, board:true},
-  {type:"art", img:"assets/page7.svg",  ar:0.3262, products:["walker-jeans"]},
-  {type:"art", img:"assets/page9.svg",  ar:0.7046, products:["jorts"]},
-  {type:"art", img:"assets/page10.svg", ar:0.7892, products:["jumping-tee"]},
+  {type:"art", img:"assets/S2P1.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P2.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P3.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P4.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P5.svg", ar:0.7071},
+  {type:"art", img:"assets/S2P6.svg", ar:0.7071},
   {type:"back", board:true}
 ];
 
