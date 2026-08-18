@@ -968,6 +968,104 @@
     display:block;font-size:11px;color:var(--grey);margin-top:5px;
   }
 
+  /* ================================================================
+     THE PHONE
+     One column that grows downward, and only downward. On a laptop the
+     product panel is a window laid over the page beside the book; here it
+     is simply the next thing down it, because a phone has no beside.
+     Everything in this block exists to make one promise hold: the screen
+     never moves unless the reader asked it to.
+     ================================================================ */
+  @media (max-width:900px){
+    /* 1 — the page may grow past the window, and only downward. overflow-x
+       is CLIP, not hidden: hidden on one axis forces the other to become a
+       scroll container, which would put a second scroller inside the
+       document's own and make "which of these two just moved?" a question
+       the reader has to answer. clip just refuses sideways movement.
+       overscroll-behavior stops the rubber-band and the pull-to-refresh —
+       both of which move the screen in response to a gesture that was
+       aimed at the book. */
+    html{ height:auto; }
+    body{
+      height:auto; min-height:100svh;
+      overflow:visible;
+      overflow-x:clip;
+      overscroll-behavior-y:contain;
+    }
+    /* 2 — running order down the page: masthead, book, whatever the book
+       opened, colophon. #overlay is a child of body (it has to be —
+       position:fixed inside a transformed ancestor stops meaning fixed),
+       and body is already a flex column, so `order` seats it between the
+       book and the footer without moving a single tag in the markup. */
+    header{ order:0; }
+    #fit  { order:1; }
+    .overlay{ order:2; }
+    footer{ order:3; }
+    /* 3 — the book keeps the first screen to itself. This is the load-
+       bearing rule for the whole promise above: while nothing is open the
+       page is EXACTLY one screen tall, so there is no scroll to trigger,
+       so a swipe meant for a page cannot move the screen instead.
+       svh, not vh: vh is the window at its tallest, with the browser's own
+       chrome hidden, so a vh-tall block leaves the page scrollable by the
+       height of the address bar before anything is even open — the exact
+       drift this is here to prevent. --chrome is the masthead and colophon
+       measured at runtime (see setChrome). */
+    #fit{
+      flex:0 0 auto;
+      min-height:calc(100svh - var(--chrome, 104px));
+    }
+    /* 4 — the panel stops being a window over the book and becomes the
+       next block down the page. display:none while closed rather than
+       parked off-screen, so a closed panel adds no height and rule 3 keeps
+       holding. */
+    .overlay{
+      position:static; z-index:auto;
+      width:100%; height:auto;
+      transform:none; transition:none;
+      display:none;
+    }
+    .overlay.open{
+      display:flex;
+      animation:panelRise .44s cubic-bezier(.22,.61,.36,1) both;
+    }
+    /* it arrives by rising into its place in the page, not by sliding in
+       from an edge — there is no edge here for it to come from, and a
+       sideways entrance is the one movement this layout has promised not
+       to make */
+    @keyframes panelRise{
+      from{ opacity:0; transform:translateY(16px); }
+      to  { opacity:1; transform:none; }
+    }
+    /* one scroller for the whole page. A box that scrolls inside another
+       box is the single worst thing on a phone: the same drag means two
+       different movements depending on a boundary the reader cannot see. */
+    .panel{ overflow:visible; }
+    .panel-img{ padding:22px 20px 4px; }
+    .panel-info{ padding:26px 20px 34px; }
+    /* the colophon is the foot of a real page now, not a line the panel
+       covered up — no reason to fade it while something is open */
+    body.modal-open footer{ opacity:1; }
+    body.modal-open footer a{ pointer-events:auto; }
+    /* 5 — the book owns every gesture inside the pad, and the page owns
+       every gesture outside it. touch-action is a promise made to the
+       BROWSER, before any handler runs: it will not start a scroll from
+       here, so the flip handler can read the whole swipe without the page
+       sliding underneath it at the same time. On the pad only, not the
+       stage around it, so the margins either side stay ordinary page to
+       scroll from once the panel below has given the page some length. */
+    .calendar{ touch-action:none; }
+    /* 6 — the roster stops travelling sideways and stacks two abreast, for
+       the same reason as everything else here: this page moves one way. */
+    .also-row{
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:24px 14px;
+      overflow:visible;
+      padding:0; margin:0;
+    }
+    .also-card{ width:auto; min-width:0; flex:none; }
+    .also-like{ padding:38px 20px 44px; }
+  }
+
   /* ---------- cart drawer ---------- */
   .drawer{
     position:fixed;top:0;right:-440px;width:min(420px,94vw);height:100%;
@@ -2652,6 +2750,18 @@ const isMobile = () => mobileMQ.matches;
    sum below reads it, so the geometry can never disagree with the layout
    that CSS actually built. */
 const viewW = () => document.documentElement.clientWidth;
+/* The height the masthead and colophon take between them, published to CSS
+   as --chrome. The phone block sizes the book to `100svh - var(--chrome)`
+   so that, with nothing open, the page comes to exactly one screen and has
+   no scroll to give — which is what keeps a swipe meant for a page from
+   moving the screen instead. Measured rather than guessed: both change
+   with the font once it loads, and a constant that is 8px out is 8px of
+   drift a reader can feel. */
+function setChrome(){
+  const h = document.querySelector('header'), f = document.querySelector('footer');
+  const px = (h ? h.offsetHeight : 0) + (f ? f.offsetHeight : 0);
+  document.documentElement.style.setProperty('--chrome', px + 'px');
+}
 /* Before either book is picked there is nothing to centre ON — .books (this
    same element `rail` points to) is centred within its own parent instead,
    so the pair sits together rather than one arbitrarily standing in for
@@ -2676,7 +2786,12 @@ function railShift(){
   const host = rail.parentElement;
   const box = host.getBoundingClientRect();
   const s = host.clientWidth ? box.width / host.clientWidth : 1;
-  const reserve = modalOpen ? document.getElementById('overlay').offsetWidth : 0;
+  /* On a laptop the panel takes the left of the screen and the book
+     centres in what is left. On a phone it is below the book instead, and
+     its width is the whole screen — reserving that here would centre the
+     book in nothing at all and shove it clean off the right edge. Nothing
+     to reserve when the panel is not beside you. */
+  const reserve = (modalOpen && !isMobile()) ? document.getElementById('overlay').offsetWidth : 0;
   const centreScreen = reserve + (viewW() - reserve) / 2;
   return (centreScreen - box.left) / s - (el.offsetLeft + el.offsetWidth/2);
 }
@@ -3288,6 +3403,27 @@ function openModal(ids){
      or a tab) — the book is already shifted, re-centring again would be a
      no-op at best and a redundant transition restart at worst. */
   if(!modalOpen){ modalOpen = true; centreActive(); updateOrbits(); }
+  revealPanel();
+}
+/* ---------- on a phone, going to what you just opened ----------
+   The panel is BELOW the book there, which means tapping a drawing would
+   otherwise change something off-screen and leave the reader looking at the
+   page they just tapped, wondering whether anything happened. So the page
+   comes to it. Two rules keep this from being another thing that moves the
+   screen unbidden: it only ever runs on a phone, and only in response to a
+   tap that opened or changed a piece — never on its own.
+   Deferred a frame because the panel only takes up height once it has been
+   painted with the .open class on it; measuring before that scrolls to
+   where the panel was about to be, which is the top of the footer. */
+function revealPanel(){
+  if(!isMobile()) return;
+  requestAnimationFrame(() => {
+    const ov = document.getElementById('overlay');
+    const head = document.querySelector('header');
+    const top = ov.getBoundingClientRect().top + window.scrollY
+              - (head ? head.offsetHeight : 0);
+    window.scrollTo({ top, behavior: REDUCED ? 'auto' : 'smooth' });
+  });
 }
 function renderItem(){
   const p = PRODUCTS[curItems[curIdx]];
@@ -3459,6 +3595,13 @@ function renderItem(){
   }
 }
 function closeModal(){
+  /* On a phone the reader is standing at the panel, which is about to stop
+     existing — leaving the scroll where it is would drop them at the foot
+     of a page that just got a screen shorter. Go back up to the book FIRST,
+     while there is still something under the scroll to move through, and
+     let the panel close behind them. */
+  const goingBack = isMobile() && window.scrollY > 0;
+  if(goingBack) window.scrollTo({ top:0, behavior: REDUCED ? 'auto' : 'smooth' });
   document.getElementById('overlay').classList.remove('open');
   document.body.classList.remove('modal-open');
   resetFolds();
@@ -3687,6 +3830,14 @@ function fitToViewport(){
 addEventListener('resize', fitToViewport);
 document.fonts?.ready.then(fitToViewport);
 fitToViewport();
+/* --chrome rides along with the same three moments the fit does: the
+   masthead and colophon change height with the window and again when the
+   serif finally lands, and the book's one-screen height is worked out from
+   them. Before fitToViewport on the initial call, so the first paint is
+   already right rather than corrected a frame later. */
+addEventListener('resize', setChrome);
+document.fonts?.ready.then(setChrome);
+setChrome();
 </script>
 </body>
 </html>
