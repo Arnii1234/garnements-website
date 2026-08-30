@@ -130,6 +130,11 @@
   .brand{
     font-family:'Bodoni Moda',serif;font-size:22px;font-weight:500;
     letter-spacing:.14em;
+    /* the way back to the opening page — see the masthead handler in the
+       opening sequence. Kept a div rather than promoted to a <button>:
+       header aligns on the baseline, and a button brings its own line-height
+       and box that would sit the wordmark off it. */
+    cursor:pointer; width:max-content;
   }
   /* Each letter takes a colour off the clothes. White is deliberately absent —
      on this paper it would simply vanish, which is the same reason the beige,
@@ -1628,7 +1633,8 @@
 <header>
   <!-- one letter per span so each can take its own colour; no whitespace
        between them, so it is still read and selected as one word -->
-  <div class="brand"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></div>
+  <div class="brand" id="brand" role="button" tabindex="0"
+       aria-label="garnements — back to the opening page"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
 
@@ -4628,8 +4634,18 @@ relayout();
      where its scroll offset says it should. */
   let lastP = -1, lastPointer = '';
   function paintScroll(p){
-    /* the mark: upward, and nothing else, for most of the scroll */
-    mark.style.setProperty('--mark-y', (-34 * io(seg(p, .05, .80))).toFixed(2) + 'vh');
+    /* The mark: upward, and nothing else — all the way out of the frame,
+       not parked near the top. The distance is written as `-50vh - 60%`
+       rather than as a plain vh figure because the two halves answer
+       different questions: 50vh carries its centre from mid-screen to the
+       top edge, and the percentage — which in a translate resolves against
+       the element's OWN height — carries the rest of it past that edge.
+       A fixed vh number cannot do the second part, since how much of the
+       mark still hangs below its centre depends on a font-size that is
+       itself clamped against the viewport width. The extra 10% is margin,
+       so it is gone rather than only just gone. */
+    mark.style.setProperty('--mark-y',
+      `calc((-50vh - 60%) * ${io(seg(p, .05, .80)).toFixed(4)})`);
     cue.style.opacity = 1 - seg(p, 0, .06);
 
     /* the only movement any drawing makes: straight up as p grows, straight
@@ -4745,6 +4761,31 @@ relayout();
     onScroll();
   }, {passive:true});
   addEventListener('touchend', () => { bridging = false; }, {passive:true});
+
+  /* ---------- the masthead is the way home ----------
+     Deliberately NOT subject to the lock the scroll bridge obeys. That lock
+     exists because an upward flick inside an open book means "back a page",
+     so returning has to be something you could not have meant by accident —
+     pressing the wordmark is exactly that, an unambiguous request, so it
+     works from anywhere and puts the whole page back to how it opened:
+     whatever is open closes (deselect takes the product panel with it), and
+     the layer returns to the very top rather than to wherever it was left. */
+  function goHome(){
+    if(activeIndex !== -1){
+      books[activeIndex].closeRapidly();
+      deselect();
+    }
+    revive();
+    intro.scrollTop = 0;
+    onScroll();
+  }
+  const brand = document.getElementById('brand');
+  brand.addEventListener('click', goHome);
+  /* it is a div carrying role="button", so the keyboard activation a real
+     button would have given for free has to be spelled out */
+  brand.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); goHome(); }
+  });
 })();
 </script>
 </body>
