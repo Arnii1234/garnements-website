@@ -1309,9 +1309,316 @@
      small so a gallery of them doesn't feel like a wall of buttons */
   .panel-img img{cursor:zoom-in;transition:opacity .2s;}
   .panel-img img:hover{opacity:.92;}
+
+  /* ==========================================================================
+     OPENING SEQUENCE
+     The landing page proper: the wordmark stands centred and big, the
+     sketched figures are scattered around it, and scrolling walks through
+     what the site actually is before handing over to the sketchbooks.
+
+     Built as a fixed layer OVER the site rather than as a section of it, and
+     with its own scroller, on purpose: the pads' layout is a chain of
+     measurements (setChrome → #fit's clientHeight → fitToViewport's scale →
+     every book's own getBoundingClientRect), all of it written against a
+     body that does not scroll. Making the document itself scroll to carry an
+     intro would have put a moving viewport underneath all of that. Nothing
+     below this comment block touches the site's own layout at all — the
+     intro sits on top, and when it is done it takes itself out of the
+     document (see .gone).
+     ========================================================================== */
+  .intro{
+    position:fixed; inset:0; z-index:150;
+    background:var(--bg);
+    /* every scattered drawing is sized as `--w` vw times this. One knob, so
+       the whole scatter can be re-scaled for a narrow screen without the
+       positions (which are already in %) having to change with it. */
+    --sk:1;
+    overflow-y:auto; overflow-x:hidden;
+    /* the page underneath does not scroll, and a rubber-band at either end
+       of this one should not start looking for something that does */
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    transition:opacity .75s cubic-bezier(.3,.1,.25,1);
+  }
+  .intro::-webkit-scrollbar{ display:none; }
+  .intro.done{ opacity:0; pointer-events:none; }
+  /* out of the document entirely once faded — an invisible fixed layer over
+     the whole viewport would still be the thing every click landed on */
+  .intro.gone{ display:none; }
+  /* the scroll distance. Everything visible is in .intro-stage, which sticks
+     to the top for the whole of it — the classic pinned-scene pattern. Long
+     on purpose: the brief was slow and relaxing, and the distance is what
+     buys that without anything having to animate lethargically. */
+  .intro-track{ height:560vh; position:relative; }
+  .intro-stage{
+    position:sticky; top:0;
+    height:100svh; overflow:hidden;
+  }
+
+  /* ---------- the wordmark ----------
+     It never changes: no scale, no colour shift, no tracking change, no
+     morph into the masthead. Only where it stands, and only upward. That is
+     exactly the brief and the rule the rest of the sequence is built around;
+     the interest is meant to come from what happens AROUND it. */
+  .intro-mark{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
+    font-family:'Bodoni Moda',serif;
+    font-size:clamp(40px, 10.2vw, 172px);
+    font-weight:400; letter-spacing:.13em;
+    /* letter-spacing hangs an extra gap off the last letter, so a centred
+       line sits half that gap left of true centre — the same correction
+       pageTexture() makes when it draws this type onto a flip texture */
+    text-indent:.13em;
+    white-space:nowrap; color:var(--ink);
+    z-index:3; pointer-events:none;
+    will-change:transform;
+  }
+
+  /* ---------- the scattered sketches ----------
+     Two nested elements per figure and not one: the outer takes the
+     scroll-driven parallax (written from script, changes every frame the
+     page moves), the inner takes the idle drift and the boil (pure CSS,
+     never touched). One element doing both would mean script rebuilding a
+     compound transform on every frame just to keep the CSS half alive. */
+  .intro-sketch{
+    position:absolute; pointer-events:none;
+    will-change:transform;
+  }
+  .intro-sketch img{ width:100%; height:auto; display:block; }
+  @keyframes intro-drift{
+    0%,100%{ transform:translate3d(0,0,0) rotate(var(--r0,0deg)); }
+    50%    { transform:translate3d(0,-1.4%,0) rotate(var(--r1,0deg)); }
+  }
+  /* the wobble a sketch has when it is animated by hand and every frame is
+     redrawn rather than tweened. Stepped, not eased — the whole point is
+     that it snaps between positions instead of sliding between them. */
+  @keyframes intro-boil{
+    0%,100%{ transform:translate3d(0,0,0); }
+    33%    { transform:translate3d(.4px,-.45px,0); }
+    66%    { transform:translate3d(-.35px,.4px,0); }
+  }
+  .intro-sketch .drift{
+    animation:intro-drift var(--dur,9s) ease-in-out infinite;
+    animation-delay:var(--delay,0s);
+  }
+  .intro-sketch .boil{ animation:intro-boil .34s steps(1,end) infinite; }
+
+  /* ---------- the figures that actually move ----------
+     Travel is written from script (it has to survive being scrubbed by the
+     scroll), the gait is CSS on the inner element. A walking pose that also
+     translates and bobs reads as walking; the pose alone never did. */
+  .intro-walker{
+    position:absolute; pointer-events:none;
+    will-change:transform;
+  }
+  .intro-walker img{ width:100%; height:auto; display:block; }
+  @keyframes intro-step{
+    0%,100%{ transform:translate3d(0,0,0) rotate(-1.2deg); }
+    50%    { transform:translate3d(0,-1.8%,0) rotate(1.2deg); }
+  }
+  @keyframes intro-sway{
+    0%,100%{ transform:translate3d(0,0,0) rotate(-2.6deg); }
+    25%    { transform:translate3d(0,-1.1%,0) rotate(1.9deg); }
+    50%    { transform:translate3d(0,.5%,0)  rotate(2.8deg); }
+    75%    { transform:translate3d(0,-.8%,0) rotate(-1.5deg); }
+  }
+  .intro-walker .gait{ animation:intro-step var(--gait,1.05s) ease-in-out infinite; }
+  .intro-walker.dancer .gait{ animation:intro-sway var(--gait,2.6s) ease-in-out infinite; }
+
+  /* ---------- captions ----------
+     The house's own small voice — 10px, .24em, uppercase — the same setting
+     SIZE / SIZE GUIDE / SHIPPING already use. Nothing here is allowed to get
+     loud; the space around it is what is meant to do the work. */
+  .intro-say{
+    position:absolute; left:50%; transform:translateX(-50%);
+    font-size:10px; letter-spacing:.26em; text-transform:uppercase;
+    color:var(--grey); white-space:nowrap; text-align:center;
+    pointer-events:none; z-index:5;
+  }
+  .intro-say b{ font-weight:400; color:var(--ink); }
+  .intro-cue{ bottom:38px; }
+  /* both sit clear of the mark's own path: the first while it is still
+     standing near the middle, the second once it has risen away */
+  #introSay1{ top:64%; }
+  #introSay2{ top:89%; }
+  .intro-cue .rule{
+    display:block; width:1px; height:38px; margin:14px auto 0;
+    background:linear-gradient(var(--line), transparent);
+  }
+
+  /* ---------- the demonstration ----------
+     The one thing the sequence has to actually teach: a drawing on a
+     sketchbook page is pressable, and pressing it produces the garment. So
+     it is shown happening rather than described — the drawing lifts under
+     the press with the same scale-and-shadow the real hotspots use (see
+     .design-spot:hover .design-art), and the piece arrives beside it. */
+  .intro-demo{
+    position:absolute; left:50%; top:53%;
+    transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:clamp(20px,5vw,74px);
+    z-index:4; pointer-events:none;
+  }
+  .demo-sheet{
+    position:relative;
+    width:clamp(140px,17vw,232px); aspect-ratio:210/297;
+    background:var(--panel);
+    border:.75px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* just enough of the wire-o to say "this is one of those pads" */
+  .demo-coil{
+    position:absolute; left:8%; right:8%; top:-5px; height:10px;
+    background:repeating-linear-gradient(90deg,
+      var(--ink) 0 1.4px, transparent 1.4px 7px);
+    opacity:.5;
+  }
+  /* the sheet's own drawing. The pad is A4 and so is this box, so contain
+     lands the artwork edge to edge and page coordinates map straight onto
+     percentages of the sheet — which is what lets the overlay below be
+     placed from the artwork's own measured geometry with no fudge factor. */
+  .demo-page{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:contain; display:block;
+  }
+  /* One garment, cut out of that same page and laid back exactly over
+     itself — the identical trick the real hotspots use (see mountDesignArt
+     and .design-spot). At rest the two are indistinguishable; the press
+     breaks them apart, which is the whole thing being explained. */
+  .demo-spot{
+    position:absolute;
+    transition:transform .34s cubic-bezier(.34,.08,.24,1), filter .34s;
+  }
+  .demo-spot svg{ width:100%; height:100%; display:block; }
+  .demo-sheet.press .demo-spot{
+    transform:scale(1.06);
+    filter:drop-shadow(0 3px 5px rgba(35,31,32,.26))
+           drop-shadow(0 12px 20px rgba(35,31,32,.15));
+  }
+  /* the press itself — a ring that closes onto that one garment, script-
+     centred on its measured box rather than on the sheet */
+  .demo-ring{
+    position:absolute; left:50%; top:50%;
+    width:58px; height:58px;
+    border:1px solid var(--ink); border-radius:50%;
+    opacity:0; transform:translate(-50%,-50%) scale(1.9);
+    transition:opacity .3s, transform .45s cubic-bezier(.3,.1,.25,1);
+  }
+  .demo-sheet.press .demo-ring{ opacity:.5; transform:translate(-50%,-50%) scale(.62); }
+  /* No transition on opacity here, or on the enter link below, and the
+     reason is the same for both: the scroll loop writes those values on
+     every frame, so a transition would be easing toward a target that has
+     already moved on — it reads as the element lagging the scroll rather
+     than following it. Anything driven per-frame is left to the loop;
+     transitions stay for the things a CLASS toggles (the press, the ring). */
+  .demo-arrow{ font-size:15px; color:var(--grey); }
+  .demo-piece{ text-align:center; }
+  /* sized by HEIGHT, to sit level with the sheet beside it — these are
+     full-length cutouts, so matching widths made the photo tower over the
+     page it came out of */
+  .demo-piece img{
+    height:clamp(150px,25vh,300px); width:auto; display:block; margin:0 auto;
+  }
+  .demo-piece .nm{
+    display:block; margin-top:14px;
+    font-family:'Bodoni Moda',serif; font-size:15px; letter-spacing:.04em;
+    color:var(--ink);
+  }
+  .demo-piece .pr{
+    display:block; margin-top:4px;
+    font-size:10px; letter-spacing:.2em; color:var(--grey);
+  }
+
+  /* the way out, and the way to skip the whole thing */
+  .intro-enter{
+    position:absolute; left:50%; bottom:44px; transform:translateX(-50%);
+    font-size:10px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--ink); padding:10px 4px;
+    border-bottom:1px solid var(--line);
+    z-index:6; transition:border-color .25s;
+  }
+  .intro-enter:hover{ border-color:var(--ink); }
+  .intro-skip{
+    position:absolute; top:26px; right:30px;
+    font-size:9.5px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--grey); z-index:6;
+    padding-bottom:2px; border-bottom:1px solid transparent;
+    transition:color .25s, border-color .25s;
+  }
+  .intro-skip:hover{ color:var(--ink); border-color:var(--line); }
+
+  /* Narrow screens: fewer sketches and each one bigger. The scatter is meant
+     to read as a scattering — at phone width the same dozen at the same
+     share of the viewport collapse into a band of specks, so the optional
+     ones step out and the rest come up in size. */
+  @media(max-width:760px){
+    /* half the scatter steps out and everything left roughly doubles: a vw
+       width that reads as a drawing on a laptop is a speck on a phone, and
+       a dozen specks are not a scattering, they are dust */
+    .intro{ --sk:2.15; }
+    .intro-sketch.opt{ display:none; }
+    .intro-demo{ flex-direction:column; gap:18px; top:54%; }
+    .demo-arrow{ transform:rotate(90deg); }
+    .intro-say{ font-size:9px; letter-spacing:.22em; }
+    #introSay1{ top:68%; }
+    #introSay2{ top:91%; }
+  }
+  /* Someone who has asked for less motion is not the audience for a scrolled
+     animation — they get the site itself, immediately. */
+  @media(prefers-reduced-motion:reduce){
+    .intro{ display:none; }
+  }
 </style>
 </head>
 <body>
+
+<!-- The opening page. Scatter and walkers are filled in by script (see
+     INTRO_SKETCHES / INTRO_WALKERS) rather than written out here — they are
+     a list of positions, and a list belongs somewhere it can be edited as
+     one. Everything else is static because it never varies. -->
+<div class="intro" id="intro">
+  <div class="intro-track">
+    <div class="intro-stage">
+      <div id="introScatter"></div>
+      <div id="introWalkers"></div>
+
+      <h1 class="intro-mark" id="introMark">garnements</h1>
+
+      <div class="intro-say intro-cue" id="introCue">
+        scroll<span class="rule"></span>
+      </div>
+
+      <div class="intro-say" id="introSay1" style="opacity:0">
+        two sketchbooks &nbsp;·&nbsp; <b>edition one</b>
+      </div>
+
+      <div class="intro-demo" id="introDemo" style="opacity:0">
+        <!-- the whole sheet, exactly as it sits in the pad; script lays the
+             isolated garment over its own counterpart on it and that copy is
+             what lifts (see the demo block in the opening sequence) -->
+        <div class="demo-sheet" id="demoSheet">
+          <div class="demo-coil"></div>
+          <img class="demo-page" src="assets/S1P2.svg" alt="">
+          <span class="demo-ring" id="demoRing"></span>
+        </div>
+        <div class="demo-arrow" id="demoArrow">→</div>
+        <div class="demo-piece" id="demoPiece">
+          <img src="assets/pink%20tee%20front%20cutout.webp" alt="">
+          <span class="nm" id="demoName"></span>
+          <span class="pr" id="demoPrice"></span>
+        </div>
+      </div>
+
+      <div class="intro-say" id="introSay2" style="opacity:0">
+        press a drawing &nbsp;·&nbsp; <b>meet the piece</b>
+      </div>
+
+      <button class="intro-enter" id="introEnter" style="opacity:0">open the sketchbooks</button>
+      <button class="intro-skip" id="introSkip">skip</button>
+    </div>
+  </div>
+</div>
 
 <header>
   <!-- one letter per span so each can take its own colour; no whitespace
@@ -4138,6 +4445,272 @@ function relayout(){ setChrome(); fitToViewport(); }
 addEventListener('resize', relayout);
 document.fonts?.ready.then(relayout);
 relayout();
+
+/* ============================================================
+   OPENING SEQUENCE
+   Drives the landing layer above. Wrapped in its own scope: it shares
+   nothing with the shop below it and should not be able to collide with
+   anything there by accident.
+
+   One rAF loop for the whole thing rather than a scroll listener plus a
+   handful of independent timers. Two reasons. Scroll events fire at rates
+   that have nothing to do with the display, so painting from them means
+   either dropping work or doing it twice for one frame; and the scene has
+   both scroll-driven parts (the mark's rise, parallax) and time-driven
+   ones (the walking), which have to be written into the SAME transform on
+   the same element. One loop, one write per element per frame, and the two
+   kinds of motion can never disagree about who wrote last.
+   ============================================================ */
+(function(){
+  const intro = document.getElementById('intro');
+  if(!intro) return;
+  /* Asked for less motion: hand over the site itself rather than a quieter
+     version of a scroll animation. The stylesheet hides this too — that is
+     what stops it being visible before this line runs, this is what stops
+     it costing anything afterwards. */
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){ intro.remove(); return; }
+
+  /* x/y are where the sketch's own top-left sits, in % of the stage; w is
+     its width in vw. Several deliberately hang off an edge — a scatter that
+     stops politely inside the frame reads as a border, not a scattering.
+     d is parallax depth: how much faster than the page it leaves. opt drops
+     out on phones, where a dozen at this scale become specks. */
+  const SKETCHES = [
+    /* Grouped in bands with the middle one left almost empty — that gap is
+       where the mark stands, and keeping it clear is most of what makes the
+       page read as spacious rather than as a border of drawings. Sizes are
+       deliberately far apart (6vw next to 14vw): an even scatter of
+       same-size marks reads as a pattern, an uneven one reads as scattered.
+       Bottom centre stays clear too — the scroll cue lives there. */
+    {f:'S1P4.svg',  x:2,  y:5,  w:13, o:.28, d:1.00, r:[-5,-2], boil:1},
+    {f:'S2P3.svg',  x:27, y:2,  w:7,  o:.20, d:1.70, r:[6,3],   opt:1},
+    {f:'S2P1.svg',  x:55, y:6,  w:6,  o:.17, d:1.45, r:[3,7],   opt:1, boil:1},
+    {f:'S2P7.svg',  x:80, y:3,  w:14, o:.26, d:1.35, r:[4,7]},
+    {f:'S2P6.svg',  x:15, y:26, w:8,  o:.19, d:1.90, r:[4,8],   opt:1},
+    {f:'S1P6.svg',  x:89, y:28, w:11, o:.26, d:.85,  r:[-6,-3], boil:1},
+    {f:'S1P11.svg', x:0,  y:60, w:10, o:.22, d:.70,  r:[3,6],   opt:1},
+    {f:'S1P10.svg', x:91, y:58, w:9,  o:.20, d:.60,  r:[-5,-2], opt:1},
+    {f:'S2P8.svg',  x:7,  y:78, w:13, o:.28, d:1.55, r:[5,2]},
+    {f:'page9.svg', x:31, y:88, w:7,  o:.20, d:.95,  r:[-2,-6], opt:1},
+    {f:'S1P7.svg',  x:67, y:79, w:12, o:.25, d:1.20, r:[-4,-7], boil:1},
+    {f:'S1P1.svg',  x:85, y:88, w:8,  o:.18, d:1.10, r:[-3,-6], opt:1}
+  ];
+  /* The figures that actually go somewhere. `from` and `dir` set where each
+     enters and which way it faces; `sp` is vw per second. The two lanes
+     furthest from the eye run slower and fainter, which is the whole trick
+     of making three drawings read as a street rather than a row. */
+  const WALKERS = [
+    {f:'S1P5.svg',  lane:56, w:15, o:.60, sp:1.9, dir: 1, from:-20, gait:'1.02s'},
+    {f:'page6.svg', lane:14, w:10, o:.32, sp:1.2, dir:-1, from:110, gait:'1.30s'},
+    {f:'S1P9.svg',  lane:38, w:12, o:.42, sp:1.5, dir: 1, from:-58, gait:'1.16s'}
+  ];
+  /* Stationary, but never still — placed low and to the sides so they are
+     clear of the mark while it is still standing in the middle. */
+  const DANCERS = [
+    {f:'S2P4.svg', x:13, y:62, w:13, o:.38, gait:'2.8s'},
+    {f:'S2P2.svg', x:73, y:60, w:12, o:.32, gait:'3.4s'}
+  ];
+
+  const scatterEl = document.getElementById('introScatter');
+  const walkEl    = document.getElementById('introWalkers');
+  const mark      = document.getElementById('introMark');
+  const cue       = document.getElementById('introCue');
+  const say1      = document.getElementById('introSay1');
+  const say2      = document.getElementById('introSay2');
+  const demo      = document.getElementById('introDemo');
+  const sheet     = document.getElementById('demoSheet');
+  const arrow     = document.getElementById('demoArrow');
+  const piece     = document.getElementById('demoPiece');
+  const enter     = document.getElementById('introEnter');
+  const skip      = document.getElementById('introSkip');
+
+  /* Everything about the demonstration is wrapped, and the reason is worth
+     stating: this layer covers the entire viewport, so any exception thrown
+     on the way down here would stop the dismiss handlers below from ever
+     being attached and leave the shop permanently unreachable behind a
+     landing page nobody can get past. A missing product or an SVG that
+     will not parse costs one beat of an animation; it must never cost the
+     site. Same reason mountDesignArt's own failure is caught rather than
+     left to reject. */
+  try{
+    /* named and priced from PRODUCTS rather than written into the markup —
+       the intro promising one price and the panel behind it showing another
+       is the kind of drift only a customer ever notices */
+    const demoProduct = PRODUCTS['pink-tee'];
+    if(demoProduct){
+      /* fullName, not .name — the panel composes name + type ("Suprised
+         Tee"), and the intro naming it "Suprised" would be the same piece
+         introduced under two names one click apart */
+      document.getElementById('demoName').textContent  = fullName(demoProduct);
+      document.getElementById('demoPrice').textContent = '€' + demoProduct.price;
+    }
+    /* Lay the isolated garment back over its own place on the page, measured
+       the same way the real hotspots are. Its own file spans the whole A4
+       artboard, so rendering it raw would draw it postage-stamp small in the
+       corner of its own box — mountDesignArt is what narrows the viewBox to
+       the artwork and hands back something that can be placed directly. */
+    const ring = document.getElementById('demoRing');
+    mountDesignArt('assets/S1P2 pink tee design.svg').then(({box, svg}) => {
+      svg.classList.remove('design-art');
+      const spot = document.createElement('div');
+      spot.className = 'demo-spot';
+      spot.style.left   = (box.x / ART_SVG_W * 100).toFixed(3) + '%';
+      spot.style.top    = (box.y / ART_SVG_H * 100).toFixed(3) + '%';
+      spot.style.width  = (box.width  / ART_SVG_W * 100).toFixed(3) + '%';
+      spot.style.height = (box.height / ART_SVG_H * 100).toFixed(3) + '%';
+      spot.appendChild(svg);
+      sheet.appendChild(spot);
+      ring.style.left = ((box.x + box.width  / 2) / ART_SVG_W * 100).toFixed(2) + '%';
+      ring.style.top  = ((box.y + box.height / 2) / ART_SVG_H * 100).toFixed(2) + '%';
+    }).catch(() => {
+      /* the page drawing is still there and still turns into the piece; only
+         the lift is missing, so the beat degrades rather than breaking */
+      console.warn('intro: could not mount the demo design');
+    });
+  }catch(e){
+    console.warn('intro: demo beat unavailable', e);
+  }
+
+  const url = f => 'assets/' + encodeURIComponent(f);
+  const sketchNodes = SKETCHES.map((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'intro-sketch' + (s.opt ? ' opt' : '');
+    /* written at its RESTING opacity, not at 0. These are only ever faded
+       out, never in, so this is already the correct p=0 state — and setting
+       it here rather than waiting for the loop's first frame means the
+       landing composition is right even when that frame is late, which it
+       is for any tab that loads in the background (rAF does not run there
+       at all until it is looked at). */
+    el.style.cssText =
+      `left:${s.x}%;top:${s.y}%;width:calc(${s.w}vw * var(--sk));opacity:${s.o}`;
+    /* durations and offsets spread by index rather than at random: the look
+       wanted is "no two on the same beat", and that is a spread, not noise —
+       and this way the page composes identically every load */
+    el.innerHTML =
+      `<div class="drift" style="--r0:${s.r[0]}deg;--r1:${s.r[1]}deg;` +
+      `--dur:${(8 + (i % 5) * 1.3).toFixed(1)}s;--delay:${(-i * .7).toFixed(1)}s">` +
+      `<div class="${s.boil ? 'boil' : ''}"><img src="${url(s.f)}" alt=""></div></div>`;
+    scatterEl.appendChild(el);
+    return {el, s};
+  });
+  const walkNodes = WALKERS.map(w => {
+    const el = document.createElement('div');
+    el.className = 'intro-walker';
+    el.style.cssText = `top:${w.lane}%;width:calc(${w.w}vw * var(--sk));opacity:${w.o}`;
+    el.innerHTML = `<div class="gait" style="--gait:${w.gait}"><img src="${url(w.f)}" alt=""></div>`;
+    walkEl.appendChild(el);
+    return {el, w};
+  });
+  const danceNodes = DANCERS.map(d => {
+    const el = document.createElement('div');
+    el.className = 'intro-walker dancer';
+    el.style.cssText =
+      `left:${d.x}%;top:${d.y}%;width:calc(${d.w}vw * var(--sk));opacity:${d.o}`;
+    el.innerHTML = `<div class="gait" style="--gait:${d.gait}"><img src="${url(d.f)}" alt=""></div>`;
+    walkEl.appendChild(el);
+    return {el, d};
+  });
+
+  const cl01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  /* how far p has travelled through the window a..b, as its own 0..1 — the
+     unit every beat below is written in */
+  const seg  = (p, a, b) => cl01((p - a) / (b - a));
+  const io   = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+
+  /* scrollHeight is a layout read, so it is taken once here and on resize
+     rather than every frame inside the loop */
+  let maxScroll = 0;
+  const measure = () => { maxScroll = intro.scrollHeight - intro.clientHeight; };
+  measure();
+  /* lastP is cleared alongside, not just recomputed: a resize can leave the
+     scroll position identical while everything measured from it has moved,
+     and the cache would happily skip the repaint that fixes it */
+  addEventListener('resize', () => { measure(); lastP = -1; });
+  intro.scrollTop = 0;
+
+  /* Split by what each part actually depends on. The walkers are on a clock
+     and have to be rewritten every frame forever; everything else is a pure
+     function of the scroll position and only changes when that does. Held
+     still — which is most of the time a landing page is on screen — this is
+     the difference between ~25 style writes a frame and three. */
+  let lastP = -1, lastPointer = '';
+  function paintScroll(p){
+    /* the mark: upward, and nothing else, for most of the scroll */
+    mark.style.setProperty('--mark-y', (-34 * io(seg(p, .05, .80))).toFixed(2) + 'vh');
+    cue.style.opacity = 1 - seg(p, 0, .06);
+
+    sketchNodes.forEach(({el, s}) => {
+      el.style.transform = `translate3d(0,${(-p * s.d * 46).toFixed(2)}vh,0)`;
+      /* no fade-IN: the scatter IS the landing page, so it is already
+         standing there at rest and only ever thins out on the way down */
+      el.style.opacity = (s.o * (1 - seg(p, .58, .93))).toFixed(3);
+    });
+    danceNodes.forEach(({el, d}) => {
+      el.style.transform = `translate3d(0,${(-p * 30).toFixed(2)}vh,0)`;
+      el.style.opacity = (d.o * (1 - seg(p, .52, .74))).toFixed(3);
+    });
+
+    say1.style.opacity = (seg(p, .13, .22) * (1 - seg(p, .33, .41))).toFixed(3);
+
+    /* the demonstration, on its own clock inside the scroll */
+    const dp = seg(p, .44, .88);
+    demo.style.opacity = (seg(dp, 0, .13) * (1 - seg(dp, .90, 1))).toFixed(3);
+    say2.style.opacity = (seg(dp, .10, .22) * (1 - seg(dp, .90, 1))).toFixed(3);
+    sheet.classList.toggle('press', dp > .34 && dp < .95);
+    arrow.style.opacity = seg(dp, .46, .60).toFixed(3);
+    const pin = seg(dp, .50, .72);
+    piece.style.opacity = pin.toFixed(3);
+    piece.style.transform = `translate3d(${((1 - io(pin)) * 26).toFixed(1)}px,0,0)`;
+
+    enter.style.opacity = seg(p, .90, .97).toFixed(3);
+    /* written only on the change, not on every frame that happens to be
+       past the threshold */
+    const pe = p > .93 ? 'auto' : 'none';
+    if(pe !== lastPointer){ enter.style.pointerEvents = pe; lastPointer = pe; }
+  }
+  function paintWalk(p, t){
+    walkNodes.forEach(({el, w}) => {
+      /* time carries them, scroll pushes them along a little further — so
+         the street keeps moving when the page is still, and moving the page
+         still moves the street */
+      const raw = w.from + w.dir * (t * w.sp + p * 42);
+      const span = 172;                          /* wraps out of sight, -36..136 */
+      const x = ((raw + 36) % span + span) % span - 36;
+      el.style.transform = `translate3d(${x.toFixed(2)}vw,${(-p * 20).toFixed(2)}vh,0)`;
+      /* on screen from the very first frame, walking. A street with nobody
+         on it until you scroll reads as a still image that broke — and the
+         figures moving at rest is the thing that says the page is alive
+         before anyone has touched it. */
+      el.style.opacity = (w.o * (1 - seg(p, .64, .85))).toFixed(3);
+    });
+  }
+
+  let raf = 0, dismissed = false;
+  function dismiss(){
+    if(dismissed) return;
+    dismissed = true;
+    cancelAnimationFrame(raf);
+    intro.classList.add('done');
+    /* only display:none once the fade has actually run — doing both at once
+       would cut it, and leaving it at opacity 0 without this would leave a
+       full-viewport fixed layer eating every click on the shop underneath */
+    setTimeout(() => intro.classList.add('gone'), 800);
+  }
+  enter.addEventListener('click', dismiss);
+  skip.addEventListener('click', dismiss);
+
+  function frame(now){
+    /* read first, write after — the whole frame's scroll position is taken
+       once, up front, so nothing below can force a synchronous layout by
+       asking for it again after something has already been written */
+    const p = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
+    if(p !== lastP){ paintScroll(p); lastP = p; }
+    paintWalk(p, now / 1000);
+    if(p > .995){ dismiss(); return; }
+    raf = requestAnimationFrame(frame);
+  }
+  raf = requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>
