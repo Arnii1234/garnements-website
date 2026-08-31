@@ -4606,15 +4606,36 @@ relayout();
   const seg  = (p, a, b) => cl01((p - a) / (b - a));
   const io   = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
 
-  /* scrollHeight is a layout read, so it is taken once here and on resize
-     rather than every frame inside the loop */
-  let maxScroll = 0;
-  const measure = () => { maxScroll = intro.scrollHeight - intro.clientHeight; };
+  /* Layout reads, so they are taken here and on resize rather than every
+     frame inside the paint. */
+  let maxScroll = 0, fadeEnd = .5;
+  const measure = () => {
+    maxScroll = intro.scrollHeight - intro.clientHeight;
+    /* Where the fade has to be finished, worked out rather than guessed,
+       because the answer moves with the window. The mark travels
+       k * (0.5vh + 0.6h) upward, and its top edge starts at 0.5vh - 0.5h —
+       so the moment it first touches the top of the screen is when those
+       two are equal. Solve for k and that is the LATEST the fade may end;
+       finishing at 85% of it means the mark is already invisible before any
+       part of it is clipped, which is the whole point: it should be seen to
+       fade away, never to slide out under the edge.
+       h depends on a font-size clamped against the viewport WIDTH while the
+       distance depends on its HEIGHT, so no fixed number works for both a
+       tall phone and a short wide laptop — hence measuring. The floor is for
+       the degenerate case of a mark taller than the window, where it is
+       clipped from the start and there is nothing to protect. */
+    const h = mark.offsetHeight, vh = intro.clientHeight;
+    const clipK = (0.5 * vh - 0.5 * h) / (0.5 * vh + 0.6 * h);
+    fadeEnd = Math.max(.12, Math.min(1, clipK * .85));
+  };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
      scroll position identical while everything measured from it has moved,
      and the cache would happily skip the repaint that fixes it */
   addEventListener('resize', () => { measure(); lastP = -1; });
+  /* the serif lands after first paint and the mark grows when it does, which
+     moves the point it would start clipping at — remeasure once it has */
+  document.fonts?.ready.then(() => { measure(); lastP = -1; onScroll(); });
   intro.scrollTop = 0;
 
   /* Everything here is a pure function of the scroll position — there is no
@@ -4634,16 +4655,17 @@ relayout();
        mark still hangs below its centre depends on a font-size that is
        itself clamped against the viewport width. The extra 10% is margin,
        so it is gone rather than only just gone. */
-    mark.style.setProperty('--mark-y',
-      `calc((-50vh - 60%) * ${io(seg(p, .05, .80)).toFixed(4)})`);
-    /* and it thins out as it goes, rather than staying solid to the last
-       pixel and then being cut off by the top edge. Held at full strength
-       for the first stretch — it is the landing page's whole subject while
-       it is still standing near the middle — then taken to nothing by .76,
-       just before the travel above has finished carrying it out at .80. The
-       two windows are deliberately not identical: finishing the fade first
-       is what stops a faint sliver riding the edge on the way out. */
-    mark.style.opacity = (1 - seg(p, .30, .76)).toFixed(3);
+    const markK = io(seg(p, .05, .80));
+    mark.style.setProperty('--mark-y', `calc((-50vh - 60%) * ${markK.toFixed(4)})`);
+    /* Faded against its own travel, not against a scroll window of its own.
+       Tying the two to the same k is what guarantees they agree: the mark
+       is at zero by the time it has come fadeEnd of the way up (see
+       measure), and fadeEnd is derived from where it would START to clip.
+       So it is always completely gone before it meets the top edge, and
+       what you see is it fading away rather than sliding out of frame —
+       at any window size, since both halves now come off one measurement
+       instead of two hand-picked constants that could disagree. */
+    mark.style.opacity = (1 - cl01(markK / fadeEnd)).toFixed(3);
     cue.style.opacity = 1 - seg(p, 0, .06);
 
     /* the only movement any drawing makes: straight up as p grows, straight
