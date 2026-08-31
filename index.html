@@ -363,6 +363,21 @@
      viewer. Left to grow past its own box on purpose (no overflow:hidden
      here) — clipping it at the hotspot's own edge would cut the lift off
      exactly where it should read as most alive. */
+  /* Hides the printed original while its lifted copy is out (see
+     fitDesignSpots). Paper-coloured, masked to the drawing's own ink, so
+     it covers those strokes and nothing else — a box here is what used to
+     blank out whatever neighbouring drawing shared the bounding rectangle.
+     `contain`/`center` mirrors the img's object-fit so the mask registers
+     exactly over the printed art. No transition: any tween would let the
+     original ghost back through while the copy is still lifted. */
+  .design-erase{
+    position:absolute; inset:0; pointer-events:none;
+    opacity:0;
+    background:#f4f3f1;
+    -webkit-mask-size:contain; mask-size:contain;
+    -webkit-mask-position:center; mask-position:center;
+    -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  }
   .design-spot{ position:absolute; cursor:pointer; }
   .design-art{
     display:block; width:100%; height:100%;
@@ -375,9 +390,10 @@
       drop-shadow(0 12px 20px rgba(35,31,32,.16));
   }
   /* pressed = set back down flat on the page, and not a hair smaller: while
-     hovered the page art has a hole exactly this drawing's size punched in
-     it (see fitDesignSpots), and at any scale below 1 a ring of bare paper
-     would show around the pressed piece. The press reads through the shadow
+     hovered, the printed original is covered by a paper-coloured layer cut
+     to this drawing's own ink (see .design-erase and fitDesignSpots), so at
+     any scale below 1 the copy would pull inside that cover and leave the
+     stroke looking half-erased. The press reads through the shadow
      collapsing, not through shrinking. */
   .design-spot:active .design-art{
     transform:scale(1);
@@ -1332,6 +1348,18 @@
      catching the pointer while keeping its scroller, so scrolling up brings
      it back (see .intro.done and the bridge in the script).
      ========================================================================== */
+  /* Above everything, including the cart drawer (120) and the intro (150),
+     because for the moment it is up it IS the page. Asymmetric on purpose:
+     it closes a little quicker than it opens, so the wait before the new
+     page appears is the shorter half. */
+  .veil{
+    position:fixed; inset:0; z-index:300;
+    background:var(--bg);
+    opacity:0; pointer-events:none;
+    transition:opacity .34s cubic-bezier(.4,0,.2,1);
+  }
+  .veil.on{ opacity:1; pointer-events:auto; transition-duration:.38s; }
+
   .intro{
     position:fixed; inset:0; z-index:150;
     background:var(--bg);
@@ -1433,6 +1461,19 @@
      own declaration — the shorthand resets every animation-* longhand it
      does not name, so a separate animation-delay above this would be wiped
      and every figure would wiggle on the same beat */
+  /* Promoted, and this is the single biggest thing keeping the page smooth.
+     Each of these wraps a full-page SVG — up to 205 paths and 180KB — and
+     every one of the wiggles above ROTATES it. A rotation on an unpromoted
+     element is not a compositor transform: the browser has to re-rasterise
+     the vector art underneath it on every frame, for all seventeen of them,
+     forever, whether or not anyone is scrolling. Promoting them means each
+     is rasterised once and then merely re-transformed by the GPU. The
+     parallax already had this on the OUTER element; the animation runs on
+     these inner ones, which is where it was actually needed. */
+  .intro-sketch .drift,
+  .intro-sketch .gait,
+  .intro-sketch .sway,
+  .intro-sketch .boil{ will-change:transform; }
   .intro-sketch .drift{ animation:intro-drift var(--dur,9s)   ease-in-out var(--delay,0s) infinite; }
   .intro-sketch .gait { animation:intro-step  var(--dur,1.1s) ease-in-out var(--delay,0s) infinite; }
   .intro-sketch .sway { animation:intro-sway  var(--dur,2.8s) ease-in-out var(--delay,0s) infinite; }
@@ -1575,6 +1616,11 @@
 </style>
 </head>
 <body>
+
+<!-- Covers the whole screen for the moment the masthead takes you home, so
+     the page can be rebuilt behind it and revealed already composed rather
+     than seen assembling itself. See goHome. -->
+<div class="veil" id="veil" aria-hidden="true"></div>
 
 <!-- The opening page. The scattered drawings are filled in by script (see
      FIGURES) rather than written out here — they are a list of positions,
@@ -2122,33 +2168,34 @@ function fitDesignSpots(leaf, p){
       art.appendChild(spot);
       /* While the copy hovers off the page, the SAME drawing is still
          printed on the page art underneath — scaled 1.0225x apart the two
-         read as a doubled line. So for exactly as long as the spot is
-         hovered, a hole the spot's own size is punched in the page art
-         (evenodd polygon: the full img ring, then the hole's ring), and the
-         only ink left is the lifted copy's. The copy can't cover for it —
-         it's linework on transparency, whatever sits behind shows through.
-         The hole is the spot's EXACT rect: at hover-start the copy still
-         sits at scale 1 covering precisely that footprint, so the swap is
-         invisible, and it only ever grows from there. Punched instantly,
-         no transition — any tween would let the original ghost back in
-         while the copy is still lifted. The spot's own %s are already in
-         the img's box coordinates (both fill .page-art), letterboxing
-         correction included, so they serve as-is. Never touches the flip
-         textures — pageTexture reads the file, not this style. */
-      const x1 = spot.style.left, y1 = spot.style.top;
-      const x2 = (parseFloat(spot.style.left) + parseFloat(spot.style.width)).toFixed(3) + '%';
-      const y2 = (parseFloat(spot.style.top) + parseFloat(spot.style.height)).toFixed(3) + '%';
-      const punched =
-        `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ` +
-        `${x1} ${y1}, ${x1} ${y2}, ${x2} ${y2}, ${x2} ${y1}, ${x1} ${y1})`;
-      spot.addEventListener('mouseenter', () => {
-        const img = art.querySelector(':scope > img');
-        if(img) img.style.clipPath = punched;
-      });
-      spot.addEventListener('mouseleave', () => {
-        const img = art.querySelector(':scope > img');
-        if(img) img.style.clipPath = '';
-      });
+         read as a doubled line. So the original has to be hidden for as
+         long as the spot is hovered.
+
+         It is hidden with the drawing's OWN SHAPE, not with a box around
+         it. This used to punch a rectangular hole the size of the spot,
+         and a spot is its drawing's bounding box — mostly empty paper. On
+         the four pages carrying two designs those boxes overlap (on S1P6
+         the jorts' box swallows almost the whole tee), so hovering one
+         piece blanked out the neighbouring drawing and left a bare white
+         rectangle sitting over it.
+
+         Instead: a paper-coloured layer the size of the page art, masked
+         by the design's own file. An alpha mask keeps the layer only where
+         that file has ink, so it paints paper over precisely the strokes
+         being lifted and touches nothing else on the sheet. The file is
+         exact A4 like the page art, so `contain` + `center` reproduces the
+         img's own object-fit and the two register perfectly — verified by
+         tinting the layer red and watching it trace the linework.
+         Never touches the flip textures: pageTexture reads the file. */
+      const erase = document.createElement('div');
+      erase.className = 'design-erase';
+      const maskUrl = `url("${encodeURI(d.file)}")`;
+      erase.style.webkitMaskImage = maskUrl;
+      erase.style.maskImage = maskUrl;
+      /* inserted before the spots so the lifted copy still paints over it */
+      art.insertBefore(erase, art.querySelector(':scope > .design-spot'));
+      spot.addEventListener('mouseenter', () => { erase.style.opacity = '1'; });
+      spot.addEventListener('mouseleave', () => { erase.style.opacity = ''; });
     }).catch(() => console.warn('design hotspot failed to measure:', d.file));
   });
 }
@@ -4608,9 +4655,16 @@ relayout();
 
   /* Layout reads, so they are taken here and on resize rather than every
      frame inside the paint. */
-  let maxScroll = 0, fadeEnd = .5;
+  let maxScroll = 0, fadeEnd = .5, stageH = 0, markTravel = 0;
   const measure = () => {
     maxScroll = intro.scrollHeight - intro.clientHeight;
+    /* Kept so the paint can work in plain pixels. Writing `vh` into a
+       transform means the engine re-resolves the unit against the viewport
+       on every write, and measured here that costs about three times what
+       an already-resolved px value does. The viewport only changes on
+       resize, so resolving it once here and multiplying is the same answer
+       for less work on every frame in between. */
+    stageH = intro.clientHeight;
     /* Where the fade has to be finished, worked out rather than guessed,
        because the answer moves with the window. The mark travels
        k * (0.5vh + 0.6h) upward, and its top edge starts at 0.5vh - 0.5h —
@@ -4627,6 +4681,9 @@ relayout();
     const h = mark.offsetHeight, vh = intro.clientHeight;
     const clipK = (0.5 * vh - 0.5 * h) / (0.5 * vh + 0.6 * h);
     fadeEnd = Math.max(.12, Math.min(1, clipK * .85));
+    /* the same distance the CSS used to express as calc(-50vh - 60%), now
+       resolved to one number so the paint writes a plain px transform */
+    markTravel = 0.5 * vh + 0.6 * h;
   };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
@@ -4656,7 +4713,7 @@ relayout();
        itself clamped against the viewport width. The extra 10% is margin,
        so it is gone rather than only just gone. */
     const markK = io(seg(p, .05, .80));
-    mark.style.setProperty('--mark-y', `calc((-50vh - 60%) * ${markK.toFixed(4)})`);
+    mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     /* Faded against its own travel, not against a scroll window of its own.
        Tying the two to the same k is what guarantees they agree: the mark
        is at zero by the time it has come fadeEnd of the way up (see
@@ -4672,7 +4729,7 @@ relayout();
        back down as it shrinks. Nothing here is time-dependent, so scrolling
        back up genuinely retraces the way down rather than replaying it. */
     figures.forEach(({el, s}) => {
-      el.style.transform = `translate3d(0,${(-p * s.d * 46).toFixed(2)}vh,0)`;
+      el.style.transform = `translate3d(0,${(-p * s.d * 0.46 * stageH).toFixed(1)}px,0)`;
       /* no fade-IN: the scatter IS the landing page, so it is already
          standing there at rest and only ever thins out on the way down */
       el.style.opacity = (s.o * (1 - seg(p, .58, .93))).toFixed(3);
@@ -4788,18 +4845,53 @@ relayout();
      pressing the wordmark is exactly that, an unambiguous request, so it
      works from anywhere and puts the whole page back to how it opened:
      whatever is open closes (deselect takes the product panel with it), and
-     the layer returns to the very top rather than to wherever it was left. */
+     the layer returns to the very top rather than to wherever it was left.
+
+     It arrives as a page change rather than as a movement. Scrubbing the
+     whole sequence backwards to the top would be a long trip through beats
+     nobody asked to see again, and jumping there in one frame reads as a
+     glitch — the sketchbook simply blinks into a landing page. So the
+     screen is covered first, in the page's own paper, and everything
+     is put back while nothing is visible: the book closes, the panel goes
+     with it, the layer returns to the very top. Then the veil lifts on a
+     page that is already composed. It is the "reload" read — one layer
+     closing over another and opening again — with none of the cost of an
+     actual reload, since the shop underneath keeps its state. */
+  const veil = document.getElementById('veil');
+  let going = false;
   function goHome(){
-    if(activeIndex !== -1){
-      books[activeIndex].closeRapidly();
-      deselect();
-    }
-    revive();
-    intro.scrollTop = 0;
-    onScroll();
+    if(going) return;
+    going = true;
+    veil.classList.add('on');
+    /* held until the cover is actually opaque, so none of the reset is
+       seen happening — the timing matches the veil's own fade-in */
+    setTimeout(() => {
+      if(activeIndex !== -1){
+        books[activeIndex].closeRapidly();
+        deselect();
+      }
+      revive();
+      intro.scrollTop = 0;
+      onScroll();
+      /* A beat for the landing page to paint underneath before the cover
+         comes off, or the first thing revealed is a half-built page. A
+         timer rather than requestAnimationFrame deliberately: rAF is
+         SUSPENDED outright in a background tab, so clicking the wordmark
+         and switching away would leave the veil up for good — an opaque
+         layer over the whole site with no way to clear it. Timers are
+         only throttled, never suspended, so this always fires. */
+      setTimeout(() => {
+        veil.classList.remove('on');
+        going = false;
+      }, 60);
+    }, 380);
   }
   const brand = document.getElementById('brand');
-  brand.addEventListener('click', goHome);
+  /* stopped here, or the document-level "clicked outside the book" handler
+     also fires and closes the sketchbook the instant the wordmark is
+     pressed — visibly, before the cover is down, which is the one thing
+     this transition exists to hide. goHome closes it behind the veil. */
+  brand.addEventListener('click', e => { e.stopPropagation(); goHome(); });
   /* it is a div carrying role="button", so the keyboard activation a real
      button would have given for free has to be spelled out */
   brand.addEventListener('keydown', e => {
