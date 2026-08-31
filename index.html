@@ -1541,7 +1541,7 @@
     font-size:10px; letter-spacing:.2em; color:var(--grey);
   }
 
-  /* the way out, and the way to skip the whole thing */
+  /* the way out at the end of the sequence */
   .intro-enter{
     position:absolute; left:50%; bottom:44px; transform:translateX(-50%);
     font-size:10px; letter-spacing:.28em; text-transform:uppercase;
@@ -1550,14 +1550,6 @@
     z-index:6; transition:border-color .25s;
   }
   .intro-enter:hover{ border-color:var(--ink); }
-  .intro-skip{
-    position:absolute; top:26px; right:30px;
-    font-size:9.5px; letter-spacing:.24em; text-transform:uppercase;
-    color:var(--grey); z-index:6;
-    padding-bottom:2px; border-bottom:1px solid transparent;
-    transition:color .25s, border-color .25s;
-  }
-  .intro-skip:hover{ color:var(--ink); border-color:var(--line); }
 
   /* Narrow screens: fewer sketches and each one bigger. The scatter is meant
      to read as a scattering — at phone width the same dozen at the same
@@ -1625,7 +1617,6 @@
       </div>
 
       <button class="intro-enter" id="introEnter" style="opacity:0">open the sketchbooks</button>
-      <button class="intro-skip" id="introSkip">skip</button>
     </div>
   </div>
 </div>
@@ -4536,7 +4527,6 @@ relayout();
   const arrow     = document.getElementById('demoArrow');
   const piece     = document.getElementById('demoPiece');
   const enter     = document.getElementById('introEnter');
-  const skip      = document.getElementById('introSkip');
 
   /* Everything about the demonstration is wrapped, and the reason is worth
      stating: this layer covers the entire viewport, so any exception thrown
@@ -4646,6 +4636,14 @@ relayout();
        so it is gone rather than only just gone. */
     mark.style.setProperty('--mark-y',
       `calc((-50vh - 60%) * ${io(seg(p, .05, .80)).toFixed(4)})`);
+    /* and it thins out as it goes, rather than staying solid to the last
+       pixel and then being cut off by the top edge. Held at full strength
+       for the first stretch — it is the landing page's whole subject while
+       it is still standing near the middle — then taken to nothing by .76,
+       just before the travel above has finished carrying it out at .80. The
+       two windows are deliberately not identical: finishing the fade first
+       is what stops a faint sliver riding the edge on the way out. */
+    mark.style.opacity = (1 - seg(p, .30, .76)).toFixed(3);
     cue.style.opacity = 1 - seg(p, 0, .06);
 
     /* the only movement any drawing makes: straight up as p grows, straight
@@ -4704,7 +4702,6 @@ relayout();
     lastP = -1;                 /* nothing was painted while it was away */
   }
   enter.addEventListener('click', dismiss);
-  skip.addEventListener('click', dismiss);
 
   /* Painted from the scroller rather than from a permanent rAF loop, now
      that nothing on this page moves on its own. Coalesced into one frame:
