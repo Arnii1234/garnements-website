@@ -122,10 +122,21 @@
   }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
-  /* ---------- header ---------- */
+  /* ---------- header ----------
+     A standing row, not type floating on the page: it has its own ground and
+     a hairline closing it off underneath, so the masthead and the cart read
+     as furniture the page scrolls under rather than as two labels that
+     happen to sit near the top. Opaque on purpose — that is what makes it a
+     bar. z-index above the pads (and matching the colophon's own 110) so
+     nothing passes over it. Centred rather than baseline-aligned: a 22px
+     serif and an 11px sans share no baseline the eye believes, and in a bar
+     the row's own middle is the line being read. */
   header{
-    display:flex;justify-content:space-between;align-items:baseline;
-    padding:28px 44px 0;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 44px; min-height:64px;
+    position:relative; z-index:110;
+    background:var(--bg);
+    border-bottom:1px solid var(--line);
   }
   .brand{
     font-family:'Bodoni Moda',serif;font-size:22px;font-weight:500;
@@ -170,10 +181,11 @@
        it. The env() terms are simply 0 on hardware without them. */
     header{
       align-items:center;
+      min-height:0;
       padding:
-        calc(16px + env(safe-area-inset-top))
+        calc(14px + env(safe-area-inset-top))
         calc(20px + env(safe-area-inset-right))
-        0
+        14px
         calc(20px + env(safe-area-inset-left));
     }
     .brand{ font-size:15px; letter-spacing:.12em; }
@@ -582,8 +594,14 @@
      the same box, so measuring a scaled pad would double-apply the scale. A
      scaled book is never flipped and its canvas is hidden, so its geometry
      going stale costs nothing; it returns to scale 1 before it can be used. */
+  /* The slack sits ABOVE the pad rather than below it. A book is the pad
+     plus its arrows plus this margin, and with the margin underneath, all
+     of that weight hung below the sheet while nothing balanced it on top —
+     centring the rail then left the pad riding high with a broad empty band
+     under it. Moving the same distance to the top drops the pad by that
+     much without changing the rail's height, so the fit scale is untouched. */
   .book{
-    margin-bottom:34px;
+    margin-top:38px;
     transform-origin:50% 42%;
     position:relative;
   }
@@ -602,10 +620,16 @@
      replacing it, so the book keeps its hover nudge wherever it has been
      parked; the swing between two orbits is animated separately, in JS,
      because an arc is not something one transform can tween into another. */
+  /* Quick, because a hover is an answer and not an animation — half a
+     second to acknowledge the pointer reads as the page thinking about it.
+     The long swing a parked book makes is keyframed in JS (see
+     updateOrbits) and is unaffected by this; what shortens here is the
+     hover grow and the short orbit nudges, both of which should land
+     almost as fast as the pointer arrives. */
   .book:not(.active){
     cursor:pointer; opacity:.5;
     transform:translateX(var(--orbit,0px)) scale(var(--idle));
-    transition:transform .55s cubic-bezier(.34,.08,.24,1), opacity .5s;
+    transition:transform .17s cubic-bezier(.22,.61,.36,1), opacity .17s;
   }
   /* the nudge that says "this is the one you'd press" */
   .book:not(.active):hover{
@@ -727,8 +751,15 @@
      card. What makes it read as part of the page rather than a window laid
      over it is that the colour belongs to the covers, not to the browser —
      everything inside stays transparent and sits directly on it. */
+  /* Opens beneath the masthead row, not behind it. The row is opaque and
+     stands above this (z 110 against 100) so that it survives a piece being
+     opened — which is the whole point of it being a bar — and without the
+     inset it would lie across the top of the panel and swallow the close ×.
+     --bar is the row's measured height (see setChrome). On a phone the panel
+     is position:static and part of the column, so this simply does not
+     apply there. */
   .overlay{
-    position:fixed;top:0;left:0;bottom:0;z-index:100;
+    position:fixed;top:var(--bar,64px);left:0;bottom:0;z-index:100;
     /* A little past half the window, and the same share of it at any zoom.
        Stated in vw for that reason: a px length (it was min(860px,60vw)) is
        something the browser rescales when you zoom, so the field kept changing
@@ -1373,7 +1404,14 @@
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
-    transition:opacity .75s cubic-bezier(.3,.1,.25,1);
+    /* The two directions are deliberately not the same speed, and which one
+       applies falls out of when the class changes: adding .done transitions
+       with the rule below, removing it transitions with this one. Coming
+       BACK is near-instant — scrolling up out of the shop used to fade a
+       white sheet in over three quarters of a second before any drawing
+       appeared, and that blank gap is exactly what broke the thread between
+       the two halves of the site. Leaving keeps its unhurried fade. */
+    transition:opacity .09s linear;
   }
   .intro::-webkit-scrollbar{ display:none; }
   /* Invisible and pointer-transparent, but still in the document and still
@@ -1382,12 +1420,19 @@
      display:none itself: there is nothing to scroll back into once the
      scroller is out of the layout. pointer-events:none is what keeps it
      from catching clicks meant for the shop underneath. */
-  .intro.done{ opacity:0; pointer-events:none; }
-  /* the scroll distance. Everything visible is in .intro-stage, which sticks
-     to the top for the whole of it — the classic pinned-scene pattern. Long
-     on purpose: the brief was slow and relaxing, and the distance is what
-     buys that without anything having to animate lethargically. */
-  .intro-track{ height:560vh; position:relative; }
+  .intro.done{
+    opacity:0; pointer-events:none;
+    transition:opacity .6s cubic-bezier(.3,.1,.25,1);
+  }
+  /* The scroll distance. Everything visible is in .intro-stage, which sticks
+     to the top for the whole of it — the classic pinned-scene pattern.
+
+     How much scrolling the whole sequence costs. It was more than five
+     screens, which made every gesture move the page very little — the
+     sequence read as heavy and slow to answer even though nothing was
+     dropping frames. Shorter means each turn of the wheel does more, which
+     is what "lighter" actually is here. */
+  .intro-track{ height:330vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -3367,8 +3412,14 @@ let canvasTainted = null;
    drift a reader can feel. */
 function setChrome(){
   const h = document.querySelector('header'), f = document.querySelector('footer');
-  const px = (h ? h.offsetHeight : 0) + (f ? f.offsetHeight : 0);
+  const hh = h ? h.offsetHeight : 0;
+  const px = hh + (f ? f.offsetHeight : 0);
   document.documentElement.style.setProperty('--chrome', px + 'px');
+  /* the masthead row's own height, published separately: the product window
+     is inset by exactly this so it opens BENEATH the bar rather than under
+     it. Measured rather than written down, because the row's height moves
+     with the serif landing and with the safe-area inset on a phone. */
+  document.documentElement.style.setProperty('--bar', hh + 'px');
 }
 /* Before either book is picked there is nothing to centre ON — .books (this
    same element `rail` points to) is centred within its own parent instead,
@@ -4730,9 +4781,18 @@ relayout();
        back up genuinely retraces the way down rather than replaying it. */
     figures.forEach(({el, s}) => {
       el.style.transform = `translate3d(0,${(-p * s.d * 0.46 * stageH).toFixed(1)}px,0)`;
-      /* no fade-IN: the scatter IS the landing page, so it is already
-         standing there at rest and only ever thins out on the way down */
-      el.style.opacity = (s.o * (1 - seg(p, .58, .93))).toFixed(3);
+      /* No fade-IN: the scatter IS the landing page, so it is already
+         standing there at rest and only ever thins out on the way down.
+         Two stages, and the second one is late on purpose. They used to be
+         gone by .93, which left the last stretch before the shop a plain
+         white screen — so scrolling back up out of the shop showed nothing
+         at all until you had travelled a long way, and the two halves of
+         the site read as unrelated pages. Now they only dim through the
+         demonstration (enough to keep it legible) and hold at that until
+         the very last moment, so coming back up puts drawings on screen
+         almost the instant the page moves. */
+      el.style.opacity =
+        (s.o * (1 - .55 * seg(p, .50, .70)) * (1 - seg(p, .95, 1))).toFixed(3);
     });
 
     say1.style.opacity = (seg(p, .13, .22) * (1 - seg(p, .33, .41))).toFixed(3);
