@@ -119,7 +119,18 @@
     flex:1;min-height:0;
     display:flex;align-items:center;justify-content:center;
     transform-origin:center center;
+    /* Two owners, one transform: --fit-scale is the shrink that keeps the
+       pads inside the room they have (fitToViewport), --rise is where the
+       opening page parks them so they can travel up into place as it hands
+       over (see the intro's dismiss). Composed here so neither has to know
+       the other's number. --rise defaults to 0, which is what a visitor who
+       never sees the opening page — reduced motion, where it is removed
+       outright — correctly gets. */
+    transform:translateY(var(--rise,0px)) scale(var(--fit-scale,1));
   }
+  /* the travel itself, and ONLY while handing over: left on permanently, a
+     resize that changes --fit-scale would animate the pads resizing too */
+  #fit.rising{ transition:transform .8s cubic-bezier(.16,.84,.28,1); }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
   /* ---------- header ----------
@@ -146,6 +157,24 @@
        header aligns on the baseline, and a button brings its own line-height
        and box that would sit the wordmark off it. */
     cursor:pointer; width:max-content;
+    /* Answers the pointer the way a drawing in the sketchbook does — the
+       same lift and the same collapse under a press, at the same speeds, so
+       the two pressable things on the page speak with one voice. Origin at
+       the left edge, not the centre: it sits in the corner of the masthead
+       row and growing from the middle would walk it sideways. */
+    transform-origin:left center;
+    transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
+  }
+  .brand:hover{
+    transform:scale(1.0225);
+    filter:
+      drop-shadow(0 3px 5px rgba(35,31,32,.28))
+      drop-shadow(0 12px 20px rgba(35,31,32,.16));
+  }
+  .brand:active{
+    transform:scale(1);
+    transition:transform .1s ease-out, filter .1s ease-out;
+    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
   }
   /* Each letter takes a colour off the clothes. White is deliberately absent —
      on this paper it would simply vanish, which is the same reason the beige,
@@ -843,7 +872,11 @@
   .panel-img img.cutout{
     border:none;
     width:100%;
-    height:min(700px, 74svh);
+    /* Down from 700/74svh: the figure filled its half of the screen edge to
+       edge, which left the piece looking crowded into the column rather than
+       standing in it. Both numbers move together so the vh clamp still bites
+       at the same point on a short screen. */
+    height:min(610px, 65svh);
     object-fit:contain;
   }
   /* the strip of photographs and the window onto it. Only the window clips;
@@ -888,7 +921,7 @@
     padding:52px 46px 40px;display:flex;flex-direction:column;
   }
   .close-x{
-    position:absolute;top:14px;right:20px;font-size:26px;font-weight:300;z-index:5;
+    position:absolute;top:14px;right:20px;font-size:21px;font-weight:300;z-index:5;
     transition:opacity .2s;
   }
   .close-x:hover{opacity:.5;}
@@ -2072,26 +2105,26 @@ const BOOK1_PAGES = [
     {product:"backpack", file:"assets/S1P1 backpack design.svg"}]},
   {type:"art", img:"assets/S1P2.svg", ar:0.7071, designs:[
     {product:"cream-hoodie", file:"assets/S1P2 beige hoodie design.svg"},
-    {product:"pink-tee",     file:"assets/S1P2 pink tee design.svg"}]},
+    {product:"pink-tee",     file:"assets/S1P2 pink tee design.svg", shot:1}]},
   {type:"art", img:"assets/S1P3.svg", ar:0.7071, designs:[
-    {product:"cream-hoodie", file:"assets/S1P3 beige hoodie design.svg"},
-    {product:"black-jeans",  file:"assets/S1P3 black jeans design.svg"}]},
+    {product:"cream-hoodie", file:"assets/S1P3 beige hoodie design.svg", shot:0},
+    {product:"black-jeans",  file:"assets/S1P3 black jeans design.svg", shot:2}]},
   {type:"art", img:"assets/S1P4.svg", ar:0.7071, designs:[
-    {product:"pink-hoodie", file:"assets/S1P4 pink hoodie design.svg"}]},
+    {product:"pink-hoodie", file:"assets/S1P4 pink hoodie design.svg", shot:1}]},
   {type:"art", img:"assets/S1P5.svg", ar:0.7071, designs:[
-    {product:"vest", file:"assets/S1P5 black vest design.svg"}]},
+    {product:"vest", file:"assets/S1P5 black vest design.svg", shot:1}]},
   {type:"art", img:"assets/S1P6.svg", ar:0.7071, designs:[
     {product:"pink-jorts", file:"assets/S1P6 pink jorts design.svg"},
     {product:"pink-tee",   file:"assets/S1P6 pink tee design.svg"}]},
   {type:"art", img:"assets/S1P7.svg", ar:0.7071, designs:[
-    {product:"rose-tee", file:"assets/S1P7 Black Tee 2 design.svg"}]},
+    {product:"rose-tee", file:"assets/S1P7 Black Tee 2 design.svg", shot:1}]},
   {type:"art", img:"assets/S1P8.svg", ar:0.7071, designs:[
-    {product:"black-tee", file:"assets/S1P8 black tee 1 design.svg"}]},
+    {product:"black-tee", file:"assets/S1P8 black tee 1 design.svg", shot:1}]},
   {type:"art", img:"assets/S1P9.svg", ar:0.7071, designs:[
-    {product:"beige-tee", file:"assets/S1P9 beige tee design .svg"},
-    {product:"black-tee", file:"assets/S1P9 black tee 1 design.svg"}]},
+    {product:"beige-tee", file:"assets/S1P9 beige tee design .svg", shot:0},
+    {product:"black-tee", file:"assets/S1P9 black tee 1 design.svg", shot:0}]},
   {type:"art", img:"assets/S1P10.svg", ar:0.7071, designs:[
-    {product:"cream-hoodie", file:"assets/S1P10 beige hoodie design.svg"}]},
+    {product:"cream-hoodie", file:"assets/S1P10 beige hoodie design.svg", shot:1}]},
   {type:"art", img:"assets/S1P11.svg", ar:0.7071, designs:[
     {product:"beige-duffle", file:"assets/S1P11 beige duffle design.svg"}]},
   {type:"back", board:true}
@@ -2460,12 +2493,23 @@ const bindEl = buildBinding();
    parked over it by hand whenever the layout changes. Split in two because
    the resize listener below needs to run only the first half on a book that
    isn't the selected one — see there for why. */
+/* The wire is drawn at its own proportions and then squashed to whatever box
+   it is given (preserveAspectRatio:none on the binding SVG), so shortening
+   the box is what shortens the coils — 15% shorter here, vertically only;
+   the width still tracks the pad.
+   Both numbers carry the same factor, and that pairing is the load-bearing
+   part: the second is the share of the box sitting ABOVE the pad's top edge
+   (40 of the viewBox's 165 — note 0.11801 × 40/165 = 0.02861). Scaling them
+   together keeps viewBox y=0 exactly on that edge, so the coil stays
+   threaded through the sheets instead of riding up off them as it shrinks. */
+const COIL_SQUASH = .85;
+const COIL_H = 0.11801 * COIL_SQUASH, COIL_UP = 0.02861 * COIL_SQUASH;
 function layoutBinding(){
   const w = cal.offsetWidth, h = cal.offsetHeight;
   bindEl.style.left   = cal.offsetLeft + 'px';
   bindEl.style.width  = w + 'px';
-  bindEl.style.top    = (cal.offsetTop - h * 0.02861) + 'px';   /* viewBox y −40 */
-  bindEl.style.height = (h * 0.11801) + 'px';                   /* 165 tall      */
+  bindEl.style.top    = (cal.offsetTop - h * COIL_UP) + 'px';   /* viewBox y −40 */
+  bindEl.style.height = (h * COIL_H) + 'px';                    /* 165 tall      */
   /* The coming-soon veil is parked on the pad the same way, and for a reason
      worth stating: it greys whatever is painted BEHIND it, so wherever its
      edge falls is where greyed and ungreyed meet. Stretched across the whole
@@ -3321,8 +3365,10 @@ cal.addEventListener('click', e => {
   const p = PAGES[cur];
   const spot = e.target.closest('.design-spot');
   if(spot){
-    if(p && p.designs && p.designs.some(d => d.product === spot.dataset.product))
-      openModalSmooth([spot.dataset.product]);
+    /* the matching entry rather than just a yes/no, because it carries the
+       photograph this particular drawing appears on (see openShot) */
+    const d = p && p.designs && p.designs.find(x => x.product === spot.dataset.product);
+    if(d) openModalSmooth([d.product], null, d.shot);
     return;
   }
   if(!e.target.closest('.page-art')) return;
@@ -4062,10 +4108,10 @@ function switchLeftPanel(mutate){
     gal.classList.remove('panel-entering');
   }, 220);
 }
-function openModalSmooth(ids, after){
+function openModalSmooth(ids, after, shot){
   if(sameItems(ids)){ if(after) after(); return; }    /* already showing this — nothing to move to */
-  if(!modalOpen){ openModal(ids); if(after) after(); return; }
-  switchLeftPanel(() => { openModal(ids); if(after) after(); });
+  if(!modalOpen){ openModal(ids, shot); if(after) after(); return; }
+  switchLeftPanel(() => { openModal(ids, shot); if(after) after(); });
 }
 /* The click handler for every "open this piece" moment that ISN'T already
    standing on its page — a recommendation, mainly. Turns the sketchbook to
@@ -4088,7 +4134,16 @@ function goToProduct(id, colour){
     if(colour) { curColour = colourIdx(PRODUCTS[id], colour); renderItem(); }
   });
 }
-function openModal(ids){
+/* Which photograph the panel opens ON. A drawing is embroidered on ONE side
+   of its garment, so pressing that drawing should land on the photograph
+   where you can actually see it — press the piece on the back of a tee and
+   the back is what opens. Set per hotspot in BOOK1_PAGES (`shot:`), carried
+   here, and read once by renderItem. Anything that opens a piece without
+   naming a shot — a recommendation, a tab — gets the first photograph, which
+   is what always used to happen. */
+let openShot = 0;
+function openModal(ids, shot){
+  openShot = shot || 0;
   /* a new walk through the collection for every piece opened — see
      reshuffleRoster for why the weights are drawn here and not in
      renderItem, which also runs on a colourway click */
@@ -4136,6 +4191,11 @@ function renderItem(){
      what three earlier rounds of drift bugs were about — the cells take
      their height from the image box and nothing else. */
   const shots = shotsOf(p, curColour);
+  /* Worked out before the cells are built, because it decides which of them
+     is the one worth fetching eagerly — see below. Clamped, since a
+     colourway can carry a different number of photographs than the shot was
+     chosen against. */
+  const start = Math.min(Math.max(0, openShot | 0), Math.max(0, shots.length - 1));
   const gallery = document.getElementById('panelImg');
   gallery.innerHTML = '';
   const cut = isCutout(p, curColour);
@@ -4151,9 +4211,13 @@ function renderItem(){
     const img = document.createElement('img');
     img.src = src; img.alt = fullName(p);
     img.decoding = 'async';
-    /* the shot the panel opens ON is the only one worth racing for
-       bandwidth; the rest can arrive as they are reached */
-    if(si > 0) img.loading = 'lazy';
+    /* The shot the panel opens ON is the only one worth racing for
+       bandwidth; the rest can arrive as they are reached. `start`, not 0 —
+       a drawing can open its piece on the back or a side view (see
+       openShot), and leaving that one lazy meant the panel opened on an
+       image the browser had not been told to fetch yet: a blank column
+       until it happened to load. */
+    if(si !== start) img.loading = 'lazy';
     if(cut) img.classList.add('cutout');
     cell.appendChild(img);
     return cell;
@@ -4199,7 +4263,9 @@ function renderItem(){
   }
   gallery.appendChild(gal);
   galCount = shots.length;
-  galPos = galCount > 1 ? 1 : 0;   /* cell 1 is the real first shot; 0 is the leading clone */
+  /* +1 because cell 0 of the strip is the leading clone, so the real Nth
+     photograph sits at N+1 */
+  galPos = galCount > 1 ? start + 1 : 0;
   galRender(true);
   document.getElementById('pName').textContent = fullName(p);
   document.getElementById('pPrice').textContent = euro(cents(p)) + '  ·  incl. VAT';
@@ -4528,7 +4594,12 @@ function fitToViewport(){
   const scale = natural ? Math.min(1, room / natural) : 1;
   if(scale === fitScale) return;
   fitScale = scale;
-  fitEl.style.transform = scale < 1 ? `scale(${scale})` : '';
+  /* Written as a custom property rather than straight onto `transform`,
+     because the opening page's hand-over also has to move this element (see
+     --rise) and one of them writing the whole transform would wipe the
+     other's half of it. The stylesheet composes the two; each side only
+     owns its own number. */
+  fitEl.style.setProperty('--fit-scale', scale < 1 ? scale : 1);
   /* every book's own layout reads getBoundingClientRect(), which does
      reflect this transform — resize is what they already listen for to
      redo that math, so this re-fires it instead of duplicating their logic */
@@ -4614,6 +4685,19 @@ relayout();
     {f:'page9.svg', x:30, y:88, w:7,  o:.20, d:.95,  a:'drift', r:[-2,-6], opt:1},
     {f:'S1P1.svg',  x:85, y:86, w:8,  o:.18, d:1.10, a:'drift', r:[-3,-6], opt:1}
   ];
+  /* How far the scatter travels over the whole sequence, as a share of the
+     screen's height, before each drawing's own `d` scales it.
+
+     Deliberately small, and that is the depth: the mark leaves the frame
+     entirely and the demonstration comes and goes at full speed, while all
+     of this drifts only a little behind them. Two things moving at the same
+     rate read as one flat picture being pushed around; the further one
+     barely moving is what makes it read as further away, and it leaves the
+     things that are actually saying something — the wordmark, the captions,
+     the press-a-drawing beat — as the only parts of the page in a hurry.
+     The spread across `d` (0.60 to 1.90) still separates the drawings from
+     each other within that layer. */
+  const FIG_DRIFT = .14;
 
   const scatterEl = document.getElementById('introScatter');
   const mark      = document.getElementById('introMark');
@@ -4777,10 +4861,13 @@ relayout();
     cue.style.opacity = 1 - seg(p, 0, .06);
 
     /* the only movement any drawing makes: straight up as p grows, straight
-       back down as it shrinks. Nothing here is time-dependent, so scrolling
-       back up genuinely retraces the way down rather than replaying it. */
+       back down as it shrinks, and slowly — see FIG_DRIFT for why this
+       layer is the one that hangs back. Nothing here is time-dependent, so
+       scrolling back up genuinely retraces the way down rather than
+       replaying it. */
     figures.forEach(({el, s}) => {
-      el.style.transform = `translate3d(0,${(-p * s.d * 0.46 * stageH).toFixed(1)}px,0)`;
+      el.style.transform =
+        `translate3d(0,${(-p * s.d * FIG_DRIFT * stageH).toFixed(1)}px,0)`;
       /* No fade-IN: the scatter IS the landing page, so it is already
          standing there at rest and only ever thins out on the way down.
          Two stages, and the second one is late on purpose. They used to be
@@ -4823,11 +4910,31 @@ relayout();
      anywhere. (It used to display:none itself here, which made that
      impossible — there is nothing to scroll back into once the scroller is
      out of the layout.) */
+  /* ---------- the pads' entrance ----------
+     They are parked below the fold for as long as the opening page is up —
+     invisible anyway, since that layer is opaque — and travel up into place
+     as it hands over, so the shop arrives rather than simply being there
+     when the white clears. Parked from SCRIPT and not from the stylesheet
+     on purpose: a visitor who never gets an opening page (reduced motion
+     removes it outright, before any of this runs) must find the pads
+     already home, and the CSS default of 0 is exactly that. */
+  const fitEntry = document.getElementById('fit');
+  const PARK = '15vh';
+  let riseTimer = 0;
+  fitEntry.style.setProperty('--rise', PARK);
   let dismissed = false;
   function dismiss(){
     if(dismissed) return;
     dismissed = true;
     intro.classList.add('done');
+    fitEntry.classList.add('rising');
+    fitEntry.style.setProperty('--rise', '0px');
+    /* taken off once it has arrived: the class carries a transition on
+       `transform`, and --fit-scale rides in that same transform, so leaving
+       it on would make every later resize animate the pads scaling over
+       four fifths of a second instead of just fitting */
+    clearTimeout(riseTimer);
+    riseTimer = setTimeout(() => fitEntry.classList.remove('rising'), 900);
     /* the loop no longer runs to keep rewriting this, and the last value
        written was 'auto' — left alone, an invisible link would keep taking
        clicks meant for the shop */
@@ -4838,6 +4945,12 @@ relayout();
     if(!dismissed) return;
     dismissed = false;
     intro.classList.remove('done');
+    /* back to the parked spot with the transition OFF — this happens behind
+       a layer that is already opaque again, and animating it would mean the
+       pads were still sliding down under it when the next hand-over began */
+    clearTimeout(riseTimer);
+    fitEntry.classList.remove('rising');
+    fitEntry.style.setProperty('--rise', PARK);
     lastP = -1;                 /* nothing was painted while it was away */
   }
   enter.addEventListener('click', dismiss);
