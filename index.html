@@ -411,14 +411,25 @@
      `contain`/`center` mirrors the img's object-fit so the mask registers
      exactly over the printed art. No transition: any tween would let the
      original ghost back through while the copy is still lifted. */
+  /* display:none at rest, NOT opacity:0, and this is a performance rule
+     rather than a stylistic one. An invisible element is still a painted
+     and composited one: at opacity:0 every page carried its designs' worth
+     of full-page, SVG-masked layers — fifteen of them across edition one —
+     and a mask costs the browser a texture and an extra compositing pass
+     each. All of that was being maintained permanently to show something
+     that only ever appears under the pointer. Taken out of the render tree
+     until it is actually wanted, the cost is zero until you hover, and the
+     file is already in cache by then (mountDesignArt fetched it), so there
+     is nothing to wait for when it appears. */
   .design-erase{
+    display:none;
     position:absolute; inset:0; pointer-events:none;
-    opacity:0;
     background:#f4f3f1;
     -webkit-mask-size:contain; mask-size:contain;
     -webkit-mask-position:center; mask-position:center;
     -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   }
+  .design-erase.on{ display:block; }
   .design-spot{ position:absolute; cursor:pointer; }
   .design-art{
     display:block; width:100%; height:100%;
@@ -1443,8 +1454,10 @@
        BACK is near-instant — scrolling up out of the shop used to fade a
        white sheet in over three quarters of a second before any drawing
        appeared, and that blank gap is exactly what broke the thread between
-       the two halves of the site. Leaving keeps its unhurried fade. */
-    transition:opacity .09s linear;
+       the two halves of the site. Leaving keeps its unhurried fade.
+       visibility rides along at 0s here so coming back is immediate; going
+       away it waits for the fade (see .done). */
+    transition:opacity .09s linear, visibility 0s;
   }
   .intro::-webkit-scrollbar{ display:none; }
   /* Invisible and pointer-transparent, but still in the document and still
@@ -1455,7 +1468,31 @@
      from catching clicks meant for the shop underneath. */
   .intro.done{
     opacity:0; pointer-events:none;
-    transition:opacity .6s cubic-bezier(.3,.1,.25,1);
+    /* Hidden as well as transparent, and this is the single biggest thing
+       keeping the SHOP quick. At opacity:0 the layer is still a painted
+       one: measured, twenty-two rotation animations were still running
+       inside it after hand-over, each one re-compositing a full-page
+       drawing, and thirty-nine promoted layers were still being held — all
+       of it forever, for something nobody can see, while the sketchbook
+       underneath was trying to flip pages on the same GPU.
+       visibility waits out the fade (0s delayed by .6s) so leaving still
+       looks like leaving; the rule above brings it straight back with no
+       delay at all, so returning stays immediate. */
+    visibility:hidden;
+    transition:opacity .6s cubic-bezier(.3,.1,.25,1), visibility 0s .6s;
+  }
+  /* Belt and braces on the same problem: a hidden subtree should not be
+     composited, but the animations would still be ticking and the layer
+     hints would still be asking the compositor to hold memory for them.
+     Both are released explicitly rather than left to the engine's
+     discretion, and both come straight back when .done is removed. */
+  .intro.done .intro-sketch,
+  .intro.done .drift,
+  .intro.done .gait,
+  .intro.done .sway,
+  .intro.done .boil{
+    animation-play-state:paused;
+    will-change:auto;
   }
   /* The scroll distance. Everything visible is in .intro-stage, which sticks
      to the top for the whole of it — the classic pinned-scene pattern.
@@ -2272,8 +2309,8 @@ function fitDesignSpots(leaf, p){
       erase.style.maskImage = maskUrl;
       /* inserted before the spots so the lifted copy still paints over it */
       art.insertBefore(erase, art.querySelector(':scope > .design-spot'));
-      spot.addEventListener('mouseenter', () => { erase.style.opacity = '1'; });
-      spot.addEventListener('mouseleave', () => { erase.style.opacity = ''; });
+      spot.addEventListener('mouseenter', () => erase.classList.add('on'));
+      spot.addEventListener('mouseleave', () => erase.classList.remove('on'));
     }).catch(() => console.warn('design hotspot failed to measure:', d.file));
   });
 }
