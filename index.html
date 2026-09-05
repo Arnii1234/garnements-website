@@ -127,6 +127,11 @@
        never sees the opening page — reduced motion, where it is removed
        outright — correctly gets. */
     transform:translateY(var(--rise,0px)) scale(var(--fit-scale,1));
+    /* above the drawings' layer (z 1), below the masthead and colophon
+       (110): the pads stand ON the scattered drawings rather than among
+       them. The transform already made this a stacking context; the z-index
+       only says where it sits. */
+    position:relative; z-index:5;
   }
   /* the travel itself, and ONLY while handing over: left on permanently, a
      resize that changes --fit-scale would animate the pads resizing too */
@@ -181,12 +186,15 @@
      pink and blue are pitched darker than the garments themselves: at their
      true tint they measured 2.3–2.7 against the background and went soft.
      These sit near 4:1, dark enough to hold and still plainly beige, pink and
-     blue. The five cycle, so ten letters read as two passes. */
-  .brand span:nth-child(5n+1){ color:#231f20; }   /* black      */
-  .brand span:nth-child(5n+2){ color:#8a7559; }   /* beige      */
-  .brand span:nth-child(5n+3){ color:#bb4f7d; }   /* pink       */
-  .brand span:nth-child(5n+4){ color:#6f5241; }   /* brown      */
-  .brand span:nth-child(5n+5){ color:#4a7a95; }   /* light blue */
+     blue. The five cycle, so ten letters read as two passes.
+     The opening page's own wordmark takes the identical cycle — it is the
+     same mark at a different size, and it would be odd for it to arrive in
+     plain ink and then turn colourful once you reached the shop. */
+  .brand span:nth-child(5n+1), .intro-mark span:nth-child(5n+1){ color:#231f20; }   /* black      */
+  .brand span:nth-child(5n+2), .intro-mark span:nth-child(5n+2){ color:#8a7559; }   /* beige      */
+  .brand span:nth-child(5n+3), .intro-mark span:nth-child(5n+3){ color:#bb4f7d; }   /* pink       */
+  .brand span:nth-child(5n+4), .intro-mark span:nth-child(5n+4){ color:#6f5241; }   /* brown      */
+  .brand span:nth-child(5n+5), .intro-mark span:nth-child(5n+5){ color:#4a7a95; }   /* light blue */
   .cart-btn{
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
     padding-bottom:2px;border-bottom:1px solid transparent;
@@ -1437,11 +1445,8 @@
 
   .intro{
     position:fixed; inset:0; z-index:150;
-    background:var(--bg);
-    /* every scattered drawing is sized as `--w` vw times this. One knob, so
-       the whole scatter can be re-scaled for a narrow screen without the
-       positions (which are already in %) having to change with it. */
-    --sk:1;
+    /* no background of its own — .intro-ground carries it, so the drawings
+       can sit between the two */
     overflow-y:auto; overflow-x:hidden;
     /* the page underneath does not scroll, and a rubber-band at either end
        of this one should not start looking for something that does */
@@ -1481,16 +1486,47 @@
     visibility:hidden;
     transition:opacity .6s cubic-bezier(.3,.1,.25,1), visibility 0s .6s;
   }
-  /* Belt and braces on the same problem: a hidden subtree should not be
-     composited, but the animations would still be ticking and the layer
-     hints would still be asking the compositor to hold memory for them.
-     Both are released explicitly rather than left to the engine's
-     discretion, and both come straight back when .done is removed. */
-  .intro.done .intro-sketch,
-  .intro.done .drift,
-  .intro.done .gait,
-  .intro.done .sway,
-  .intro.done .boil{
+  /* ---------- the drawings' own layer ----------
+     Underneath the pads (z 1 against #fit's 5) and underneath the masthead
+     and colophon (110), so once the opening page has gone the drawings are
+     simply the ground the sketchbooks stand on. Fixed rather than inside
+     the sticky stage because it has to outlive that stage; the figures are
+     placed in % of the viewport either way, so nothing about their
+     positions changes by moving them here.
+     --sk moved across with them: it is the one knob scaling the whole
+     scatter for a narrow screen (see the media query). */
+  /* the opening page's ground, and the lid on the shop while it is up */
+  .intro-ground{
+    position:fixed; inset:0; z-index:140;
+    background:var(--bg);
+    transition:opacity .09s linear, visibility 0s;
+  }
+  .intro-ground.done{
+    opacity:0; visibility:hidden;
+    transition:opacity .6s cubic-bezier(.3,.1,.25,1), visibility 0s .6s;
+  }
+  /* Above the ground while the opening page is up (145 against 140), so the
+     drawings are its scatter; below the pads once they arrive (see
+     .settled), so the drawings become what the pads stand on. That swap is
+     the whole reason this is its own layer — it is the one thing on the
+     page that belongs to both halves. */
+  .scatter-layer{
+    position:fixed; inset:0; z-index:145;
+    overflow:hidden; pointer-events:none;
+    --sk:1;
+  }
+  .scatter-layer.settled{ z-index:1; }
+  /* Once the sketchbooks are up the drawings stop moving and become
+     scenery. Static is the point AND it is what keeps them affordable:
+     seventeen rotating full-page drawings were what made the shop heavy in
+     the first place, so they keep their place and their faintness but give
+     the compositor nothing further to do. Both come straight back the
+     moment the opening page does. */
+  .scatter-layer.settled .intro-sketch,
+  .scatter-layer.settled .drift,
+  .scatter-layer.settled .gait,
+  .scatter-layer.settled .sway,
+  .scatter-layer.settled .boil{
     animation-play-state:paused;
     will-change:auto;
   }
@@ -1715,7 +1751,7 @@
     /* half the scatter steps out and everything left roughly doubles: a vw
        width that reads as a drawing on a laptop is a speck on a phone, and
        a dozen specks are not a scattering, they are dust */
-    .intro{ --sk:2.15; }
+    .scatter-layer{ --sk:2.15; }
     .intro-sketch.opt{ display:none; }
     .intro-demo{ flex-direction:column; gap:18px; top:54%; }
     .demo-arrow{ transform:rotate(90deg); }
@@ -1726,7 +1762,7 @@
   /* Someone who has asked for less motion is not the audience for a scrolled
      animation — they get the site itself, immediately. */
   @media(prefers-reduced-motion:reduce){
-    .intro{ display:none; }
+    .intro, .scatter-layer, .intro-ground{ display:none; }
   }
 </style>
 </head>
@@ -1737,16 +1773,33 @@
      than seen assembling itself. See goHome. -->
 <div class="veil" id="veil" aria-hidden="true"></div>
 
-<!-- The opening page. The scattered drawings are filled in by script (see
-     FIGURES) rather than written out here — they are a list of positions,
-     and a list belongs somewhere it can be edited as one. Everything else
-     is static because it never varies. -->
+<!-- The scattered drawings, and they live OUTSIDE the opening page on
+     purpose. They are the one part of it that does not leave: once the
+     sketchbooks arrive the rest of the layer goes, and this stays behind
+     them as the ground they stand on. Kept in its own fixed layer rather
+     than inside .intro so it can sit UNDER the pads (z 1 against #fit's 5)
+     while the opening page itself sits over everything at 150 — one
+     element cannot be both. Script fills it (see FIGURES); a list of
+     positions belongs somewhere it can be edited as one. -->
+<!-- The opening page's white ground. A separate element from .intro because
+     the drawings have to sit BETWEEN them: above this, so they are the
+     landing page's scatter, but below the pads once the pads arrive. One
+     opaque layer carrying both its own background and its content cannot be
+     on two sides of a third thing at once, so the background moved out. It
+     is also what hides the shop while the opening page is up, which means
+     none of it is being composited until it is wanted. -->
+<div class="intro-ground" id="introGround" aria-hidden="true"></div>
+
+<div class="scatter-layer" id="introScatter" aria-hidden="true"></div>
+
+<!-- The opening page itself: everything that DOES leave. -->
 <div class="intro" id="intro">
   <div class="intro-track">
     <div class="intro-stage">
-      <div id="introScatter"></div>
-
-      <h1 class="intro-mark" id="introMark">garnements</h1>
+      <!-- one letter per span so each can take its own colour, exactly as
+           the masthead does; no whitespace between them so it is still read
+           and selected as one word -->
+      <h1 class="intro-mark" id="introMark"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></h1>
 
       <div class="intro-say intro-cue" id="introCue">
         scroll<span class="rule"></span>
@@ -4676,7 +4729,16 @@ relayout();
      version of a scroll animation. The stylesheet hides this too — that is
      what stops it being visible before this line runs, this is what stops
      it costing anything afterwards. */
-  if(matchMedia('(prefers-reduced-motion:reduce)').matches){ intro.remove(); return; }
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){
+    intro.remove();
+    /* the drawings' layer goes with it. It lives outside .intro now, so it
+       would otherwise be left standing — and this returns before the point
+       where it gets filled, so it would be an empty fixed sheet over the
+       shop for no reason at all. */
+    document.getElementById('introScatter')?.remove();
+    document.getElementById('introGround')?.remove();
+    return;
+  }
 
   /* x/y are where the sketch's own top-left sits, in % of the stage; w is
      its width in vw. Several deliberately hang off an edge — a scatter that
@@ -4737,6 +4799,7 @@ relayout();
   const FIG_DRIFT = .14;
 
   const scatterEl = document.getElementById('introScatter');
+  const ground    = document.getElementById('introGround');
   const mark      = document.getElementById('introMark');
   const cue       = document.getElementById('introCue');
   const say1      = document.getElementById('introSay1');
@@ -4915,8 +4978,14 @@ relayout();
          demonstration (enough to keep it legible) and hold at that until
          the very last moment, so coming back up puts drawings on screen
          almost the instant the page moves. */
+      /* ...and they never leave. The second stage used to take them to
+         nothing, which is why the shop was a blank field; it now stops at
+         30% of where they started, so the drawings carry on under the
+         sketchbooks as the ground those stand on. Faded by 70%, not gone:
+         present enough to connect the two halves of the site, faint enough
+         that the pads are plainly the subject. */
       el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .50, .70)) * (1 - seg(p, .95, 1))).toFixed(3);
+        (s.o * (1 - .55 * seg(p, .50, .70)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     say1.style.opacity = (seg(p, .13, .22) * (1 - seg(p, .33, .41))).toFixed(3);
@@ -4964,6 +5033,11 @@ relayout();
     if(dismissed) return;
     dismissed = true;
     intro.classList.add('done');
+    ground.classList.add('done');
+    /* the drawings stay — they are not part of what leaves — but they stop
+       moving, which is what keeps them from costing anything (see
+       .scatter-layer.settled) */
+    scatterEl.classList.add('settled');
     fitEntry.classList.add('rising');
     fitEntry.style.setProperty('--rise', '0px');
     /* taken off once it has arrived: the class carries a transition on
@@ -4982,6 +5056,8 @@ relayout();
     if(!dismissed) return;
     dismissed = false;
     intro.classList.remove('done');
+    ground.classList.remove('done');
+    scatterEl.classList.remove('settled');
     /* back to the parked spot with the transition OFF — this happens behind
        a layer that is already opaque again, and animating it would mean the
        pads were still sliding down under it when the next hand-over began */
