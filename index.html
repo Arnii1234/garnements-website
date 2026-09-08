@@ -1470,15 +1470,16 @@
      dropping frames. Shorter means each turn of the wheel does more, which
      is what "lighter" actually is here.
 
-     And then up again, to 420, once the two layers were pulling different
-     ways. The scatter rides the wheel directly (see FIG_RATE), so it
-     answers every gesture however long the track is; the demonstration is a
-     share of the track, so a longer track is what slows IT down. Long is
-     right for that half: a pad arriving, a cover turning, a pointer
-     pressing are things to be watched, not flicked past, and at three
-     screens and a bit the whole sequence unfolds at a walking pace while
-     the ground under it moves like the ground under a walk. */
-  .intro-track{ height:420vh; position:relative; }
+     Then re-cut around the demonstration. The scatter rides the wheel
+     directly (see FIG_RATE), so it answers every gesture however long the
+     track is; the demonstration is a share of the track, so the track's
+     length is what sets ITS pace. At 340 the demonstration has about the
+     same two screens of scroll it had at 420 — a pad arriving, a cover
+     turning, a pointer pressing are things to be watched, not flicked past
+     — and the difference all came out of the wordmark, which now leaves in
+     the first sixth rather than the first half. The mark is the greeting;
+     the demonstration is the point. */
+  .intro-track{ height:340vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1546,19 +1547,18 @@
 
   /* ---------- captions ----------
      The house's own small voice — 10px, .24em, uppercase — the same setting
-     SIZE / SIZE GUIDE / SHIPPING already use. Nothing here is allowed to get
-     loud; the space around it is what is meant to do the work. */
+     SIZE / SIZE GUIDE / SHIPPING already use. Only the scroll cue is left:
+     the two captions that used to narrate the demonstration ("press a
+     drawing · meet the piece", "open the sketchbooks") went, because the
+     demonstration shows all of that, and the shop arrives on its own when
+     the scroll runs out. */
   .intro-say{
     position:absolute; left:50%; transform:translateX(-50%);
     font-size:10px; letter-spacing:.26em; text-transform:uppercase;
     color:var(--grey); white-space:nowrap; text-align:center;
     pointer-events:none; z-index:5;
   }
-  .intro-say b{ font-weight:400; color:var(--ink); }
   .intro-cue{ bottom:38px; }
-  /* low, and clear of the mark's own path — by the time it is said the mark
-     has long since risen away */
-  #introSay2{ top:89%; }
   .intro-cue .rule{
     display:block; width:1px; height:38px; margin:14px auto 0;
     background:linear-gradient(var(--line), transparent);
@@ -1580,7 +1580,7 @@
      would push the arriving pad off-centre for no reason the viewer can
      see. */
   .intro-demo{
-    position:absolute; left:50%; top:55%;
+    position:absolute; left:50%; top:50%;
     transform:translate(calc(-50% + var(--slide,0px)),-50%);
     display:flex; align-items:center; gap:clamp(20px,5vw,74px);
     z-index:4; pointer-events:none;
@@ -1599,11 +1599,13 @@
 
      Sized by its HEIGHT, and that is not a detail either: the cover swings a
      full turn, so partway round it stands its own height and more ABOVE the
-     pad. Sized off the viewport's width it cleared on a laptop and was
+     pad — measured, about 1.09 of it at the peak (p ≈ .465). With the group
+     centred on the screen that is what caps the pad at 30vh: any taller and
+     the top of the cover leaves through the top of the window. Sized off the viewport's width it cleared on a laptop and was
      guillotined by a short wide window; off the height it clears everywhere,
      because the room it needs and the room it has become one measurement. */
   .demo-book{
-    --pad-h:clamp(165px,34vh,330px);
+    --pad-h:clamp(150px,30vh,300px);
     position:relative;
     height:var(--pad-h); width:calc(var(--pad-h) * 210 / 297);
     perspective:calc(var(--pad-h) * 3.6);
@@ -1735,9 +1737,8 @@
     transition:opacity .3s, transform .45s cubic-bezier(.3,.1,.25,1);
   }
   .demo-sheet.press .demo-ring{ opacity:.5; transform:translate(-50%,-50%) scale(.62); }
-  /* No transition on opacity here, or on the enter link below, and the
-     reason is the same for both: the scroll loop writes those values on
-     every frame, so a transition would be easing toward a target that has
+  /* No transition on opacity here: the scroll loop writes it on every
+     frame, so a transition would be easing toward a target that has
      already moved on — it reads as the element lagging the scroll rather
      than following it. Anything driven per-frame is left to the loop;
      transitions stay for the things a CLASS toggles (the press, the ring). */
@@ -1746,7 +1747,7 @@
      full-length cutouts, so matching widths made the photo tower over the
      page it came out of */
   .demo-piece img{
-    height:clamp(165px,29vh,340px); width:auto; display:block; margin:0 auto;
+    height:clamp(150px,26vh,310px); width:auto; display:block; margin:0 auto;
   }
   .demo-piece .nm{
     display:block; margin-top:14px;
@@ -1757,16 +1758,6 @@
     display:block; margin-top:4px;
     font-size:10px; letter-spacing:.2em; color:var(--grey);
   }
-
-  /* the way out at the end of the sequence */
-  .intro-enter{
-    position:absolute; left:50%; bottom:44px; transform:translateX(-50%);
-    font-size:10px; letter-spacing:.28em; text-transform:uppercase;
-    color:var(--ink); padding:10px 4px;
-    border-bottom:1px solid var(--line);
-    z-index:6; transition:border-color .25s;
-  }
-  .intro-enter:hover{ border-color:var(--ink); }
 
   /* Narrow screens: fewer sketches and each one bigger. The scatter is meant
      to read as a scattering — at phone width the same dozen at the same
@@ -1786,11 +1777,10 @@
        is tall and the pad's own share of the screen has to come down — not
        for the pad's sake but for the cover's, which needs its whole height
        again above the pad partway through the turn */
-    .intro-demo{ flex-direction:column; gap:18px; top:54%; }
-    .demo-book{ --pad-h:clamp(140px,24vh,230px); }
-    .demo-piece img{ height:clamp(140px,24vh,260px); }
+    .intro-demo{ flex-direction:column; gap:18px; top:52%; }
+    .demo-book{ --pad-h:clamp(130px,21vh,210px); }
+    .demo-piece img{ height:clamp(130px,22vh,240px); }
     .intro-say{ font-size:9px; letter-spacing:.22em; }
-    #introSay2{ top:91%; }
   }
   /* Someone who has asked for less motion is not the audience for a scrolled
      animation — they get the site itself, immediately. */
@@ -1878,12 +1868,6 @@
           <span class="pr" id="demoPrice"></span>
         </div>
       </div>
-
-      <div class="intro-say" id="introSay2" style="opacity:0">
-        press a drawing &nbsp;·&nbsp; <b>meet the piece</b>
-      </div>
-
-      <button class="intro-enter" id="introEnter" style="opacity:0">open the sketchbooks</button>
     </div>
   </div>
 </div>
@@ -4809,9 +4793,9 @@ relayout();
      the whole difference: the old figure (a share of the screen spread over
      the entire sequence) meant a wheel notch of 100px moved a drawing
      eight or nine — you scrolled and the ground answered late and little,
-     which is what "heavy" was. At 1.6 the far end of the scatter (d = .6)
-     is the part that moves 1:1 with the wheel; the middle (d ≈ 1.3) goes
-     at twice the wheel and the near ones (d = 1.85) at three times it. The
+     which is what "heavy" was. At 1.3 the far end of the scatter (d = .6)
+     moves at four fifths of the wheel, the middle (d ≈ 1.3) at 1.7 times
+     it and the near ones (d = 1.85) at nearly two and a half times. The
      ground, in other words, is the fastest thing on the page by a long way
      — a flick sends drawings streaming past while the demonstration in
      front of them barely advances — and that difference in speed is what
@@ -4825,7 +4809,7 @@ relayout();
      measure), so the field that keeps coming is an irregular scatter, not
      fifteen columns of the same drawing. Still a pure function of the
      scroll position, so scrolling back up runs it backwards exactly. */
-  const FIG_RATE = 1.6;
+  const FIG_RATE = 1.3;
   /* deterministic noise in -1..1 from a drawing's index and which pass it
      is on: the same scroll position always composes the same page */
   const noise = (i, k) => {
@@ -4837,7 +4821,6 @@ relayout();
   const ground    = document.getElementById('introGround');
   const mark      = document.getElementById('introMark');
   const cue       = document.getElementById('introCue');
-  const say2      = document.getElementById('introSay2');
   const demo      = document.getElementById('introDemo');
   const book      = document.getElementById('demoBook');
   const sheet     = document.getElementById('demoSheet');
@@ -4845,7 +4828,6 @@ relayout();
   const curL      = document.getElementById('demoCursorL');
   const curR      = document.getElementById('demoCursorR');
   const piece     = document.getElementById('demoPiece');
-  const enter     = document.getElementById('introEnter');
 
   /* Everything about the demonstration is wrapped, and the reason is worth
      stating: this layer covers the entire viewport, so any exception thrown
@@ -5033,7 +5015,7 @@ relayout();
      painted from a scroll listener instead of a permanent rAF loop: held
      still, the page now does no work at all, and every drawing sits exactly
      where its scroll offset says it should. */
-  let lastP = -1, lastPointer = '';
+  let lastP = -1;
   function paintScroll(p){
     /* The mark: upward, and nothing else — all the way out of the frame,
        not parked near the top. The distance is written as `-50vh - 60%`
@@ -5045,7 +5027,7 @@ relayout();
        mark still hangs below its centre depends on a font-size that is
        itself clamped against the viewport width. The extra 10% is margin,
        so it is gone rather than only just gone. */
-    const markK = io(seg(p, .04, .55));
+    const markK = io(seg(p, .03, .18));
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     /* Faded against its own travel, not against a scroll window of its own.
        Tying the two to the same k is what guarantees they agree: the mark
@@ -5099,7 +5081,7 @@ relayout();
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
       el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .50, .70)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        (s.o * (1 - .55 * seg(p, .22, .40)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5112,7 +5094,7 @@ relayout();
        scroll it used to, so the pad, the pointers and the press unfold at an
        unhurried pace rather than snapping through their marks — slow on
        purpose, against a ground that is fast on purpose (see FIG_RATE). */
-    const dp = seg(p, .30, .92);
+    const dp = seg(p, .16, .94);
     demo.style.opacity = (seg(dp, 0, .10) * (1 - seg(dp, .93, 1))).toFixed(3);
 
     /* 1. the pad comes up from below, the way the real ones do when the
@@ -5178,19 +5160,12 @@ relayout();
     /* 5. the drawing lifts under the press, and the piece it is stitched on
           arrives beside it */
     sheet.classList.toggle('press', dp > .68 && dp < .97);
-    say2.style.opacity = (seg(dp, .52, .62) * (1 - seg(dp, .93, 1))).toFixed(3);
     const pin = seg(dp, .70, .87);
     piece.style.opacity = pin.toFixed(3);
     piece.style.transform = `translate3d(${((1 - io(pin)) * 26).toFixed(1)}px,0,0)`;
     /* and the pair settles into the middle as the second half of it arrives,
        having stood the pad there alone until then */
     demo.style.setProperty('--slide', ((1 - io(pin)) * demoShift).toFixed(1) + 'px');
-
-    enter.style.opacity = seg(p, .90, .97).toFixed(3);
-    /* written only on the change, not on every frame that happens to be
-       past the threshold */
-    const pe = p > .93 ? 'auto' : 'none';
-    if(pe !== lastPointer){ enter.style.pointerEvents = pe; lastPointer = pe; }
   }
 
   /* ---------- handing back and forth with the shop ----------
@@ -5232,11 +5207,6 @@ relayout();
        four fifths of a second instead of just fitting */
     clearTimeout(riseTimer);
     riseTimer = setTimeout(() => fitEntry.classList.remove('rising'), 900);
-    /* the loop no longer runs to keep rewriting this, and the last value
-       written was 'auto' — left alone, an invisible link would keep taking
-       clicks meant for the shop */
-    enter.style.pointerEvents = 'none';
-    lastPointer = 'none';
   }
   function revive(){
     if(!dismissed) return;
@@ -5252,7 +5222,8 @@ relayout();
     fitEntry.style.setProperty('--rise', PARK);
     lastP = -1;                 /* nothing was painted while it was away */
   }
-  enter.addEventListener('click', dismiss);
+  /* no link out any more: the shop arrives when the scroll runs out (see
+     onScroll), which is the one gesture the whole page has been asking for */
 
   /* Painted from the scroller rather than from a permanent rAF loop, now
      that nothing on this page moves on its own. Coalesced into one frame:
