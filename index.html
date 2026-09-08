@@ -119,16 +119,13 @@
     flex:1;min-height:0;
     display:flex;align-items:center;justify-content:center;
     transform-origin:center center;
-    /* Two owners, one transform: --fit-scale is the shrink that keeps the
-       pads inside the room they have (fitToViewport), --rise is how far
-       below their place the opening page is holding them — written on
-       every scroll frame of its last stretch, so the pads travel up into
-       the page WITH the wheel rather than on a timer (see the entrance in
-       paintScroll). Composed here so neither has to know the other's
-       number. --rise defaults to 0, which is what a visitor who never sees
-       the opening page — reduced motion, where it is removed outright —
-       correctly gets. */
-    transform:translateY(var(--rise,0px)) scale(var(--fit-scale,1));
+    /* --fit-scale is the shrink that keeps the pads inside the room they
+       have (fitToViewport). While the opening page is carrying them up into
+       place it writes an inline transform over this one — a translateY
+       composed with this same var — and clears it at the hand-over (see
+       the entrance in paintScroll), so a visitor who never sees the opening
+       page (reduced motion removes it outright) simply gets this. */
+    transform:scale(var(--fit-scale,1));
     /* above the drawings' layer (z 1), below the masthead and colophon
        (110): the pads stand ON the scattered drawings rather than among
        them. The transform already made this a stacking context; the z-index
@@ -144,7 +141,14 @@
      changes except that the sketchbook is now in it. Taken off again once
      the ground has gone, because up here they would also stand over the
      product window and the cart drawer. */
-  #fit.entering{ z-index:146; }
+  #fit.entering{
+    z-index:146;
+    /* promoted for the stretch it moves: the pad is a deep tree with a
+       wide soft shadow under it, and moving that un-promoted meant
+       re-painting all of it on every frame — the stutter the entrance used
+       to have. Rasterised once and slid, it costs what the drawings cost. */
+    will-change:transform;
+  }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
   /* ---------- header ----------
@@ -157,11 +161,16 @@
      window sit has moved. z-index above the pads (and matching the
      colophon's own 110) so nothing passes over it. Centred rather than
      baseline-aligned: a 22px serif and an 11px sans share no baseline the
-     eye believes. */
+     eye believes. The masthead stands above the opening page too, so it is
+     there from the first frame — see the z-index below. */
   header{
     display:flex;justify-content:space-between;align-items:center;
     padding:0 44px; min-height:64px;
-    position:relative; z-index:110;
+    /* Above the opening page (150) as well as the pads: the masthead is on
+       screen from the first frame, standing over the drawings and the
+       demonstration alike, and it is the one wordmark the page has. Below
+       the cart drawer (160), which slides over its corner. */
+    position:relative; z-index:155;
     background:transparent;
   }
   .brand{
@@ -197,15 +206,12 @@
      blue — calm, a little chalky, nothing that shouts. They sit around 3:1
      against the paper (measured), which is the floor for a mark this size:
      lighter still and the pink went to nothing. The five cycle, so ten
-     letters read as two passes.
-     The opening page's own wordmark takes the identical cycle — it is the
-     same mark at a different size, and it would be odd for it to arrive in
-     plain ink and then turn colourful once you reached the shop. */
-  .brand span:nth-child(5n+1), .intro-mark span:nth-child(5n+1){ color:#231f20; }   /* black      */
-  .brand span:nth-child(5n+2), .intro-mark span:nth-child(5n+2){ color:#ad9474; }   /* sand beige */
-  .brand span:nth-child(5n+3), .intro-mark span:nth-child(5n+3){ color:#c9849a; }   /* dusty pink */
-  .brand span:nth-child(5n+4), .intro-mark span:nth-child(5n+4){ color:#9c7f6b; }   /* soft brown */
-  .brand span:nth-child(5n+5), .intro-mark span:nth-child(5n+5){ color:#6f95aa; }   /* slate blue */
+     letters read as two passes. */
+  .brand span:nth-child(5n+1){ color:#231f20; }   /* black      */
+  .brand span:nth-child(5n+2){ color:#ad9474; }   /* sand beige */
+  .brand span:nth-child(5n+3){ color:#c9849a; }   /* dusty pink */
+  .brand span:nth-child(5n+4){ color:#9c7f6b; }   /* soft brown */
+  .brand span:nth-child(5n+5){ color:#6f95aa; }   /* slate blue */
   .cart-btn{
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
     padding-bottom:2px;border-bottom:1px solid transparent;
@@ -1266,7 +1272,9 @@
   /* ---------- cart drawer ---------- */
   .drawer{
     position:fixed;top:0;right:-440px;width:min(420px,94vw);height:100%;
-    background:#fff;z-index:120;transition:right .45s cubic-bezier(.3,.1,.25,1);
+    /* above the opening page (150) and the masthead (155): the cart can be
+       opened from the landing page, so it has to open over it */
+    background:#fff;z-index:160;transition:right .45s cubic-bezier(.3,.1,.25,1);
     padding:46px 34px;display:flex;flex-direction:column;
     box-shadow:-14px 0 44px rgba(0,0,0,.14);
   }
@@ -1366,9 +1374,11 @@
 
   /* ==========================================================================
      OPENING SEQUENCE
-     The landing page proper: the wordmark stands centred and big, the
-     sketched figures are scattered around it, and scrolling walks through
-     what the site actually is before handing over to the sketchbooks.
+     The landing page proper: the masthead is already there, the sketched
+     figures are scattered over the page with a pad waiting low among them,
+     and scrolling walks through what the site actually is before handing
+     over to the sketchbooks. There is no big wordmark any more — the one in
+     the masthead is the one that stays, so it is the one you meet.
 
      Built as a fixed layer OVER the site rather than as a section of it, and
      with its own scroller, on purpose: the pads' layout is a chain of
@@ -1479,44 +1489,19 @@
      dropping frames. Shorter means each turn of the wheel does more, which
      is what "lighter" actually is here.
 
-     Then re-cut around the demonstration. The scatter rides the wheel
-     directly (see FIG_RATE), so it answers every gesture however long the
-     track is; the demonstration is a share of the track, so the track's
-     length is what sets ITS pace. At 340 the demonstration has about the
-     same two screens of scroll it had at 420 — a pad arriving, a cover
-     turning, a pointer pressing are things to be watched, not flicked past
-     — and the difference all came out of the wordmark, which now leaves in
-     the first sixth rather than the first half. The mark is the greeting;
-     the demonstration is the point. */
-  .intro-track{ height:340vh; position:relative; }
+     Then re-cut around the demonstration, twice. The scatter rides the
+     wheel directly (see FIG_RATE), so it answers every gesture however long
+     the track is; the demonstration is a share of the track, so the track's
+     length is what sets ITS pace. With the big wordmark gone the
+     demonstration starts on the first pixel of scroll and has 70% of the
+     track — at 280 that is about a screen and a quarter of scrolling, which
+     was the ask: long enough to watch a cover turn and a pointer press,
+     short enough that the wheel does not run out of patience before the
+     piece appears. The rest is the real sketchbook coming up the page. */
+  .intro-track{ height:280vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
-  }
-
-  /* ---------- the wordmark ----------
-     It never changes: no scale, no colour shift, no tracking change, no
-     morph into the masthead. Only where it stands, and only upward. That is
-     exactly the brief and the rule the rest of the sequence is built around;
-     the interest is meant to come from what happens AROUND it. */
-  .intro-mark{
-    /* high on the page rather than in the middle of it — the middle is
-       where the demonstration is about to stand, and a greeting that sits
-       up out of its way is also one that visibly has somewhere to go. The
-       38% is shared with the script (MARK_TOP), which works its fade and
-       travel out from it. */
-    position:absolute; left:50%; top:38%;
-    transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(36px, 8.6vw, 148px);
-    font-weight:400; letter-spacing:.13em;
-    /* letter-spacing hangs an extra gap off the last letter, so a centred
-       line sits half that gap left of true centre — the same correction
-       pageTexture() makes when it draws this type onto a flip texture */
-    text-indent:.13em;
-    white-space:nowrap; color:var(--ink);
-    z-index:3; pointer-events:none;
-    will-change:transform;
   }
 
   /* ---------- the scattered sketches ----------
@@ -1821,11 +1806,6 @@
 <div class="intro" id="intro">
   <div class="intro-track">
     <div class="intro-stage">
-      <!-- one letter per span so each can take its own colour, exactly as
-           the masthead does; no whitespace between them so it is still read
-           and selected as one word -->
-      <h1 class="intro-mark" id="introMark"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></h1>
-
       <!-- The walkthrough: a sketchbook arrives, a pointer opens it, a second
            pointer presses a drawing and the piece it is stitched on appears.
            It is the site's whole mechanic acted out once, in order, so it can
@@ -4676,8 +4656,9 @@ function fitToViewport(){
   if(scale === fitScale) return;
   fitScale = scale;
   /* Written as a custom property rather than straight onto `transform`,
-     because the opening page's hand-over also has to move this element (see
-     --rise) and one of them writing the whole transform would wipe the
+     because the opening page's entrance also has to move this element (it
+     writes an inline translateY that reads this same var, see paintScroll)
+     and one of them writing the whole transform would wipe the
      other's half of it. The stylesheet composes the two; each side only
      owns its own number. */
   fitEl.style.setProperty('--fit-scale', scale < 1 ? scale : 1);
@@ -4751,8 +4732,9 @@ relayout();
      border, not a scattering. d is parallax depth: how fast it rides the
      scroll (see FIG_RATE). opt drops out on phones,
      where fifteen at this scale become a crowd. Grouped in bands with the
-     middle one left almost empty: that gap is where the mark stands, and
-     keeping it clear is most of what makes the page read as spacious.
+     middle one left almost empty: that gap is where the demonstration
+     stands, and keeping it clear is most of what makes the page read as
+     spacious.
      The bottom row is cut off by the frame on purpose (see below). Sizes are
      deliberately far apart (12vh next to 30vh); an even scatter of
      same-size marks reads as a pattern. */
@@ -4820,7 +4802,6 @@ relayout();
 
   const scatterEl = document.getElementById('introScatter');
   const ground    = document.getElementById('introGround');
-  const mark      = document.getElementById('introMark');
   const demo      = document.getElementById('introDemo');
   const book      = document.getElementById('demoBook');
   const sheet     = document.getElementById('demoSheet');
@@ -4922,10 +4903,7 @@ relayout();
 
   /* Layout reads, so they are taken here and on resize rather than every
      frame inside the paint. */
-  let maxScroll = 0, fadeEnd = .5, stageH = 0, stageW = 0, markTravel = 0;
-  /* where the mark's centre stands, as a share of the screen's height —
-     the same 38% .intro-mark's `top` puts it at */
-  const MARK_TOP = .38;
+  let maxScroll = 0, stageH = 0, stageW = 0;
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
      just outside the pad and on a wide screen they genuinely come in from
@@ -4975,34 +4953,14 @@ relayout();
       fg.marg = 16;
       fg.gap  = (noise(i, 7) + 1) * .25 * stageH;
     });
-    /* Where the fade has to be finished, worked out rather than guessed,
-       because the answer moves with the window. The mark travels
-       k * (0.5vh + 0.6h) upward, and its top edge starts at 0.5vh - 0.5h —
-       so the moment it first touches the top of the screen is when those
-       two are equal. Solve for k and that is the LATEST the fade may end;
-       finishing at 85% of it means the mark is already invisible before any
-       part of it is clipped, which is the whole point: it should be seen to
-       fade away, never to slide out under the edge.
-       h depends on a font-size clamped against the viewport WIDTH while the
-       distance depends on its HEIGHT, so no fixed number works for both a
-       tall phone and a short wide laptop — hence measuring. The floor is for
-       the degenerate case of a mark taller than the window, where it is
-       clipped from the start and there is nothing to protect. */
-    const h = mark.offsetHeight, vh = intro.clientHeight;
-    const clipK = (MARK_TOP * vh - 0.5 * h) / (MARK_TOP * vh + 0.6 * h);
-    fadeEnd = Math.max(.12, Math.min(1, clipK * .85));
-    /* from its centre at MARK_TOP of the screen to the top edge, plus its
-       own height and a margin — resolved to one number so the paint writes
-       a plain px transform */
-    markTravel = MARK_TOP * vh + 0.6 * h;
   };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
      scroll position identical while everything measured from it has moved,
      and the cache would happily skip the repaint that fixes it */
   addEventListener('resize', () => { measure(); lastP = -1; });
-  /* the serif lands after first paint and the mark grows when it does, which
-     moves the point it would start clipping at — remeasure once it has */
+  /* the serif lands after first paint and the demonstration's caption grows
+     when it does, which moves the row's width — remeasure once it has */
   document.fonts?.ready.then(() => { measure(); lastP = -1; onScroll(); });
   /* and again when the photograph lands, since it is what decides how wide
      the demonstration's row is and therefore how far off centre the pad
@@ -5021,28 +4979,6 @@ relayout();
      where its scroll offset says it should. */
   let lastP = -1, lastEntering = false;
   function paintScroll(p){
-    /* The mark: upward, and nothing else — all the way out of the frame,
-       not parked near the top. The distance is written as `-50vh - 60%`
-       rather than as a plain vh figure because the two halves answer
-       different questions: 50vh carries its centre from mid-screen to the
-       top edge, and the percentage — which in a translate resolves against
-       the element's OWN height — carries the rest of it past that edge.
-       A fixed vh number cannot do the second part, since how much of the
-       mark still hangs below its centre depends on a font-size that is
-       itself clamped against the viewport width. The extra 10% is margin,
-       so it is gone rather than only just gone. */
-    const markK = io(seg(p, 0, .14));
-    mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
-    /* Faded against its own travel, not against a scroll window of its own.
-       Tying the two to the same k is what guarantees they agree: the mark
-       is at zero by the time it has come fadeEnd of the way up (see
-       measure), and fadeEnd is derived from where it would START to clip.
-       So it is always completely gone before it meets the top edge, and
-       what you see is it fading away rather than sliding out of frame —
-       at any window size, since both halves now come off one measurement
-       instead of two hand-picked constants that could disagree. */
-    mark.style.opacity = (1 - cl01(markK / fadeEnd)).toFixed(3);
-
     /* the only movement any drawing makes: straight up as p grows, straight
        back down as it shrinks, at the wheel's own speed — see FIG_RATE.
        Nothing here is time-dependent, so scrolling back up genuinely
@@ -5084,7 +5020,7 @@ relayout();
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
       el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .12, .30)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        (s.o * (1 - .55 * seg(p, .05, .25)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5093,12 +5029,15 @@ relayout();
        dp and nothing else, which is what makes it reversible: scroll back up
        and the cover closes, the pointers leave the way they came, the piece
        goes back into the page. A clock could only ever replay it forwards.
-       Most of the sequence, deliberately: each beat gets several times the
-       scroll it used to, so the pad, the pointers and the press unfold at an
-       unhurried pace rather than snapping through their marks — slow on
-       purpose, against a ground that is fast on purpose (see FIG_RATE). */
-    const dp = seg(p, .06, .92);
-    demo.style.opacity = (seg(dp, 0, .10) * (1 - seg(dp, .93, 1))).toFixed(3);
+       From the first pixel, and seven tenths of the track: enough for each
+       beat to be watched rather than snapped through, against a ground that
+       is fast on purpose (see FIG_RATE). */
+    const dp = seg(p, 0, .70);
+    /* no fade-in: the pad is already on the page when it opens, standing
+       low — see the rise below — so the first thing a visitor sees is the
+       thing they are about to scroll. It only ever fades OUT, as the real
+       one comes up under it. */
+    demo.style.opacity = (1 - seg(dp, .93, 1)).toFixed(3);
 
     /* 1. the pad comes up from below, the way the real one does at the end
           of the sequence (see the entrance below) */
@@ -5176,15 +5115,27 @@ relayout();
        below the window to its place, one to one with the wheel, the way the
        drawings behind it have been moving all along — so the shop arrives
        as the next thing down the page rather than appearing. It overlaps
-       the demonstration's fade-out (dp .93–1 is p .86–.92): the small pad
+       the demonstration's fade-out (dp .93–1 is p .65–.70): the small pad
        thins out above as the big one comes up from below, which is the one
        reading as the other. 1.1 screens rather than 1, so nothing of it
        shows before it starts — the pads can be taller than the room they
        are scaled into. `entering` lifts it above the opening page's ground
-       for the stretch it has to be seen through (see #fit.entering). */
-    const arrive = seg(p, .86, .98);
-    fitEntry.style.setProperty('--rise', ((1 - arrive) * stageH * 1.1).toFixed(1) + 'px');
-    const entering = p >= .86;
+       for the stretch it has to be seen through (see #fit.entering).
+
+       Written straight onto `transform`, not into --rise. This used to go
+       through the custom property and the entrance stuttered: a custom
+       property is INHERITED, so changing it on #fit made the browser
+       recompute the style of every element inside the sketchbook — leaves,
+       hotspots, hundreds of SVG nodes — on every frame, for a value only
+       one rule read. An inline transform invalidates one element. The scale
+       half still comes from --fit-scale, which fitToViewport keeps writing
+       as before, so neither owner wipes the other. Cleared again at the
+       hand-over (see dismiss), so the stylesheet's own transform takes back
+       over the moment the pads are home. */
+    const arrive = seg(p, .66, .985);
+    fitEntry.style.transform =
+      `translateY(${((1 - arrive) * stageH * 1.1).toFixed(1)}px) scale(var(--fit-scale,1))`;
+    const entering = p >= .66;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
@@ -5209,7 +5160,7 @@ relayout();
      settle. Written from SCRIPT and not the stylesheet on purpose: a visitor
      who never gets an opening page (reduced motion removes it outright,
      before any of this runs) must find the pads already home, and the CSS
-     default of --rise 0 is exactly that. */
+     default — no translate at all — is exactly that. */
   const fitEntry = document.getElementById('fit');
   let enterTimer = 0;
   let dismissed = false;
@@ -5222,7 +5173,10 @@ relayout();
        moving, which is what keeps them from costing anything (see
        .scatter-layer.settled) */
     scatterEl.classList.add('settled');
-    fitEntry.style.setProperty('--rise', '0px');
+    /* the inline transform the entrance was writing comes off; the pads are
+       at zero anyway, so the stylesheet's own scale-only rule takes over
+       without anything moving */
+    fitEntry.style.transform = '';
     /* the lift above the ground comes off only once the ground has finished
        fading (.6s) — any sooner and the pads would drop behind a sheet that
        is still partly white, and blink */
@@ -5273,6 +5227,17 @@ relayout();
      natively again and this bails out at the `dismissed` check.
      Locked while a sketchbook is open, and only then: reading a book is the
      one moment where an upward flick means "go back a page", not "leave". */
+  /* The masthead stands ABOVE the opening page, so a wheel turned over it
+     lands on the masthead and not on the layer's scroller, and the page
+     would not move for the top 64px of the window. Handed across by hand
+     while the opening page is up; once it is down the bridge below owns
+     the wheel. */
+  const masthead = document.querySelector('header');
+  addEventListener('wheel', e => {
+    if(dismissed || !masthead.contains(e.target)) return;
+    intro.scrollTop = Math.max(0, intro.scrollTop + e.deltaY);
+    onScroll();
+  }, {passive:true});
   const canReturn = () => dismissed && activeIndex === -1;
   addEventListener('wheel', e => {
     if(!canReturn() || e.deltaY >= 0) return;
