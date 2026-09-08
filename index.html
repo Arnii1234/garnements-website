@@ -526,62 +526,6 @@
   }
   .binding svg{width:100%;height:100%;display:block;overflow:visible;}
 
-  /* ---------- coming soon (book 2) ----------
-     A veil over the whole stage rather than re-toning the materials: the
-     grey has to hold through DOM rest states, WebGL flips and the binding
-     alike, and one translucent layer above all three is the only place a
-     single source of truth exists. Deliberately NOT a filter on .book or
-     .stage — filter is a grouping property and flattens the 3D scene it
-     wraps (same class of breakage as the .board-over transform, see there).
-     backdrop-filter touches nothing in the tree; it just greys whatever
-     happens to be painted behind it.
-     The recipe is white-safe on purpose: grayscale() maps white to white
-     and the wash is pure white, so over the bare page the veil is
-     invisible and needs no clipping to the book's silhouette — contrast()
-     was tried and rejected, it pulls white toward grey and drew a faint
-     box around the whole stage. Over the book, grayscale kills the warm
-     board and the wash fades the ink — drawings read ghosted, unfinished.
-     Oversized at the top so the sheet arcing over the coil mid-flip stays
-     under it; the overshoot lands on bare page, where the veil is a no-op.
-     z-index 4: above the binding (3), which must grey with everything
-     else. pointer-events:none — the book underneath stays fully usable;
-     what makes a soon book inert is buildLeaf never marking its pages
-     clickable, not the veil. */
-  .soon-veil{
-    position:absolute;z-index:4;   /* box set in layoutBinding, off the pad */
-    pointer-events:none;
-    /* Grey only — the white wash is gone, and it was doing two unwanted
-       things. It lightened edition two's covers, so the two books stopped
-       reading as the same board. And it was the pale strip beside the book:
-       this veil reaches 11px past the pad on each side, and over there the
-       wash was lifting the pad's own drop shadow off the page, leaving a
-       washed band down both edges. grayscale alone has nothing to show over
-       a white page or a near-neutral shadow, so the overhang goes invisible
-       without needing to be measured or clipped.
-       And with the covers themselves now neutral (see --board-face), greying
-       them is a no-op — which is precisely why both books' covers match. */
-    backdrop-filter:grayscale(.9);
-    -webkit-backdrop-filter:grayscale(.9);
-  }
-  /* a red stamp dead-centre on the cover — red is the one colour this page
-     otherwise refuses, which is exactly what makes it read as an official
-     interruption rather than part of the artwork. The wash behind it stays
-     translucent so the cover art ghosts through like ink stamped over a
-     print. Children of the veil are NOT filtered by its backdrop-filter
-     (that only greys what is painted behind), so the red keeps its blood.
-     Only for the closed book: once the reader is inside, the veil already
-     says "not yet" and a stamp floating over the drawings would just be in
-     the way — see .book.reading below. */
-  .soon-tag{
-    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    font-size:11px;font-weight:600;letter-spacing:.34em;
-    text-transform:uppercase;color:#b23b31;white-space:nowrap;
-    background:rgba(255,255,255,.55);
-    border:1px solid rgba(178,59,49,.6);
-    padding:9px 15px 9px 19px;   /* uneven: letter-spacing trails the last glyph */
-    transition:opacity .45s;
-  }
-  .book.reading .soon-tag{opacity:0;}
 
   /* colophon */
   .colophon{
@@ -674,14 +618,20 @@
      updateOrbits) and is unaffected by this; what shortens here is the
      hover grow and the short orbit nudges, both of which should land
      almost as fast as the pointer arrives. */
+  /* Fully opaque, always. It used to rest at half opacity — a "waiting"
+     look that meant something when there were two editions side by side and
+     one of them was the one you had not chosen. There is one now, so the
+     dim said nothing; worse, with the drawings carrying on behind the pads
+     it made them show straight THROUGH the sketchbook, which is exactly the
+     opposite of a solid object standing on a ground. The hover still answers
+     the pointer, just with the lift rather than by getting brighter. */
   .book:not(.active){
-    cursor:pointer; opacity:.5;
+    cursor:pointer; opacity:1;
     transform:translateX(var(--orbit,0px)) scale(var(--idle));
-    transition:transform .17s cubic-bezier(.22,.61,.36,1), opacity .17s;
+    transition:transform .17s cubic-bezier(.22,.61,.36,1);
   }
   /* the nudge that says "this is the one you'd press" */
   .book:not(.active):hover{
-    opacity:.75;
     transform:translateX(var(--orbit,0px)) scale(var(--idle-hover));
   }
   .book:not(.active) .stage{ pointer-events:none; }
@@ -1297,20 +1247,6 @@
        starts un-promoting and repainting, which is felt as a stutter on the
        frame after a tap: the worst possible frame to lose. */
     .leaf{ will-change:auto; }
-    /* 10 — book two's veil greys whatever is painted behind it, which the
-       compositor must re-read and re-filter every frame the book moves —
-       and on the picker it moves for the whole of every swipe, which is the
-       one interaction that has to stay smooth. While it is not the chosen
-       book, grey the pad itself instead: a filter costs nothing per frame
-       because it is not re-reading a backdrop. It goes on .calendar, not
-       the stage, so the red COMING SOON stamp sitting outside the pad keeps
-       its colour — and only while :not(.active), because filter flattens
-       the 3D context a flip depends on. The active book keeps the backdrop
-       version, where no drag is happening to pay for it. */
-    .book.soon:not(.active) .soon-veil{
-      backdrop-filter:none; -webkit-backdrop-filter:none;
-    }
-    .book.soon:not(.active) .calendar{ filter:grayscale(.92); }
   }
 
   /* ---------- cart drawer ---------- */
@@ -1652,30 +1588,96 @@
   }
 
   /* ---------- the demonstration ----------
-     The one thing the sequence has to actually teach: a drawing on a
-     sketchbook page is pressable, and pressing it produces the garment. So
-     it is shown happening rather than described — the drawing lifts under
-     the press with the same scale-and-shadow the real hotspots use (see
-     .design-spot:hover .design-art), and the piece arrives beside it. */
+     The whole site, acted out once in order: a pad arrives, a pointer opens
+     it, a second pointer presses one of the drawings inside, and the piece
+     that drawing is stitched on appears. Everything the visitor is about to
+     be asked to do, shown being done, so it is understood before it has to
+     be guessed at. The press uses the same scale-and-shadow the real
+     hotspots do (see .design-spot:hover .design-art) — this is the actual
+     gesture rehearsed, not an illustration of one. */
+  /* --slide carries the group sideways so that the PAD, not the pair, is
+     what sits in the middle of the screen while it is still the only thing
+     there — see demoShift. The piece holds its place in the row from the
+     first frame (it is only transparent, never absent), which is what keeps
+     the whole beat free of reflow; without the slide that reserved space
+     would push the arriving pad off-centre for no reason the viewer can
+     see. */
   .intro-demo{
     position:absolute; left:50%; top:53%;
-    transform:translate(-50%,-50%);
+    transform:translate(calc(-50% + var(--slide,0px)),-50%);
     display:flex; align-items:center; gap:clamp(20px,5vw,74px);
     z-index:4; pointer-events:none;
   }
-  .demo-sheet{
+  /* The pad. It carries the perspective rather than the stage does, so the
+     cover hinged on its top edge swings through real depth instead of
+     shearing flat — and so the depth is the PAD's, unaffected by where in
+     the window the group happens to sit. */
+  .demo-book{
     position:relative;
     width:clamp(140px,17vw,232px); aspect-ratio:210/297;
+    perspective:900px;
+  }
+  .demo-sheet{
+    position:absolute; inset:0;
     background:var(--panel);
     border:.75px solid var(--line);
-    display:flex; align-items:center; justify-content:center;
   }
-  /* just enough of the wire-o to say "this is one of those pads" */
+  /* The cover. Its own paper background is what shows once it has passed
+     vertical, because the artwork face is hidden from behind — so the back
+     of the cover is a blank card, which is what the back of a cover is. */
+  .demo-cover{
+    position:absolute; inset:0;
+    background:var(--panel);
+    border:.75px solid var(--line);
+    transform-origin:50% 0; transform:rotateX(0deg);
+    box-shadow:0 1px 4px rgba(35,31,32,.10);
+  }
+  .demo-cover img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:contain; display:block;
+    backface-visibility:hidden;
+  }
+  /* just enough of the wire-o to say "this is one of those pads". Pushed
+     forward in Z rather than by z-index: it shares a 3D context with the
+     cover, where depth decides what covers what, and the rings have to stay
+     in front of the cover they are holding on both sides of the hinge. */
   .demo-coil{
     position:absolute; left:8%; right:8%; top:-5px; height:10px;
     background:repeating-linear-gradient(90deg,
       var(--ink) 0 1.4px, transparent 1.4px 7px);
     opacity:.5;
+    transform:translateZ(30px);
+  }
+  /* The pointers. Drawn rather than imaged so they take the ink colour, and
+     outlined in paper so they stay readable over the linework they are
+     about to press. Both live inside the pad: the left one over the cover,
+     the right one placed by script on the drawing's own measured centre,
+     the same way the ring below is — so they point at the artwork rather
+     than at a guessed spot near it. */
+  .demo-cursor{
+    position:absolute; left:50%; top:54%;
+    width:19px; height:28px; opacity:0;
+  }
+  .demo-cursor svg{
+    width:100%; height:100%; display:block;
+    fill:var(--ink); stroke:var(--panel);
+    /* a paper halo wide enough to survive the linework it crosses — an ink
+       pointer on ink drawing is otherwise simply invisible for the half of
+       its travel that matters most */
+    stroke-width:2.2; stroke-linejoin:round;
+    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
+  }
+  /* the click itself: a ring that opens out of the pointer's tip and is
+     gone again. --tap runs 0→1 across the press, and both halves are
+     written as functions of it that read zero at either end, so the pulse
+     exists only while the press is happening — no state to clear, and it
+     runs backwards intact when the page is scrolled back up. */
+  .demo-cursor::after{
+    content:''; position:absolute; left:1px; top:1px;
+    width:30px; height:30px; margin:-15px 0 0 -15px;
+    border:1px solid var(--ink); border-radius:50%;
+    opacity:calc(var(--tap,0) * (1 - var(--tap,0)) * 2.4);
+    transform:scale(calc(.24 + var(--tap,0) * 1.15));
   }
   /* the sheet's own drawing. The pad is A4 and so is this box, so contain
      lands the artwork edge to edge and page coordinates map straight onto
@@ -1715,7 +1717,6 @@
      already moved on — it reads as the element lagging the scroll rather
      than following it. Anything driven per-frame is left to the loop;
      transitions stay for the things a CLASS toggles (the press, the ring). */
-  .demo-arrow{ font-size:15px; color:var(--grey); }
   .demo-piece{ text-align:center; }
   /* sized by HEIGHT, to sit level with the sheet beside it — these are
      full-length cutouts, so matching widths made the photo tower over the
@@ -1754,7 +1755,6 @@
     .scatter-layer{ --sk:2.15; }
     .intro-sketch.opt{ display:none; }
     .intro-demo{ flex-direction:column; gap:18px; top:54%; }
-    .demo-arrow{ transform:rotate(90deg); }
     .intro-say{ font-size:9px; letter-spacing:.22em; }
     #introSay1{ top:68%; }
     #introSay2{ top:91%; }
@@ -1806,19 +1806,40 @@
       </div>
 
       <div class="intro-say" id="introSay1" style="opacity:0">
-        two sketchbooks &nbsp;·&nbsp; <b>edition one</b>
+        one sketchbook &nbsp;·&nbsp; <b>edition one</b>
       </div>
 
+      <!-- The walkthrough: a sketchbook arrives, a pointer opens it, a second
+           pointer presses a drawing and the piece it is stitched on appears.
+           It is the site's whole mechanic acted out once, in order, so it can
+           be understood before it has to be discovered. Every step is a pure
+           function of the scroll (see the demo block in paintScroll) — it can
+           be run backwards by scrolling back up, like everything else here. -->
       <div class="intro-demo" id="introDemo" style="opacity:0">
-        <!-- the whole sheet, exactly as it sits in the pad; script lays the
-             isolated garment over its own counterpart on it and that copy is
-             what lifts (see the demo block in the opening sequence) -->
-        <div class="demo-sheet" id="demoSheet">
+        <div class="demo-book" id="demoBook">
+          <!-- the sheet inside the pad. Script lays the isolated garment over
+               its own counterpart on it, and that copy is what lifts under
+               the press — see mountDesignArt. -->
+          <div class="demo-sheet" id="demoSheet">
+            <img class="demo-page" src="assets/S1P2.svg" alt="">
+            <span class="demo-ring" id="demoRing"></span>
+          </div>
+          <!-- the cover, hinged on the top edge the way the real pads flip -->
+          <div class="demo-cover" id="demoCover">
+            <img src="assets/title%201%20new.svg" alt="">
+          </div>
+          <!-- the wire-o, over both, the way the rings actually sit -->
           <div class="demo-coil"></div>
-          <img class="demo-page" src="assets/S1P2.svg" alt="">
-          <span class="demo-ring" id="demoRing"></span>
+          <!-- two pointers, arriving from opposite sides: one to open the pad,
+               one to press what is drawn inside it -->
+          <div class="demo-cursor" id="demoCursorL" aria-hidden="true">
+            <svg viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
+          </div>
+          <div class="demo-cursor" id="demoCursorR" aria-hidden="true">
+            <svg viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
+          </div>
         </div>
-        <div class="demo-arrow" id="demoArrow">→</div>
+
         <div class="demo-piece" id="demoPiece">
           <img src="assets/pink%20tee%20front%20cutout.webp" alt="">
           <span class="nm" id="demoName"></span>
@@ -1852,7 +1873,6 @@
   <div class="rail">
     <div class="books">
       <div class="book" id="book1"></div>
-      <div class="book" id="book2"></div>
     </div>
   </div>
 </div>
@@ -2219,21 +2239,6 @@ const BOOK1_PAGES = [
     {product:"beige-duffle", file:"assets/S1P11 beige duffle design.svg"}]},
   {type:"back", board:true}
 ];
-/* Only-drawn pieces: nothing here has been shot on a model yet. */
-const BOOK2_PAGES = [
-  {type:"title", img:"assets/title 2 new.svg", ar:0.7071, board:true},
-  {type:"art", img:"assets/S2P1.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P2.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P3.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P4.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P5.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P6.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P7.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P8.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P9.svg", ar:0.7071},
-  {type:"art", img:"assets/S2P10.svg", ar:0.7071},
-  {type:"back", board:true}
-];
 
 /* Punch-hole geometry, in page artwork units with y=0 at the sheet's top edge.
    The binding's SVG uses the same coordinate system (its viewBox y=0 sits on
@@ -2377,7 +2382,7 @@ function fitDesignSpots(leaf, p){
    and buys flipMs/stiffFor closing over that book's own PAGES.
    Products, the modal and the cart stay global — one cart for both books.
    ============================================================ */
-function makeBook(mount, PAGES, onClose, {soon = false} = {}){
+function makeBook(mount, PAGES, onClose){
 const stage = document.createElement('div');
 stage.className = 'stage';
 const cal = document.createElement('div');
@@ -2385,17 +2390,6 @@ cal.className = 'calendar';
 const glc = document.createElement('canvas');
 glc.className = 'glc';
 stage.append(cal, glc);
-/* a book that isn't out yet: greyed by the veil, browsable, but never
-   clickable-into — see the .soon-veil comment for why a veil and not a
-   filter, and buildLeaf below for where the clicks actually go away */
-let veilEl = null;
-if(soon){
-  mount.classList.add('soon');
-  veilEl = document.createElement('div');
-  veilEl.className = 'soon-veil';
-  veilEl.innerHTML = '<span class="soon-tag">Coming soon</span>';
-  stage.appendChild(veilEl);
-}
 const nav = document.createElement('div');
 nav.className = 'nav';
 nav.innerHTML =
@@ -2443,14 +2437,11 @@ PAGES.forEach((p, i) => {
   } else if(p.type === 'placeholder'){
     /* named, and clickable like any product page, until its drawing exists */
     inner = `
-      <div class="page-art ${soon ? '' : 'clickable'}" ${soon ? '' : `data-page="${i}"`}>
+      <div class="page-art clickable" data-page="${i}">
         <div class="page-label">${p.label}</div>
       </div>`;
   } else {
-    /* in a soon book nothing is for sale yet, so no page is a doorway:
-       without `clickable` there is no data-page, no pointer cursor and no
-       hover dim — the pages are just pages */
-    const clickable = !soon && p.products && p.products.length;
+    const clickable = p.products && p.products.length;
     inner = `
       <div class="page-art ${clickable ? 'clickable' : ''}" ${clickable ? `data-page="${i}"` : ''}>
         <img src="${encodeURI(p.img)}" alt="drawing">
@@ -2600,21 +2591,6 @@ function layoutBinding(){
   bindEl.style.width  = w + 'px';
   bindEl.style.top    = (cal.offsetTop - h * COIL_UP) + 'px';   /* viewBox y −40 */
   bindEl.style.height = (h * COIL_H) + 'px';                    /* 165 tall      */
-  /* The coming-soon veil is parked on the pad the same way, and for a reason
-     worth stating: it greys whatever is painted BEHIND it, so wherever its
-     edge falls is where greyed and ungreyed meet. Stretched across the whole
-     stage, those edges landed out on the open page in the middle of the soft
-     shadow the pad casts — and a seam drawn through a gradient is a line you
-     can see, which is the pale bar that kept appearing down both sides of
-     edition two. Sized to the pad, both edges land on opaque board instead,
-     where there is nothing to notice. It still reaches above the pad so the
-     coil greys with everything else; that overhang sits on flat page. */
-  if(veilEl){
-    veilEl.style.left   = cal.offsetLeft + 'px';
-    veilEl.style.width  = w + 'px';
-    veilEl.style.top    = (cal.offsetTop - h * 0.05) + 'px';
-    veilEl.style.height = (h * 1.05) + 'px';
-  }
 }
 function layoutOverlays(){
   layoutBinding();
@@ -2671,9 +2647,6 @@ function updateNav(){
   /* past the cover — see .book.active .nav.on for why this, not .active,
      is what the arrows actually watch */
   nav.classList.toggle('on', cur > 0);
-  /* same signal, book-wide: while reading, the coming-soon slip steps aside
-     (see .book.reading .soon-tag) — on every book, since the class is inert
-     without a .soon-tag to act on */
   mount.classList.toggle('reading', cur > 0);
 }
 /* A sheet does not hinge on a line — it wraps the wire. It climbs the front,
@@ -3437,12 +3410,6 @@ ticksEl.addEventListener('click', e => {
    read as the "click outside" that closes the modal it just opened. */
 cal.addEventListener('click', e => {
   e.stopPropagation();
-  /* A soon book has nothing to open — and this return, not the missing
-     `clickable` class, is what actually enforces it: the fallback below
-     never asked for the class, it opens `p.products` for ANY .page-art hit.
-     The class removal in buildLeaf only takes away the cursor and hover
-     that would promise a click does something. */
-  if(soon) return;
   /* Resolve against `cur`, never against whichever sheet caught the click.
      Mid-turn the two disagree: going forward the outgoing sheet is hidden so
      the hit falls through to the right one, but going BACK it stays on top for
@@ -3497,13 +3464,12 @@ updateNav();
 return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0, closeRapidly, jumpTo};
 }   /* ---- end makeBook ---------------------------------------------------- */
 
-/* Two sketchbooks: the photographed pieces, then the drawn-only ones. */
+/* One sketchbook. The roster machinery below is still written against
+   books.length rather than against "the book", so a second edition is one
+   entry here and nothing else. */
 let activeBook = null;
 const books = [
-  makeBook(document.getElementById('book1'), BOOK1_PAGES, () => deselect()),
-  /* edition two exists only as drawings — browsable behind its veil, but
-     nothing in it can be opened or bought yet */
-  makeBook(document.getElementById('book2'), BOOK2_PAGES, () => deselect(), {soon:true})
+  makeBook(document.getElementById('book1'), BOOK1_PAGES, () => deselect())
 ];
 
 /* The roster. Books are never rebuilt when you switch — each keeps its own
@@ -4058,14 +4024,15 @@ rail.parentElement.addEventListener('touchcancel', endRosterDrag, {passive:true}
    the instant the window changes size, so it's invalidated here rather than
    trusted until the next drag happens to remeasure it on its own. */
 addEventListener('resize', () => { rosterGeom = null; centreActive(); updateOrbits(true); });
-/* Neither book starts selected — both wait, dimmed and arrow-less, until
-   pressed. Still needs centring once up front, or the pair would sit at
-   whatever the flex layout landed on until the first resize or click moved
-   it, which would read as a jump rather than as having been placed there. */
+/* Nothing starts selected — the pad waits, closed and arrow-less, until it is
+   pressed. Still needs centring once up front, or it would sit at whatever
+   the flex layout landed on until the first resize or click moved it, which
+   would read as a jump rather than as having been placed there. */
 centreActive();
-/* One listener for both pads — without routing, a single arrow key would turn
-   a page in each book at once. It drives whichever book the pointer last
-   entered, falling back to the first. */
+/* Routed rather than global, even now that there is one pad: the keys drive
+   whichever book the pointer last entered, falling back to the first. That
+   routing is what kept a single arrow key from turning a page in every book
+   at once, and it is what a second edition would need again. */
 document.addEventListener('keydown', e => {
   if(document.getElementById('overlay').classList.contains('open')) return;
   /* Up is forward, because up is where the sheet actually goes — it lifts from
@@ -4159,12 +4126,12 @@ function galJump(k){
 function resetFolds(){ document.querySelectorAll('.fold').forEach(f => f.open = false); }
 /* Where a piece is actually drawn — book index + page index — so clicking a
    recommendation can turn the sketchbook to it, not just swap the panel's
-   own content. Checks both conventions a page can use: book1's newer
-   `designs` hotspots and the older whole-page `products` array book2 still
-   carries (see the memory on the two conventions) — a piece could be filed
-   under either depending on which book it is in. First match wins. */
+   own content. Both conventions a page can use are still checked — the
+   `designs` hotspots every sheet now carries, and the older whole-page
+   `products` array (see the memory on the two conventions) — because a
+   later edition may well arrive on the older one. First match wins. */
 function pageOf(id){
-  const sets = [[0, BOOK1_PAGES], [1, BOOK2_PAGES]];
+  const sets = [[0, BOOK1_PAGES]];
   for(const [bookIdx, PAGES] of sets){
     for(let i = 0; i < PAGES.length; i++){
       const pg = PAGES[i];
@@ -4762,27 +4729,27 @@ relayout();
      scroll cue lives there. Sizes are deliberately far apart (6vw next to
      14vw); an even scatter of same-size marks reads as a pattern. */
   const FIGURES = [
+    /* Only sheets from the edition itself, and only ones carrying a drawing
+       you can actually press. The scatter used to mix in edition two and a
+       couple of loose older pages, which meant the landing page advertised
+       drawings that led nowhere — the whole point of the sequence below is
+       that a drawing is a way in, so every one standing here has to be one.
+       All eleven of edition one's sheets qualify, which is the list. */
     /* top band */
     {f:'S1P4.svg',  x:2,  y:5,  w:13, o:.28, d:1.00, a:'drift', r:[-5,-2], boil:1},
-    {f:'S2P3.svg',  x:27, y:2,  w:7,  o:.20, d:1.70, a:'drift', r:[6,3],   opt:1},
-    {f:'page6.svg', x:42, y:8,  w:9,  o:.30, d:1.50, a:'gait',  dur:1.28},
-    {f:'S2P1.svg',  x:58, y:3,  w:6,  o:.17, d:1.45, a:'drift', r:[3,7],   opt:1, boil:1},
-    {f:'S2P7.svg',  x:80, y:3,  w:14, o:.26, d:1.35, a:'drift', r:[4,7]},
+    {f:'S1P8.svg',  x:29, y:2,  w:8,  o:.20, d:1.70, a:'drift', r:[6,3],   opt:1},
+    {f:'S1P2.svg',  x:57, y:4,  w:11, o:.24, d:1.45, a:'drift', r:[3,7]},
+    {f:'S1P3.svg',  x:81, y:3,  w:13, o:.26, d:1.35, a:'drift', r:[4,7]},
     /* upper middle */
-    {f:'S2P6.svg',  x:15, y:26, w:8,  o:.19, d:1.90, a:'drift', r:[4,8],   opt:1},
-    {f:'S1P9.svg',  x:30, y:28, w:11, o:.34, d:1.15, a:'gait',  dur:1.14},
-    {f:'S2P2.svg',  x:62, y:30, w:11, o:.30, d:1.25, a:'sway',  dur:3.4},
-    {f:'S1P6.svg',  x:89, y:28, w:11, o:.26, d:.85,  a:'drift', r:[-6,-3], boil:1},
+    {f:'S1P9.svg',  x:16, y:27, w:11, o:.32, d:1.15, a:'gait',  dur:1.14},
+    {f:'S1P6.svg',  x:88, y:28, w:11, o:.26, d:.85,  a:'drift', r:[-6,-3], boil:1},
     /* the flanks, either side of where the mark stands */
     {f:'S1P11.svg', x:0,  y:58, w:10, o:.22, d:.70,  a:'drift', r:[3,6],   opt:1},
-    {f:'S1P10.svg', x:91, y:58, w:9,  o:.20, d:.60,  a:'drift', r:[-5,-2], opt:1},
+    {f:'S1P10.svg', x:90, y:57, w:10, o:.22, d:.60,  a:'drift', r:[-5,-2], opt:1},
     /* bottom band */
-    {f:'S2P4.svg',  x:14, y:64, w:13, o:.36, d:1.05, a:'sway',  dur:2.8},
-    {f:'S1P5.svg',  x:33, y:62, w:14, o:.40, d:1.30, a:'gait',  dur:1.02},
-    {f:'S1P7.svg',  x:68, y:72, w:12, o:.25, d:1.20, a:'drift', r:[-4,-7], boil:1},
-    {f:'S2P8.svg',  x:5,  y:82, w:12, o:.26, d:1.55, a:'drift', r:[5,2]},
-    {f:'page9.svg', x:30, y:88, w:7,  o:.20, d:.95,  a:'drift', r:[-2,-6], opt:1},
-    {f:'S1P1.svg',  x:85, y:86, w:8,  o:.18, d:1.10, a:'drift', r:[-3,-6], opt:1}
+    {f:'S1P5.svg',  x:32, y:62, w:14, o:.38, d:1.30, a:'gait',  dur:1.02},
+    {f:'S1P7.svg',  x:67, y:71, w:12, o:.25, d:1.20, a:'drift', r:[-4,-7], boil:1},
+    {f:'S1P1.svg',  x:7,  y:83, w:12, o:.24, d:1.55, a:'drift', r:[5,2]}
   ];
   /* How far the scatter travels over the whole sequence, as a share of the
      screen's height, before each drawing's own `d` scales it.
@@ -4805,8 +4772,11 @@ relayout();
   const say1      = document.getElementById('introSay1');
   const say2      = document.getElementById('introSay2');
   const demo      = document.getElementById('introDemo');
+  const book      = document.getElementById('demoBook');
   const sheet     = document.getElementById('demoSheet');
-  const arrow     = document.getElementById('demoArrow');
+  const cover     = document.getElementById('demoCover');
+  const curL      = document.getElementById('demoCursorL');
+  const curR      = document.getElementById('demoCursorR');
   const piece     = document.getElementById('demoPiece');
   const enter     = document.getElementById('introEnter');
 
@@ -4846,8 +4816,14 @@ relayout();
       spot.style.height = (box.height / ART_SVG_H * 100).toFixed(3) + '%';
       spot.appendChild(svg);
       sheet.appendChild(spot);
-      ring.style.left = ((box.x + box.width  / 2) / ART_SVG_W * 100).toFixed(2) + '%';
-      ring.style.top  = ((box.y + box.height / 2) / ART_SVG_H * 100).toFixed(2) + '%';
+      const cx = (box.x + box.width  / 2) / ART_SVG_W * 100;
+      const cy = (box.y + box.height / 2) / ART_SVG_H * 100;
+      ring.style.left = cx.toFixed(2) + '%';
+      ring.style.top  = cy.toFixed(2) + '%';
+      /* the pointer lands on the same measured centre the ring closes onto,
+         so the press is plainly ON the drawing rather than near it */
+      curR.style.left = cx.toFixed(2) + '%';
+      curR.style.top  = cy.toFixed(2) + '%';
     }).catch(() => {
       /* the page drawing is still there and still turns into the piece; only
          the lift is missing, so the beat degrades rather than breaking */
@@ -4891,8 +4867,27 @@ relayout();
   /* Layout reads, so they are taken here and on resize rather than every
      frame inside the paint. */
   let maxScroll = 0, fadeEnd = .5, stageH = 0, markTravel = 0;
+  /* How far the two pointers and the pad travel to get where they are going.
+     Sized off the window rather than fixed, so on a phone they come in from
+     just outside the pad and on a wide screen they genuinely come in from
+     the sides of the picture — and capped, because past a point a longer
+     run is only a longer wait. */
+  let cursorRun = 240, bookRise = 150;
+  /* How far right the demonstration has to sit for the PAD to be the thing
+     in the middle of the screen: half the room its absent partner is holding
+     open beside it. Taken from the laid-out boxes rather than from the gap
+     and the photo's width, so it is right whatever the flex row resolves to.
+     Sideways only, and so only while the two of them ARE side by side — on a
+     narrow screen the piece arrives underneath instead, where it takes no
+     horizontal room to hold and the pad is already centred; shifting there
+     would push it off centre to make space nothing is using. */
+  let demoShift = 0;
   const measure = () => {
     maxScroll = intro.scrollHeight - intro.clientHeight;
+    cursorRun = Math.min(300, intro.clientWidth  * .30);
+    bookRise  = Math.min(190, intro.clientHeight * .24);
+    demoShift = getComputedStyle(demo).flexDirection === 'row'
+      ? Math.max(0, (demo.offsetWidth - book.offsetWidth) / 2) : 0;
     /* Kept so the paint can work in plain pixels. Writing `vh` into a
        transform means the engine re-resolves the unit against the viewport
        on every write, and measured here that costs about three times what
@@ -4928,6 +4923,14 @@ relayout();
   /* the serif lands after first paint and the mark grows when it does, which
      moves the point it would start clipping at — remeasure once it has */
   document.fonts?.ready.then(() => { measure(); lastP = -1; onScroll(); });
+  /* and again when the photograph lands, since it is what decides how wide
+     the demonstration's row is and therefore how far off centre the pad
+     would otherwise stand */
+  const pieceImg = piece.querySelector('img');
+  if(pieceImg && !pieceImg.complete){
+    pieceImg.addEventListener('load',
+      () => { measure(); lastP = -1; onScroll(); }, {once:true});
+  }
   intro.scrollTop = 0;
 
   /* Everything here is a pure function of the scroll position — there is no
@@ -4990,15 +4993,66 @@ relayout();
 
     say1.style.opacity = (seg(p, .13, .22) * (1 - seg(p, .33, .41))).toFixed(3);
 
-    /* the demonstration, on its own clock inside the scroll */
+    /* ---------- the demonstration, on its own clock inside the scroll ------
+       Five beats in order — the pad arrives, a pointer opens it, a second
+       pointer presses a drawing, the piece appears. Each one is a window of
+       dp and nothing else, which is what makes it reversible: scroll back up
+       and the cover closes, the pointers leave the way they came, the piece
+       goes back into the page. A clock could only ever replay it forwards. */
     const dp = seg(p, .44, .88);
-    demo.style.opacity = (seg(dp, 0, .13) * (1 - seg(dp, .90, 1))).toFixed(3);
-    say2.style.opacity = (seg(dp, .10, .22) * (1 - seg(dp, .90, 1))).toFixed(3);
-    sheet.classList.toggle('press', dp > .34 && dp < .95);
-    arrow.style.opacity = seg(dp, .46, .60).toFixed(3);
-    const pin = seg(dp, .50, .72);
+    demo.style.opacity = (seg(dp, 0, .10) * (1 - seg(dp, .93, 1))).toFixed(3);
+
+    /* 1. the pad comes up from below, the way the real ones do when the
+          opening page hands over (see PARK) */
+    const rise = io(seg(dp, 0, .16));
+    book.style.transform =
+      `translate3d(0,${((1 - rise) * bookRise).toFixed(1)}px,0)`;
+
+    /* 2. a pointer in from the left, and it presses the cover */
+    const inL  = io(seg(dp, .12, .30));
+    const tapL = seg(dp, .29, .39);
+    curL.style.opacity = (seg(dp, .10, .18) * (1 - seg(dp, .40, .50))).toFixed(3);
+    /* the scale dips and comes back within the press — sin over the window
+       is the whole down-and-up, so the finger lifts without a second beat
+       being written for it */
+    curL.style.transform =
+      `translate3d(${(-(1 - inL) * cursorRun).toFixed(1)}px,${((1 - inL) * 36).toFixed(1)}px,0)` +
+      ` scale(${(1 - .17 * Math.sin(tapL * Math.PI)).toFixed(3)})`;
+    curL.style.setProperty('--tap', tapL.toFixed(3));
+
+    /* 3. and it opens — up to just past vertical, and no further. A wire-o
+          cover really does carry on over the coil and lie flat behind the
+          pad, but seen straight on that puts a second full-height rectangle
+          standing above the book, which is a bigger thing on the screen than
+          the pad it is meant to be revealing. Standing it upright instead
+          costs nothing in truth and hands the page back the picture: seen
+          edge-on, a vertical cover is by definition zero pixels tall, so it
+          leaves cleanly rather than parking a foreshortened smear over the
+          top of the sheet. The fade is only there to take the last aliased
+          hairline with it, by which point the cover is a sliver anyway. */
+    const open = io(seg(dp, .31, .49));
+    cover.style.transform = `rotateX(${(-96 * open).toFixed(1)}deg)`;
+    cover.style.opacity   = (1 - seg(open, .84, 1)).toFixed(3);
+
+    /* 4. a second pointer, in from the other side, onto the drawing itself */
+    const inR  = io(seg(dp, .48, .64));
+    const tapR = seg(dp, .62, .72);
+    curR.style.opacity = (seg(dp, .46, .54) * (1 - seg(dp, .74, .84))).toFixed(3);
+    curR.style.transform =
+      `translate3d(${((1 - inR) * cursorRun).toFixed(1)}px,${((1 - inR) * -30).toFixed(1)}px,0)` +
+      ` scale(${(1 - .17 * Math.sin(tapR * Math.PI)).toFixed(3)})`;
+    curR.style.setProperty('--tap', tapR.toFixed(3));
+
+    /* 5. the drawing lifts under the press, and the piece it is stitched on
+          arrives beside it */
+    sheet.classList.toggle('press', dp > .66 && dp < .97);
+    say2.style.opacity = (seg(dp, .50, .60) * (1 - seg(dp, .93, 1))).toFixed(3);
+    const pin = seg(dp, .68, .86);
     piece.style.opacity = pin.toFixed(3);
     piece.style.transform = `translate3d(${((1 - io(pin)) * 26).toFixed(1)}px,0,0)`;
+    /* and the pair settles into the middle as the second half of it arrives,
+       having stood the pad there alone until then */
+    demo.style.setProperty('--slide', ((1 - io(pin)) * demoShift).toFixed(1) + 'px');
 
     enter.style.opacity = seg(p, .90, .97).toFixed(3);
     /* written only on the change, not on every frame that happens to be
