@@ -120,12 +120,14 @@
     display:flex;align-items:center;justify-content:center;
     transform-origin:center center;
     /* Two owners, one transform: --fit-scale is the shrink that keeps the
-       pads inside the room they have (fitToViewport), --rise is where the
-       opening page parks them so they can travel up into place as it hands
-       over (see the intro's dismiss). Composed here so neither has to know
-       the other's number. --rise defaults to 0, which is what a visitor who
-       never sees the opening page — reduced motion, where it is removed
-       outright — correctly gets. */
+       pads inside the room they have (fitToViewport), --rise is how far
+       below their place the opening page is holding them — written on
+       every scroll frame of its last stretch, so the pads travel up into
+       the page WITH the wheel rather than on a timer (see the entrance in
+       paintScroll). Composed here so neither has to know the other's
+       number. --rise defaults to 0, which is what a visitor who never sees
+       the opening page — reduced motion, where it is removed outright —
+       correctly gets. */
     transform:translateY(var(--rise,0px)) scale(var(--fit-scale,1));
     /* above the drawings' layer (z 1), below the masthead and colophon
        (110): the pads stand ON the scattered drawings rather than among
@@ -133,9 +135,16 @@
        only says where it sits. */
     position:relative; z-index:5;
   }
-  /* the travel itself, and ONLY while handing over: left on permanently, a
-     resize that changes --fit-scale would animate the pads resizing too */
-  #fit.rising{ transition:transform .8s cubic-bezier(.16,.84,.28,1); }
+  /* While the pads are scrolling into the page they have to be SEEN, and
+     the opening page's white ground (z 140) is what hides the shop. So for
+     that stretch — and for the moment after, while the ground fades — they
+     stand above it: over the ground, over the drawings' layer (145), under
+     the demonstration and everything else on the opening page (150). The
+     ground is the same white as the page, so nothing about the picture
+     changes except that the sketchbook is now in it. Taken off again once
+     the ground has gone, because up here they would also stand over the
+     product window and the cart drawer. */
+  #fit.entering{ z-index:146; }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
   /* ---------- header ----------
@@ -1491,10 +1500,15 @@
      exactly the brief and the rule the rest of the sequence is built around;
      the interest is meant to come from what happens AROUND it. */
   .intro-mark{
-    position:absolute; left:50%; top:50%;
+    /* high on the page rather than in the middle of it — the middle is
+       where the demonstration is about to stand, and a greeting that sits
+       up out of its way is also one that visibly has somewhere to go. The
+       38% is shared with the script (MARK_TOP), which works its fade and
+       travel out from it. */
+    position:absolute; left:50%; top:38%;
     transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
     font-family:'Bodoni Moda',serif;
-    font-size:clamp(40px, 10.2vw, 172px);
+    font-size:clamp(36px, 8.6vw, 148px);
     font-weight:400; letter-spacing:.13em;
     /* letter-spacing hangs an extra gap off the last letter, so a centred
        line sits half that gap left of true centre — the same correction
@@ -4739,7 +4753,7 @@ relayout();
      where fifteen at this scale become a crowd. Grouped in bands with the
      middle one left almost empty: that gap is where the mark stands, and
      keeping it clear is most of what makes the page read as spacious.
-     Bottom centre stays clear too — the scroll cue lives there. Sizes are
+     The bottom row is cut off by the frame on purpose (see below). Sizes are
      deliberately far apart (12vh next to 30vh); an even scatter of
      same-size marks reads as a pattern. */
   const FIGURES = [
@@ -4764,11 +4778,14 @@ relayout();
     /* bottom band */
     {f:'S1P5 black vest design.svg',    b:[637,531,1206,2742],  x:29, y:60, h:28, o:.38, d:1.30},
     {f:'S1P7 Black Tee 2 design.svg',   b:[285,25,2193,3483],   x:66, y:63, h:19, o:.25, d:1.20},
-    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:19, y:76, h:21, o:.24, d:1.50, opt:1},
-    {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:79, h:18, o:.22, d:1.60},
-    /* the last few, small and low, filling in without crowding the cue */
-    {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:80, h:16, o:.24, d:1.55},
-    {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:82, h:13, o:.20, d:1.75, opt:1},
+    /* the bottom row hangs OFF the bottom edge, deliberately and by a lot:
+       a drawing cut through the middle by the frame is what says there is
+       more page below this, now that nothing on the page says "scroll" in
+       words */
+    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:19, y:84, h:26, o:.24, d:1.50, opt:1},
+    {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:87, h:22, o:.22, d:1.60},
+    {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:90, h:18, o:.24, d:1.55},
+    {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:85, h:17, o:.20, d:1.75, opt:1},
     {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:44, y:16, h:12, o:.18, d:1.85, opt:1}
   ];
   /* How fast the scatter rides the scroll: a drawing moves this many
@@ -4906,6 +4923,9 @@ relayout();
   /* Layout reads, so they are taken here and on resize rather than every
      frame inside the paint. */
   let maxScroll = 0, fadeEnd = .5, stageH = 0, stageW = 0, markTravel = 0;
+  /* where the mark's centre stands, as a share of the screen's height —
+     the same 38% .intro-mark's `top` puts it at */
+  const MARK_TOP = .38;
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
      just outside the pad and on a wide screen they genuinely come in from
@@ -4969,11 +4989,12 @@ relayout();
        the degenerate case of a mark taller than the window, where it is
        clipped from the start and there is nothing to protect. */
     const h = mark.offsetHeight, vh = intro.clientHeight;
-    const clipK = (0.5 * vh - 0.5 * h) / (0.5 * vh + 0.6 * h);
+    const clipK = (MARK_TOP * vh - 0.5 * h) / (MARK_TOP * vh + 0.6 * h);
     fadeEnd = Math.max(.12, Math.min(1, clipK * .85));
-    /* the same distance the CSS used to express as calc(-50vh - 60%), now
-       resolved to one number so the paint writes a plain px transform */
-    markTravel = 0.5 * vh + 0.6 * h;
+    /* from its centre at MARK_TOP of the screen to the top edge, plus its
+       own height and a margin — resolved to one number so the paint writes
+       a plain px transform */
+    markTravel = MARK_TOP * vh + 0.6 * h;
   };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
@@ -4998,7 +5019,7 @@ relayout();
      painted from a scroll listener instead of a permanent rAF loop: held
      still, the page now does no work at all, and every drawing sits exactly
      where its scroll offset says it should. */
-  let lastP = -1;
+  let lastP = -1, lastEntering = false;
   function paintScroll(p){
     /* The mark: upward, and nothing else — all the way out of the frame,
        not parked near the top. The distance is written as `-50vh - 60%`
@@ -5010,7 +5031,7 @@ relayout();
        mark still hangs below its centre depends on a font-size that is
        itself clamped against the viewport width. The extra 10% is margin,
        so it is gone rather than only just gone. */
-    const markK = io(seg(p, .03, .18));
+    const markK = io(seg(p, 0, .14));
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     /* Faded against its own travel, not against a scroll window of its own.
        Tying the two to the same k is what guarantees they agree: the mark
@@ -5063,7 +5084,7 @@ relayout();
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
       el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .22, .40)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        (s.o * (1 - .55 * seg(p, .12, .30)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5076,11 +5097,11 @@ relayout();
        scroll it used to, so the pad, the pointers and the press unfold at an
        unhurried pace rather than snapping through their marks — slow on
        purpose, against a ground that is fast on purpose (see FIG_RATE). */
-    const dp = seg(p, .16, .94);
+    const dp = seg(p, .06, .92);
     demo.style.opacity = (seg(dp, 0, .10) * (1 - seg(dp, .93, 1))).toFixed(3);
 
-    /* 1. the pad comes up from below, the way the real ones do when the
-          opening page hands over (see PARK) */
+    /* 1. the pad comes up from below, the way the real one does at the end
+          of the sequence (see the entrance below) */
     const rise = io(seg(dp, 0, .16));
     book.style.transform =
       `translate3d(0,${((1 - rise) * bookRise).toFixed(1)}px,0)`;
@@ -5148,6 +5169,26 @@ relayout();
     /* and the pair settles into the middle as the second half of it arrives,
        having stood the pad there alone until then */
     demo.style.setProperty('--slide', ((1 - io(pin)) * demoShift).toFixed(1) + 'px');
+
+    /* ---------- the entrance ----------
+       The real sketchbook, scrolled into the page. Not faded, not eased on
+       a timer: over the last stretch of the track it travels from wholly
+       below the window to its place, one to one with the wheel, the way the
+       drawings behind it have been moving all along — so the shop arrives
+       as the next thing down the page rather than appearing. It overlaps
+       the demonstration's fade-out (dp .93–1 is p .86–.92): the small pad
+       thins out above as the big one comes up from below, which is the one
+       reading as the other. 1.1 screens rather than 1, so nothing of it
+       shows before it starts — the pads can be taller than the room they
+       are scaled into. `entering` lifts it above the opening page's ground
+       for the stretch it has to be seen through (see #fit.entering). */
+    const arrive = seg(p, .86, .98);
+    fitEntry.style.setProperty('--rise', ((1 - arrive) * stageH * 1.1).toFixed(1) + 'px');
+    const entering = p >= .86;
+    if(entering !== lastEntering){
+      fitEntry.classList.toggle('entering', entering);
+      lastEntering = entering;
+    }
   }
 
   /* ---------- handing back and forth with the shop ----------
@@ -5159,18 +5200,18 @@ relayout();
      anywhere. (It used to display:none itself here, which made that
      impossible — there is nothing to scroll back into once the scroller is
      out of the layout.) */
-  /* ---------- the pads' entrance ----------
-     They are parked below the fold for as long as the opening page is up —
-     invisible anyway, since that layer is opaque — and travel up into place
-     as it hands over, so the shop arrives rather than simply being there
-     when the white clears. Parked from SCRIPT and not from the stylesheet
-     on purpose: a visitor who never gets an opening page (reduced motion
-     removes it outright, before any of this runs) must find the pads
-     already home, and the CSS default of 0 is exactly that. */
+  /* ---------- the hand-over ----------
+     By the time this runs the sketchbook is already standing in its place —
+     the scroll carried it there (see the entrance in paintScroll) — so
+     nothing here moves anything. The opening page turns invisible, its
+     ground fades (which is what brings the masthead and colophon in; the
+     pads themselves are above it and do not flicker), and the drawings
+     settle. Written from SCRIPT and not the stylesheet on purpose: a visitor
+     who never gets an opening page (reduced motion removes it outright,
+     before any of this runs) must find the pads already home, and the CSS
+     default of --rise 0 is exactly that. */
   const fitEntry = document.getElementById('fit');
-  const PARK = '15vh';
-  let riseTimer = 0;
-  fitEntry.style.setProperty('--rise', PARK);
+  let enterTimer = 0;
   let dismissed = false;
   function dismiss(){
     if(dismissed) return;
@@ -5181,14 +5222,14 @@ relayout();
        moving, which is what keeps them from costing anything (see
        .scatter-layer.settled) */
     scatterEl.classList.add('settled');
-    fitEntry.classList.add('rising');
     fitEntry.style.setProperty('--rise', '0px');
-    /* taken off once it has arrived: the class carries a transition on
-       `transform`, and --fit-scale rides in that same transform, so leaving
-       it on would make every later resize animate the pads scaling over
-       four fifths of a second instead of just fitting */
-    clearTimeout(riseTimer);
-    riseTimer = setTimeout(() => fitEntry.classList.remove('rising'), 900);
+    /* the lift above the ground comes off only once the ground has finished
+       fading (.6s) — any sooner and the pads would drop behind a sheet that
+       is still partly white, and blink */
+    clearTimeout(enterTimer);
+    enterTimer = setTimeout(() => {
+      fitEntry.classList.remove('entering'); lastEntering = false;
+    }, 700);
   }
   function revive(){
     if(!dismissed) return;
@@ -5196,13 +5237,9 @@ relayout();
     intro.classList.remove('done');
     ground.classList.remove('done');
     scatterEl.classList.remove('settled');
-    /* back to the parked spot with the transition OFF — this happens behind
-       a layer that is already opaque again, and animating it would mean the
-       pads were still sliding down under it when the next hand-over began */
-    clearTimeout(riseTimer);
-    fitEntry.classList.remove('rising');
-    fitEntry.style.setProperty('--rise', PARK);
-    lastP = -1;                 /* nothing was painted while it was away */
+    clearTimeout(enterTimer);
+    lastP = -1;    /* nothing was painted while it was away — the next paint
+                      puts the pads and their lift back where the scroll says */
   }
   /* no link out any more: the shop arrives when the scroll runs out (see
      onScroll), which is the one gesture the whole page has been asking for */
