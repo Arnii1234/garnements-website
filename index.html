@@ -1511,12 +1511,42 @@
      Two nested elements per figure: the outer takes that scroll-driven
      parallax, the inner carries the idle wiggle (pure CSS, never touched by
      script). One element doing both would mean rebuilding a compound
-     transform on every scroll frame purely to keep the CSS half alive. */
+     transform on every scroll frame purely to keep the CSS half alive.
+
+     Each one is a single DRAWING, not the sheet it was drawn on. The two
+     are the same file — a design cutout spans the whole A4 artboard with
+     one garment on it — so the box below is sized to that garment's own
+     measured bounds and the sheet is scaled up behind it and clipped back
+     to them (--pw/--px/--py, all of them shares of this box, worked out
+     from the same getBBox the real hotspots are placed from). No second
+     copy of the artwork, no fetching or re-measuring at load: the numbers
+     ride in the list and the browser rasterises each sheet once, at the
+     size the drawing on it is being shown, which is small.
+
+     Sized by HEIGHT, not width. These vary from a squat backpack to a pair
+     of jeans nearly three times as tall as it is wide; giving them equal
+     widths would have made the tall ones tower and the wide ones vanish.
+     Equal-ish heights is what reads as drawings of one set. */
   .intro-sketch{
     position:absolute; pointer-events:none;
     will-change:transform;
+    height:calc(var(--h) * var(--sk));
+    aspect-ratio:var(--ar);
   }
-  .intro-sketch img{ width:100%; height:auto; display:block; }
+  /* Every wrapper between here and the artwork is pinned to this same box.
+     The wiggles below TRANSFORM those wrappers, and a transformed element
+     becomes the containing block for anything absolute inside it — so left
+     to size themselves they would have redefined what the crop's
+     percentages were measured against, mid-animation. Pinned, the drawing,
+     its crop and its wiggle are all one box that rotates together. */
+  .intro-sketch > div,
+  .intro-sketch > div > div,
+  .intro-sketch .cut{ position:absolute; inset:0; }
+  .intro-sketch .cut{ display:block; overflow:hidden; }
+  .intro-sketch img{
+    position:absolute; display:block; max-width:none;
+    width:var(--pw); left:var(--px); top:var(--py);
+  }
   /* Three wiggles, all of them in place. drift is the slow breathing most
      of the scatter has; gait is the tighter bob-and-tilt of a figure caught
      mid-stride; sway is looser and longer, for the ones that read as
@@ -1578,9 +1608,8 @@
   }
   .intro-say b{ font-weight:400; color:var(--ink); }
   .intro-cue{ bottom:38px; }
-  /* both sit clear of the mark's own path: the first while it is still
-     standing near the middle, the second once it has risen away */
-  #introSay1{ top:64%; }
+  /* low, and clear of the mark's own path — by the time it is said the mark
+     has long since risen away */
   #introSay2{ top:89%; }
   .intro-cue .rule{
     display:block; width:1px; height:38px; margin:14px auto 0;
@@ -1611,42 +1640,89 @@
   /* The pad. It carries the perspective rather than the stage does, so the
      cover hinged on its top edge swings through real depth instead of
      shearing flat — and so the depth is the PAD's, unaffected by where in
-     the window the group happens to sit. */
+     the window the group happens to sit. The .stage's own figure is 2.76
+     (2000px over a leaf about 725 tall); this is a little flatter, and for
+     a reason worth keeping. Around 150° the cover is both high above the pad
+     AND swung a long way toward the viewer, so the perspective magnifies it
+     at exactly the moment it has furthest to reach — at the shop's own ratio
+     that is a fifth again bigger, and it was putting the top edge of the
+     cover into the top edge of the window. Standing the camera back a little
+     costs almost nothing in how the turn reads and buys all of it back.
+
+     Sized by its HEIGHT, and that is not a detail either: the cover swings a
+     full turn, so partway round it stands its own height and more ABOVE the
+     pad. Sized off the viewport's width it cleared on a laptop and was
+     guillotined by a short wide window; off the height it clears everywhere,
+     because the room it needs and the room it has become one measurement. */
   .demo-book{
+    --pad-h:clamp(150px,30vh,290px);
     position:relative;
-    width:clamp(140px,17vw,232px); aspect-ratio:210/297;
-    perspective:900px;
+    height:var(--pad-h); width:calc(var(--pad-h) * 210 / 297);
+    perspective:calc(var(--pad-h) * 3.6);
+    /* perspective PROJECTS the children; it does not sort them. Without this
+       the pad's parts are each flattened into one plane and painted in
+       document order, so the cover came back down the far side drawn over
+       the page it had just uncovered — the depth was all correct and none of
+       it counted for anything. */
+    transform-style:preserve-3d;
   }
+  /* translateZ(0) is not a promotion hint here, it is the sheet's PLACE. It
+     shares a 3D context with the cover, and the cover ducks behind it for the
+     second half of the turn — but depth only decides what covers what
+     between things that are actually positioned in that depth. Left with no
+     transform at all the sheet was drawn flat, in document order, and the
+     cover came back down in front of the page it had just uncovered. */
   .demo-sheet{
     position:absolute; inset:0;
     background:var(--panel);
     border:.75px solid var(--line);
+    transform:translateZ(0);
   }
-  /* The cover. Its own paper background is what shows once it has passed
-     vertical, because the artwork face is hidden from behind — so the back
-     of the cover is a blank card, which is what the back of a cover is. */
+  /* The cover. Board, not paper: the same grey-beige card the real covers
+     are cut from, with the art pressed INTO it rather than printed on top —
+     the same two rims .leaf.cover uses. It was paper-white here, which made
+     it read as one more sheet of the pad rather than as the front of the
+     book. Two faces, hidden from behind, so the printed board is what you
+     see going up and the plainer back of it is what comes down. */
   .demo-cover{
     position:absolute; inset:0;
-    background:var(--panel);
-    border:.75px solid var(--line);
     transform-origin:50% 0; transform:rotateX(0deg);
-    box-shadow:0 1px 4px rgba(35,31,32,.10);
+    transform-style:preserve-3d;
+  }
+  .demo-cover .face,
+  .demo-cover .back{
+    position:absolute; inset:0; display:block;
+    backface-visibility:hidden;
+    box-shadow:0 1px 5px rgba(35,31,32,.16);
+  }
+  .demo-cover .face{ background:var(--board-face); }
+  /* the inside of the board: the same card, a shade down, the way the real
+     covers' rear faces are. Not as far down as those, though — on a pad this
+     size the whole of it is on screen at once halfway through the turn, and
+     the shop's darker rear read as a grey slab standing over the page rather
+     than as the back of something you had just lifted. */
+  .demo-cover .back{
+    background:linear-gradient(#c8c5c0 0%, #c3c0bb 55%, #bcb9b4 100%);
+    transform:rotateY(180deg);
   }
   .demo-cover img{
     position:absolute; inset:0; width:100%; height:100%;
     object-fit:contain; display:block;
-    backface-visibility:hidden;
+    filter:drop-shadow(.7px .7px 0 rgba(255,255,255,.55))
+           drop-shadow(-.6px -.6px 0 rgba(35,31,32,.3));
   }
   /* just enough of the wire-o to say "this is one of those pads". Pushed
      forward in Z rather than by z-index: it shares a 3D context with the
      cover, where depth decides what covers what, and the rings have to stay
-     in front of the cover they are holding on both sides of the hinge. */
+     in front of the cover they are holding on both sides of the hinge. Kept
+     small — a big number here would also scale the coil up under the
+     perspective, which is the one thing it must not do. */
   .demo-coil{
     position:absolute; left:8%; right:8%; top:-5px; height:10px;
     background:repeating-linear-gradient(90deg,
       var(--ink) 0 1.4px, transparent 1.4px 7px);
     opacity:.5;
-    transform:translateZ(30px);
+    transform:translateZ(12px);
   }
   /* The pointers. Drawn rather than imaged so they take the ink colour, and
      outlined in paper so they stay readable over the linework they are
@@ -1749,14 +1825,22 @@
      share of the viewport collapse into a band of specks, so the optional
      ones step out and the rest come up in size. */
   @media(max-width:760px){
-    /* half the scatter steps out and everything left roughly doubles: a vw
-       width that reads as a drawing on a laptop is a speck on a phone, and
-       a dozen specks are not a scattering, they are dust */
-    .scatter-layer{ --sk:2.15; }
+    /* Half the scatter steps out and the rest come down a little. It used to
+       be the other way about — everything roughly doubled — because the
+       drawings were sized off the viewport's WIDTH, and a width that reads
+       as a drawing on a laptop is a speck on a phone. Sized off its height
+       instead they arrive at nearly the right size on their own; a phone is
+       tall, so if anything they need reining in, and what a narrow screen
+       actually needs is fewer of them, not bigger ones. */
+    .scatter-layer{ --sk:.95; }
     .intro-sketch.opt{ display:none; }
+    /* the piece now stands UNDER the pad rather than beside it, so the group
+       is tall and the pad's own share of the screen has to come down — not
+       for the pad's sake but for the cover's, which needs its whole height
+       again above the pad partway through the turn */
     .intro-demo{ flex-direction:column; gap:18px; top:54%; }
+    .demo-book{ --pad-h:clamp(130px,22vh,210px); }
     .intro-say{ font-size:9px; letter-spacing:.22em; }
-    #introSay1{ top:68%; }
     #introSay2{ top:91%; }
   }
   /* Someone who has asked for less motion is not the audience for a scrolled
@@ -1805,10 +1889,6 @@
         scroll<span class="rule"></span>
       </div>
 
-      <div class="intro-say" id="introSay1" style="opacity:0">
-        one sketchbook &nbsp;·&nbsp; <b>edition one</b>
-      </div>
-
       <!-- The walkthrough: a sketchbook arrives, a pointer opens it, a second
            pointer presses a drawing and the piece it is stitched on appears.
            It is the site's whole mechanic acted out once, in order, so it can
@@ -1824,9 +1904,12 @@
             <img class="demo-page" src="assets/S1P2.svg" alt="">
             <span class="demo-ring" id="demoRing"></span>
           </div>
-          <!-- the cover, hinged on the top edge the way the real pads flip -->
+          <!-- The cover, hinged on the coil. Two faces because a cover has
+               two: the printed board going up, the plainer back of it coming
+               down again behind the pad. -->
           <div class="demo-cover" id="demoCover">
-            <img src="assets/title%201%20new.svg" alt="">
+            <span class="face"><img src="assets/title%201%20new.svg" alt=""></span>
+            <span class="back"></span>
           </div>
           <!-- the wire-o, over both, the way the rings actually sit -->
           <div class="demo-coil"></div>
@@ -4718,38 +4801,48 @@ relayout();
      sideways on a clock, and dancers — and collapsing them is what
      "everything only moves up and down" actually means in code.)
 
-     x/y are where the drawing's own top-left sits, in % of the stage; w is
-     its width in vw. Several deliberately hang off an edge — a scatter that
-     stops politely inside the frame reads as a border, not a scattering.
-     d is parallax depth: how much faster than the page it leaves. a is which
-     wiggle it gets. opt drops out on phones, where seventeen at this scale
-     become specks. Grouped in bands with the middle one left almost empty:
-     that gap is where the mark stands, and keeping it clear is most of what
-     makes the page read as spacious. Bottom centre stays clear too — the
-     scroll cue lives there. Sizes are deliberately far apart (6vw next to
-     14vw); an even scatter of same-size marks reads as a pattern. */
+     x/y are where the drawing's own top-left sits, in % of the stage; h is
+     its height in vh (see .intro-sketch for why height and not width). b is
+     the drawing's box on its A4 artboard — [x, y, w, h] in the same 2480 ×
+     3508 units mountDesignArt measures the real hotspots in — and it is
+     what crops the sheet back to the drawing. Several deliberately hang off
+     an edge: a scatter that stops politely inside the frame reads as a
+     border, not a scattering. d is parallax depth: how much faster than the
+     page it leaves. a is which wiggle it gets. opt drops out on phones,
+     where fifteen at this scale become a crowd. Grouped in bands with the
+     middle one left almost empty: that gap is where the mark stands, and
+     keeping it clear is most of what makes the page read as spacious.
+     Bottom centre stays clear too — the scroll cue lives there. Sizes are
+     deliberately far apart (12vh next to 30vh); an even scatter of
+     same-size marks reads as a pattern. */
   const FIGURES = [
-    /* Only sheets from the edition itself, and only ones carrying a drawing
-       you can actually press. The scatter used to mix in edition two and a
-       couple of loose older pages, which meant the landing page advertised
-       drawings that led nowhere — the whole point of the sequence below is
-       that a drawing is a way in, so every one standing here has to be one.
-       All eleven of edition one's sheets qualify, which is the list. */
+    /* The fifteen drawings you can actually press, and nothing else. Not the
+       sheets they are drawn on — those carry two or three drawings apiece
+       plus a lot of empty paper, so a page standing in the scatter was
+       showing you mostly margin and asking you to find the garment in it.
+       These ARE the garments: the same cutouts the sketchbook lifts under
+       your cursor, so the thing scattered across the landing page and the
+       thing you go on to press are literally the same drawing. */
     /* top band */
-    {f:'S1P4.svg',  x:2,  y:5,  w:13, o:.28, d:1.00, a:'drift', r:[-5,-2], boil:1},
-    {f:'S1P8.svg',  x:29, y:2,  w:8,  o:.20, d:1.70, a:'drift', r:[6,3],   opt:1},
-    {f:'S1P2.svg',  x:57, y:4,  w:11, o:.24, d:1.45, a:'drift', r:[3,7]},
-    {f:'S1P3.svg',  x:81, y:3,  w:13, o:.26, d:1.35, a:'drift', r:[4,7]},
+    {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:30, o:.28, d:1.00, a:'drift', r:[-5,-2], boil:1},
+    {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:17, o:.20, d:1.70, a:'drift', r:[6,3],   opt:1},
+    {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:20, o:.24, d:1.45, a:'drift', r:[3,7]},
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:83, y:3,  h:26, o:.26, d:1.35, a:'drift', r:[4,7]},
     /* upper middle */
-    {f:'S1P9.svg',  x:16, y:27, w:11, o:.32, d:1.15, a:'gait',  dur:1.14},
-    {f:'S1P6.svg',  x:88, y:28, w:11, o:.26, d:.85,  a:'drift', r:[-6,-3], boil:1},
+    {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:15, o:.32, d:1.15, a:'gait',  dur:1.14},
+    {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:22, o:.26, d:.85,  a:'drift', r:[-6,-3], boil:1},
     /* the flanks, either side of where the mark stands */
-    {f:'S1P11.svg', x:0,  y:58, w:10, o:.22, d:.70,  a:'drift', r:[3,6],   opt:1},
-    {f:'S1P10.svg', x:90, y:57, w:10, o:.22, d:.60,  a:'drift', r:[-5,-2], opt:1},
+    {f:'S1P11 beige duffle design.svg', b:[428,354,1692,3143],  x:-2, y:50, h:24, o:.22, d:.70,  a:'drift', r:[3,6],   opt:1},
+    {f:'S1P10 beige hoodie design.svg', b:[194,34,1634,3474],   x:93, y:49, h:26, o:.22, d:.60,  a:'drift', r:[-5,-2], opt:1},
     /* bottom band */
-    {f:'S1P5.svg',  x:32, y:62, w:14, o:.38, d:1.30, a:'gait',  dur:1.02},
-    {f:'S1P7.svg',  x:67, y:71, w:12, o:.25, d:1.20, a:'drift', r:[-4,-7], boil:1},
-    {f:'S1P1.svg',  x:7,  y:83, w:12, o:.24, d:1.55, a:'drift', r:[5,2]}
+    {f:'S1P5 black vest design.svg',    b:[637,531,1206,2742],  x:29, y:60, h:28, o:.38, d:1.30, a:'gait',  dur:1.02},
+    {f:'S1P7 Black Tee 2 design.svg',   b:[285,25,2193,3483],   x:66, y:63, h:19, o:.25, d:1.20, a:'drift', r:[-4,-7], boil:1},
+    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:19, y:76, h:21, o:.24, d:1.50, a:'drift', r:[-3,-6], opt:1},
+    {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:79, h:18, o:.22, d:1.60, a:'sway'},
+    /* the last few, small and low, filling in without crowding the cue */
+    {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:80, h:16, o:.24, d:1.55, a:'drift', r:[5,2]},
+    {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:82, h:13, o:.20, d:1.75, a:'drift', r:[-4,2], opt:1},
+    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:44, y:16, h:12, o:.18, d:1.85, a:'drift', r:[2,-4], boil:1, opt:1}
   ];
   /* How far the scatter travels over the whole sequence, as a share of the
      screen's height, before each drawing's own `d` scales it.
@@ -4769,7 +4862,6 @@ relayout();
   const ground    = document.getElementById('introGround');
   const mark      = document.getElementById('introMark');
   const cue       = document.getElementById('introCue');
-  const say1      = document.getElementById('introSay1');
   const say2      = document.getElementById('introSay2');
   const demo      = document.getElementById('introDemo');
   const book      = document.getElementById('demoBook');
@@ -4824,6 +4916,9 @@ relayout();
          so the press is plainly ON the drawing rather than near it */
       curR.style.left = cx.toFixed(2) + '%';
       curR.style.top  = cy.toFixed(2) + '%';
+      /* and where it starts is measured FROM that, so the two entries stay
+         symmetric — this lands after the first measurement, so retake it */
+      measure(); lastP = -1; onScroll();
     }).catch(() => {
       /* the page drawing is still there and still turns into the piece; only
          the lift is missing, so the beat degrades rather than breaking */
@@ -4842,8 +4937,21 @@ relayout();
        it here rather than waiting for the first paint means the landing
        composition is right even when that paint is late, which it is for
        any tab that loads in the background. */
+    /* The crop, all of it in shares of this box: how wide the whole sheet
+       has to be drawn for the garment on it to fill the box (--pw), and how
+       far up and left to slide it so the garment's own corner lands in the
+       corner (--px/--py). Percentages rather than pixels so the drawing can
+       be any size the viewport asks for without a single number here
+       changing — and --py is a share of the HEIGHT, which is what a `top`
+       percentage resolves against, so it comes off the box's height and not
+       its width. */
+    const [bx, by, bw, bh] = s.b;
     el.style.cssText =
-      `left:${s.x}%;top:${s.y}%;width:calc(${s.w}vw * var(--sk));opacity:${s.o}`;
+      `left:${s.x}%;top:${s.y}%;opacity:${s.o};` +
+      `--h:${s.h}vh;--ar:${bw}/${bh};` +
+      `--pw:${(ART_SVG_W / bw * 100).toFixed(2)}%;` +
+      `--px:${(-bx / bw * 100).toFixed(2)}%;` +
+      `--py:${(-by / bh * 100).toFixed(2)}%`;
     /* durations and offsets spread by index rather than at random: the look
        wanted is "no two on the same beat", and that is a spread, not noise —
        and this way the page composes identically every load */
@@ -4853,7 +4961,8 @@ relayout();
     el.innerHTML =
       `<div class="${s.a}" style="--r0:${r[0]}deg;--r1:${r[1]}deg;` +
       `--dur:${dur}s;--delay:${delay}s">` +
-      `<div class="${s.boil ? 'boil' : ''}"><img src="${url(s.f)}" alt=""></div></div>`;
+      `<div class="${s.boil ? 'boil' : ''}">` +
+      `<span class="cut"><img src="${url(s.f)}" alt=""></span></div></div>`;
     scatterEl.appendChild(el);
     return {el, s};
   });
@@ -4872,7 +4981,7 @@ relayout();
      just outside the pad and on a wide screen they genuinely come in from
      the sides of the picture — and capped, because past a point a longer
      run is only a longer wait. */
-  let cursorRun = 240, bookRise = 150;
+  let cursorRun = 240, bookRise = 150, curStartL = -240, curStartR = 240;
   /* How far right the demonstration has to sit for the PAD to be the thing
      in the middle of the screen: half the room its absent partner is holding
      open beside it. Taken from the laid-out boxes rather than from the gap
@@ -4886,6 +4995,15 @@ relayout();
     maxScroll = intro.scrollHeight - intro.clientHeight;
     cursorRun = Math.min(300, intro.clientWidth  * .30);
     bookRise  = Math.min(190, intro.clientHeight * .24);
+    /* Each pointer starts the same distance OUTSIDE the pad — cursorRun past
+       its near edge — rather than the same distance from its own target.
+       They are anchored on different parts of the pad, so the second is what
+       the travel used to be and it put the left one visibly further in than
+       the right. offsetLeft is each anchor's place inside the pad, which is
+       the only difference between them and therefore the only correction
+       needed. */
+    curStartL = -(curL.offsetLeft + cursorRun);
+    curStartR =  (book.offsetWidth - curR.offsetLeft) + cursorRun;
     demoShift = getComputedStyle(demo).flexDirection === 'row'
       ? Math.max(0, (demo.offsetWidth - book.offsetWidth) / 2) : 0;
     /* Kept so the paint can work in plain pixels. Writing `vh` into a
@@ -4991,8 +5109,6 @@ relayout();
         (s.o * (1 - .55 * seg(p, .50, .70)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
-    say1.style.opacity = (seg(p, .13, .22) * (1 - seg(p, .33, .41))).toFixed(3);
-
     /* ---------- the demonstration, on its own clock inside the scroll ------
        Five beats in order — the pad arrives, a pointer opens it, a second
        pointer presses a drawing, the piece appears. Each one is a window of
@@ -5008,46 +5124,65 @@ relayout();
     book.style.transform =
       `translate3d(0,${((1 - rise) * bookRise).toFixed(1)}px,0)`;
 
-    /* 2. a pointer in from the left, and it presses the cover */
-    const inL  = io(seg(dp, .12, .30));
-    const tapL = seg(dp, .29, .39);
-    curL.style.opacity = (seg(dp, .10, .18) * (1 - seg(dp, .40, .50))).toFixed(3);
+    /* 2. a pointer in from the left, and it presses the cover. The travel is
+          curStartL/R, measured from the pad's own edges rather than counted
+          off each pointer's target — they aim at different places on it (one
+          at the middle of the cover, one at a drawing three quarters of the
+          way across), so equal travel started them at visibly unequal
+          distances and only one of them looked like it came from the side of
+          the screen. */
+    const inL  = io(seg(dp, .11, .28));
+    const tapL = seg(dp, .26, .35);
+    curL.style.opacity = (seg(dp, .09, .17) * (1 - seg(dp, .36, .46))).toFixed(3);
     /* the scale dips and comes back within the press — sin over the window
        is the whole down-and-up, so the finger lifts without a second beat
-       being written for it */
+       being written for it. The 24px of Z keeps both pointers in front of a
+       cover that sweeps toward the viewer on its way over. */
     curL.style.transform =
-      `translate3d(${(-(1 - inL) * cursorRun).toFixed(1)}px,${((1 - inL) * 36).toFixed(1)}px,0)` +
+      `translate3d(${((1 - inL) * curStartL).toFixed(1)}px,${((1 - inL) * 34).toFixed(1)}px,24px)` +
       ` scale(${(1 - .17 * Math.sin(tapL * Math.PI)).toFixed(3)})`;
     curL.style.setProperty('--tap', tapL.toFixed(3));
 
-    /* 3. and it opens — up to just past vertical, and no further. A wire-o
-          cover really does carry on over the coil and lie flat behind the
-          pad, but seen straight on that puts a second full-height rectangle
-          standing above the book, which is a bigger thing on the screen than
-          the pad it is meant to be revealing. Standing it upright instead
-          costs nothing in truth and hands the page back the picture: seen
-          edge-on, a vertical cover is by definition zero pixels tall, so it
-          leaves cleanly rather than parking a foreshortened smear over the
-          top of the sheet. The fade is only there to take the last aliased
-          hairline with it, by which point the cover is a sliver anyway. */
-    const open = io(seg(dp, .31, .49));
-    cover.style.transform = `rotateX(${(-96 * open).toFixed(1)}deg)`;
-    cover.style.opacity   = (1 - seg(open, .84, 1)).toFixed(3);
+    /* 3. and it opens, the whole way round: up, over the coil, and down the
+          back — which is the motion the pads in the shop actually make (see
+          the leaf keyframes, 0 → 178 → 360). It used to turn the other way,
+          and that was the whole of what looked wrong: a NEGATIVE rotateX
+          sends the free edge AWAY from you, so the cover sank backwards
+          through the book it was supposed to be opening instead of lifting
+          off it. Turned forwards it comes toward you first, exactly like a
+          page you would lift yourself, and it ends flat and face-down behind
+          the sheet, where the sheet hides it — so no fade is needed to get
+          rid of it and no piece of it is left standing over the drawing. */
+    const open = io(seg(dp, .28, .52));
+    /* The same z swap the real flip makes — level with the sheet on the way
+       up, well behind it on the way down — and 270° is the one moment it can
+       be made. Not 180°: two planes that MEET, as these do along the hinge,
+       are not sorted by depth at all (the engine gives up and paints them in
+       document order), so a cover coming down the back at a couple of pixels'
+       clearance was drawn over the page it had just uncovered. It needs real
+       distance, and real distance cannot be introduced while the cover is
+       visible or it pops a few per cent smaller in front of you. At 270° it
+       is exactly edge-on — no height, nothing on screen — so the whole swap
+       happens inside a frame where there is nothing to see. Between 90° and
+       270° it is above the pad and overlaps nothing, so its depth there does
+       not matter either way. */
+    cover.style.transform =
+      `translateZ(${open < .75 ? 0 : -26}px) rotateX(${(360 * open).toFixed(1)}deg)`;
 
     /* 4. a second pointer, in from the other side, onto the drawing itself */
-    const inR  = io(seg(dp, .48, .64));
-    const tapR = seg(dp, .62, .72);
-    curR.style.opacity = (seg(dp, .46, .54) * (1 - seg(dp, .74, .84))).toFixed(3);
+    const inR  = io(seg(dp, .50, .66));
+    const tapR = seg(dp, .64, .74);
+    curR.style.opacity = (seg(dp, .48, .56) * (1 - seg(dp, .76, .86))).toFixed(3);
     curR.style.transform =
-      `translate3d(${((1 - inR) * cursorRun).toFixed(1)}px,${((1 - inR) * -30).toFixed(1)}px,0)` +
+      `translate3d(${((1 - inR) * curStartR).toFixed(1)}px,${((1 - inR) * -34).toFixed(1)}px,24px)` +
       ` scale(${(1 - .17 * Math.sin(tapR * Math.PI)).toFixed(3)})`;
     curR.style.setProperty('--tap', tapR.toFixed(3));
 
     /* 5. the drawing lifts under the press, and the piece it is stitched on
           arrives beside it */
-    sheet.classList.toggle('press', dp > .66 && dp < .97);
-    say2.style.opacity = (seg(dp, .50, .60) * (1 - seg(dp, .93, 1))).toFixed(3);
-    const pin = seg(dp, .68, .86);
+    sheet.classList.toggle('press', dp > .68 && dp < .97);
+    say2.style.opacity = (seg(dp, .52, .62) * (1 - seg(dp, .93, 1))).toFixed(3);
+    const pin = seg(dp, .70, .87);
     piece.style.opacity = pin.toFixed(3);
     piece.style.transform = `translate3d(${((1 - io(pin)) * 26).toFixed(1)}px,0,0)`;
     /* and the pair settles into the middle as the second half of it arrives,
