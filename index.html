@@ -1545,24 +1545,10 @@
     width:var(--pw); left:var(--px); top:var(--py);
   }
 
-  /* ---------- captions ----------
-     The house's own small voice — 10px, .24em, uppercase — the same setting
-     SIZE / SIZE GUIDE / SHIPPING already use. Only the scroll cue is left:
-     the two captions that used to narrate the demonstration ("press a
-     drawing · meet the piece", "open the sketchbooks") went, because the
-     demonstration shows all of that, and the shop arrives on its own when
-     the scroll runs out. */
-  .intro-say{
-    position:absolute; left:50%; transform:translateX(-50%);
-    font-size:10px; letter-spacing:.26em; text-transform:uppercase;
-    color:var(--grey); white-space:nowrap; text-align:center;
-    pointer-events:none; z-index:5;
-  }
-  .intro-cue{ bottom:38px; }
-  .intro-cue .rule{
-    display:block; width:1px; height:38px; margin:14px auto 0;
-    background:linear-gradient(var(--line), transparent);
-  }
+  /* No captions on this page any more. The "scroll" cue, "press a drawing ·
+     meet the piece" and "open the sketchbooks" all went: the demonstration
+     shows everything they said, and the shop arrives on its own when the
+     scroll runs out. */
 
   /* ---------- the demonstration ----------
      The whole site, acted out once in order: a pad arrives, a pointer opens
@@ -1580,7 +1566,7 @@
      would push the arriving pad off-centre for no reason the viewer can
      see. */
   .intro-demo{
-    position:absolute; left:50%; top:50%;
+    position:absolute; left:50%; top:52%;
     transform:translate(calc(-50% + var(--slide,0px)),-50%);
     display:flex; align-items:center; gap:clamp(20px,5vw,74px);
     z-index:4; pointer-events:none;
@@ -1589,26 +1575,29 @@
      cover hinged on its top edge swings through real depth instead of
      shearing flat — and so the depth is the PAD's, unaffected by where in
      the window the group happens to sit. The .stage's own figure is 2.76
-     (2000px over a leaf about 725 tall); this is a little flatter, and for
-     a reason worth keeping. Around 150° the cover is both high above the pad
-     AND swung a long way toward the viewer, so the perspective magnifies it
-     at exactly the moment it has furthest to reach — at the shop's own ratio
-     that is a fifth again bigger, and it was putting the top edge of the
-     cover into the top edge of the window. Standing the camera back a little
-     costs almost nothing in how the turn reads and buys all of it back.
+     (2000px over a leaf about 725 tall); this one stands the camera much
+     further back, and the reason is room. Around 150° the cover is both
+     high above the pad AND swung a long way toward the viewer, so the
+     perspective magnifies it at exactly the moment it has furthest to
+     reach: at 3.6 it stood 1.09 of the pad's height above the hinge
+     (measured), at the shop's own ratio a fifth again more. At 8 that is
+     down to about 1.0 — the cover peaks no higher than it stands flat at
+     180° — and the difference is what let the pad grow from 30vh to 33
+     with the group still centred. The turn reads almost the same: a little
+     less lens, no less lift.
 
      Sized by its HEIGHT, and that is not a detail either: the cover swings a
-     full turn, so partway round it stands its own height and more ABOVE the
-     pad — measured, about 1.09 of it at the peak (p ≈ .465). With the group
-     centred on the screen that is what caps the pad at 30vh: any taller and
-     the top of the cover leaves through the top of the window. Sized off the viewport's width it cleared on a laptop and was
+     full turn, so partway round it stands its own height ABOVE the pad. With
+     the group a hair below centre (52%) that is what caps the pad at 33vh:
+     any taller and the top of the cover leaves through the top of the
+     window. Sized off the viewport's width it cleared on a laptop and was
      guillotined by a short wide window; off the height it clears everywhere,
      because the room it needs and the room it has become one measurement. */
   .demo-book{
-    --pad-h:clamp(150px,30vh,300px);
+    --pad-h:clamp(160px,33vh,330px);
     position:relative;
     height:var(--pad-h); width:calc(var(--pad-h) * 210 / 297);
-    perspective:calc(var(--pad-h) * 3.6);
+    perspective:calc(var(--pad-h) * 8);
     /* perspective PROJECTS the children; it does not sort them. Without this
        the pad's parts are each flattened into one plane and painted in
        document order, so the cover came back down the far side drawn over
@@ -1747,7 +1736,7 @@
      full-length cutouts, so matching widths made the photo tower over the
      page it came out of */
   .demo-piece img{
-    height:clamp(150px,26vh,310px); width:auto; display:block; margin:0 auto;
+    height:clamp(165px,34vh,340px); width:auto; display:block; margin:0 auto;
   }
   .demo-piece .nm{
     display:block; margin-top:14px;
@@ -1778,9 +1767,8 @@
        for the pad's sake but for the cover's, which needs its whole height
        again above the pad partway through the turn */
     .intro-demo{ flex-direction:column; gap:18px; top:52%; }
-    .demo-book{ --pad-h:clamp(130px,21vh,210px); }
-    .demo-piece img{ height:clamp(130px,22vh,240px); }
-    .intro-say{ font-size:9px; letter-spacing:.22em; }
+    .demo-book{ --pad-h:clamp(130px,22vh,220px); }
+    .demo-piece img{ height:clamp(140px,26vh,260px); }
   }
   /* Someone who has asked for less motion is not the audience for a scrolled
      animation — they get the site itself, immediately. */
@@ -1823,10 +1811,6 @@
            the masthead does; no whitespace between them so it is still read
            and selected as one word -->
       <h1 class="intro-mark" id="introMark"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></h1>
-
-      <div class="intro-say intro-cue" id="introCue">
-        scroll<span class="rule"></span>
-      </div>
 
       <!-- The walkthrough: a sketchbook arrives, a pointer opens it, a second
            pointer presses a drawing and the piece it is stitched on appears.
@@ -4820,7 +4804,6 @@ relayout();
   const scatterEl = document.getElementById('introScatter');
   const ground    = document.getElementById('introGround');
   const mark      = document.getElementById('introMark');
-  const cue       = document.getElementById('introCue');
   const demo      = document.getElementById('introDemo');
   const book      = document.getElementById('demoBook');
   const sheet     = document.getElementById('demoSheet');
@@ -5038,7 +5021,6 @@ relayout();
        at any window size, since both halves now come off one measurement
        instead of two hand-picked constants that could disagree. */
     mark.style.opacity = (1 - cl01(markK / fadeEnd)).toFixed(3);
-    cue.style.opacity = 1 - seg(p, 0, .06);
 
     /* the only movement any drawing makes: straight up as p grows, straight
        back down as it shrinks, at the wheel's own speed — see FIG_RATE.
