@@ -90,7 +90,7 @@
        used to bare .board's own slightly different grey-beige, which read
        as a stray light line. Same colour on both sides of the gap and
        there is nothing left to see. */
-    --board-face:radial-gradient(128% 92% at 50% 10%, #cdcac5 0%, #c5c2bd 44%, #bbb8b3 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d9d1c3 0%, #d2c9ba 44%, #c8bfae 100%);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -139,20 +139,21 @@
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
   /* ---------- header ----------
-     A standing row, not type floating on the page: it has its own ground and
-     a hairline closing it off underneath, so the masthead and the cart read
-     as furniture the page scrolls under rather than as two labels that
-     happen to sit near the top. Opaque on purpose — that is what makes it a
-     bar. z-index above the pads (and matching the colophon's own 110) so
-     nothing passes over it. Centred rather than baseline-aligned: a 22px
-     serif and an 11px sans share no baseline the eye believes, and in a bar
-     the row's own middle is the line being read. */
+     Type standing free on the page — no ground of its own and no hairline
+     under it. It used to be a bar (opaque, closed off underneath) so it read
+     as furniture; it now reads the way a wordmark on a plain white page
+     does, with the scattered drawings passing under it rather than stopping
+     at a line. It still owns its row in the layout (setChrome measures it
+     for --bar and --chrome), so nothing about where the pads or the product
+     window sit has moved. z-index above the pads (and matching the
+     colophon's own 110) so nothing passes over it. Centred rather than
+     baseline-aligned: a 22px serif and an 11px sans share no baseline the
+     eye believes. */
   header{
     display:flex;justify-content:space-between;align-items:center;
     padding:0 44px; min-height:64px;
     position:relative; z-index:110;
-    background:var(--bg);
-    border-bottom:1px solid var(--line);
+    background:transparent;
   }
   .brand{
     font-family:'Bodoni Moda',serif;font-size:22px;font-weight:500;
@@ -182,19 +183,20 @@
     filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
   }
   /* Each letter takes a colour off the clothes. White is deliberately absent —
-     on this paper it would simply vanish, which is the same reason the beige,
-     pink and blue are pitched darker than the garments themselves: at their
-     true tint they measured 2.3–2.7 against the background and went soft.
-     These sit near 4:1, dark enough to hold and still plainly beige, pink and
-     blue. The five cycle, so ten letters read as two passes.
+     on this paper it would simply vanish. The rest are pitched close to the
+     garments' own tints: a dusty pink, a sand beige, a soft brown, a slate
+     blue — calm, a little chalky, nothing that shouts. They sit around 3:1
+     against the paper (measured), which is the floor for a mark this size:
+     lighter still and the pink went to nothing. The five cycle, so ten
+     letters read as two passes.
      The opening page's own wordmark takes the identical cycle — it is the
      same mark at a different size, and it would be odd for it to arrive in
      plain ink and then turn colourful once you reached the shop. */
   .brand span:nth-child(5n+1), .intro-mark span:nth-child(5n+1){ color:#231f20; }   /* black      */
-  .brand span:nth-child(5n+2), .intro-mark span:nth-child(5n+2){ color:#8a7559; }   /* beige      */
-  .brand span:nth-child(5n+3), .intro-mark span:nth-child(5n+3){ color:#bb4f7d; }   /* pink       */
-  .brand span:nth-child(5n+4), .intro-mark span:nth-child(5n+4){ color:#6f5241; }   /* brown      */
-  .brand span:nth-child(5n+5), .intro-mark span:nth-child(5n+5){ color:#4a7a95; }   /* light blue */
+  .brand span:nth-child(5n+2), .intro-mark span:nth-child(5n+2){ color:#ad9474; }   /* sand beige */
+  .brand span:nth-child(5n+3), .intro-mark span:nth-child(5n+3){ color:#c9849a; }   /* dusty pink */
+  .brand span:nth-child(5n+4), .intro-mark span:nth-child(5n+4){ color:#9c7f6b; }   /* soft brown */
+  .brand span:nth-child(5n+5), .intro-mark span:nth-child(5n+5){ color:#6f95aa; }   /* slate blue */
   .cart-btn{
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
     padding-bottom:2px;border-bottom:1px solid transparent;
@@ -325,17 +327,18 @@
     background:linear-gradient(to bottom, rgba(35,31,32,.10), transparent 30%);
   }
   /* ---------- the covers ----------
-     Board, not paper: a flat matte grey-beige, a coarser tooth, and physically
+     Board, not paper: a flat matte beige — warm, chalky, deliberately quiet
+     (the ramp across it is kept narrow so it never reads as glossy) — a coarser tooth, and physically
      larger than the sheets on every edge (--over-x/--over-y, set from JS so the
      one number lives in script). Nothing here paints an "edge" — the darker
      outline you see around an inner page is the back cover genuinely showing
      past it. Stiffness is handled in the flip itself (see stiffFor/flipMs). */
   .leaf.cover{
-    --board-face:radial-gradient(128% 92% at 50% 10%, #cdcac5 0%, #c5c2bd 44%, #bbb8b3 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d9d1c3 0%, #d2c9ba 44%, #c8bfae 100%);
   }
   .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#bdbbb7 0%, #b8b6b2 55%, #b0aeaa 100%);
+    background:linear-gradient(#c9c0b0 0%, #c3baaa 55%, #bab19f 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
      so the two read as one piece of card. No drawn edge: the pad's own
@@ -1475,8 +1478,11 @@
      screens, which made every gesture move the page very little — the
      sequence read as heavy and slow to answer even though nothing was
      dropping frames. Shorter means each turn of the wheel does more, which
-     is what "lighter" actually is here. */
-  .intro-track{ height:330vh; position:relative; }
+     is what "lighter" actually is here. Taken down again (330 → 300): with
+     the scatter now travelling at real parallax speeds (see FIG_DRIFT) the
+     page visibly answers every gesture, and two screens of travel is
+     enough to say everything the sequence has to say. */
+  .intro-track{ height:300vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1634,7 +1640,7 @@
      would push the arriving pad off-centre for no reason the viewer can
      see. */
   .intro-demo{
-    position:absolute; left:50%; top:53%;
+    position:absolute; left:50%; top:55%;
     transform:translate(calc(-50% + var(--slide,0px)),-50%);
     display:flex; align-items:center; gap:clamp(20px,5vw,74px);
     z-index:4; pointer-events:none;
@@ -1657,7 +1663,7 @@
      guillotined by a short wide window; off the height it clears everywhere,
      because the room it needs and the room it has become one measurement. */
   .demo-book{
-    --pad-h:clamp(150px,30vh,290px);
+    --pad-h:clamp(165px,34vh,330px);
     position:relative;
     height:var(--pad-h); width:calc(var(--pad-h) * 210 / 297);
     perspective:calc(var(--pad-h) * 3.6);
@@ -1680,7 +1686,7 @@
     border:.75px solid var(--line);
     transform:translateZ(0);
   }
-  /* The cover. Board, not paper: the same grey-beige card the real covers
+  /* The cover. Board, not paper: the same matte beige card the real covers
      are cut from, with the art pressed INTO it rather than printed on top —
      the same two rims .leaf.cover uses. It was paper-white here, which made
      it read as one more sheet of the pad rather than as the front of the
@@ -1704,7 +1710,7 @@
      the shop's darker rear read as a grey slab standing over the page rather
      than as the back of something you had just lifted. */
   .demo-cover .back{
-    background:linear-gradient(#c8c5c0 0%, #c3c0bb 55%, #bcb9b4 100%);
+    background:linear-gradient(#cfc6b6 0%, #cac1b1 55%, #c3baa9 100%);
     transform:rotateY(180deg);
   }
   .demo-cover img{
@@ -1800,7 +1806,7 @@
      full-length cutouts, so matching widths made the photo tower over the
      page it came out of */
   .demo-piece img{
-    height:clamp(150px,25vh,300px); width:auto; display:block; margin:0 auto;
+    height:clamp(165px,29vh,340px); width:auto; display:block; margin:0 auto;
   }
   .demo-piece .nm{
     display:block; margin-top:14px;
@@ -1841,7 +1847,8 @@
        for the pad's sake but for the cover's, which needs its whole height
        again above the pad partway through the turn */
     .intro-demo{ flex-direction:column; gap:18px; top:54%; }
-    .demo-book{ --pad-h:clamp(130px,22vh,210px); }
+    .demo-book{ --pad-h:clamp(140px,24vh,230px); }
+    .demo-piece img{ height:clamp(140px,24vh,260px); }
     .intro-say{ font-size:9px; letter-spacing:.22em; }
     #introSay2{ top:91%; }
   }
@@ -2906,7 +2913,7 @@ function makeStrip(){
    units to texture pixels — the same on both axes, since the texture keeps the
    page's aspect ratio. */
 function drawHoles(x, s){
-  x.fillStyle = '#cfcdc9';
+  x.fillStyle = '#d2c9ba';       /* the board showing through — see --board-face */
   x.strokeStyle = 'rgba(35,31,32,.2)';
   x.lineWidth = Math.max(1, .7 * s);
   holeXs.forEach(hx => {
@@ -2954,7 +2961,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#bdbbb7', '#b8b6b2', '#b0aeaa']);
+    texCoverBack = paperTexture(['#c9c0b0', '#c3baaa', '#bab19f']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -3036,7 +3043,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#cdcac5', '#c5c2bd', '#bbb8b3']
+    ? ['#d9d1c3', '#d2c9ba', '#c8bfae']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
@@ -4859,16 +4866,24 @@ relayout();
   /* How far the scatter travels over the whole sequence, as a share of the
      screen's height, before each drawing's own `d` scales it.
 
-     Deliberately small, and that is the depth: the mark leaves the frame
-     entirely and the demonstration comes and goes at full speed, while all
-     of this drifts only a little behind them. Two things moving at the same
-     rate read as one flat picture being pushed around; the further one
-     barely moving is what makes it read as further away, and it leaves the
-     things that are actually saying something — the wordmark, the captions,
-     the press-a-drawing beat — as the only parts of the page in a hurry.
-     The spread across `d` (0.60 to 1.90) still separates the drawings from
-     each other within that layer. */
-  const FIG_DRIFT = .14;
+     This used to be .14 — the drawings barely stirred while the mark and
+     the demonstration went by at full speed — and that stillness is what
+     made the page feel heavy: you scrolled and almost nothing answered. At
+     .9 a drawing with d = 1 covers nine tenths of a screen over the two
+     screens the sequence costs, so the scatter moves at roughly half the
+     speed of the wheel and the deepest (d = 1.85) at over four fifths of
+     it — the parallax the big fashion houses' landing pages run at, where
+     the ground plainly slides under your hand. The spread across `d` (0.60
+     to 1.85) is what layers them: the slow ones read as further back.
+
+     Travelling that far, most of them leave by the top — so the paint
+     wraps each one: the moment a drawing is wholly above the frame it is
+     placed the same distance below it instead, and carries on up from
+     there. The jump happens entirely off-screen, so what is seen is a
+     scatter that keeps coming, and the ground under the sketchbooks is
+     never emptied out. Still a pure function of the scroll position, so
+     scrolling back up runs it backwards exactly. */
+  const FIG_DRIFT = .9;
 
   const scatterEl = document.getElementById('introScatter');
   const ground    = document.getElementById('introGround');
@@ -5025,6 +5040,15 @@ relayout();
        resize, so resolving it once here and multiplying is the same answer
        for less work on every frame in between. */
     stageH = intro.clientHeight;
+    /* each drawing's own box, for the wrap in the paint: its resting top in
+       px and its height, plus the margin the idle wiggle can carry it past
+       its box (a couple of per cent, and a rotation on top) — so a drawing
+       is only ever re-placed once every part of it is clear of the frame */
+    figures.forEach(fg => {
+      fg.hpx  = fg.el.offsetHeight;
+      fg.top0 = fg.s.y / 100 * stageH;
+      fg.marg = fg.hpx * .12 + 24;
+    });
     /* Where the fade has to be finished, worked out rather than guessed,
        because the answer moves with the window. The mark travels
        k * (0.5vh + 0.6h) upward, and its top edge starts at 0.5vh - 0.5h —
@@ -5098,9 +5122,18 @@ relayout();
        layer is the one that hangs back. Nothing here is time-dependent, so
        scrolling back up genuinely retraces the way down rather than
        replaying it. */
-    figures.forEach(({el, s}) => {
-      el.style.transform =
-        `translate3d(0,${(-p * s.d * FIG_DRIFT * stageH).toFixed(1)}px,0)`;
+    figures.forEach(fg => {
+      const {el, s} = fg;
+      /* where the drawing's top would be, unwrapped — then folded back into
+         the band that runs from just above the frame to just below it, so
+         a drawing that has left by the top comes round again from the
+         bottom. `range` is the whole of that band; the double modulo keeps
+         a negative remainder positive. */
+      const lo    = -(fg.hpx + fg.marg);
+      const range = stageH + fg.hpx + 2 * fg.marg;
+      let top = fg.top0 - p * s.d * FIG_DRIFT * stageH;
+      top = ((top - lo) % range + range) % range + lo;
+      el.style.transform = `translate3d(0,${(top - fg.top0).toFixed(1)}px,0)`;
       /* No fade-IN: the scatter IS the landing page, so it is already
          standing there at rest and only ever thins out on the way down.
          Two stages, and the second one is late on purpose. They used to be
@@ -5126,8 +5159,11 @@ relayout();
        pointer presses a drawing, the piece appears. Each one is a window of
        dp and nothing else, which is what makes it reversible: scroll back up
        and the cover closes, the pointers leave the way they came, the piece
-       goes back into the page. A clock could only ever replay it forwards. */
-    const dp = seg(p, .44, .88);
+       goes back into the page. A clock could only ever replay it forwards.
+       Half the sequence, deliberately: each beat gets more scroll than it
+       used to, so the pad, the pointers and the press answer the wheel at
+       an unhurried pace rather than snapping through their marks. */
+    const dp = seg(p, .40, .90);
     demo.style.opacity = (seg(dp, 0, .10) * (1 - seg(dp, .93, 1))).toFixed(3);
 
     /* 1. the pad comes up from below, the way the real ones do when the
