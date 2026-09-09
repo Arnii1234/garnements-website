@@ -168,7 +168,10 @@
        whatever the cart's width is — a flex row with space-between would
        put it off-centre by half the cart */
     display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
-    padding:0 44px; min-height:64px;
+    padding:0 44px; min-height:48px;
+    /* a hairline closing the row off underneath — the same one-pixel ink
+       line the catalogue's grid is ruled with */
+    border-bottom:1px solid var(--ink);
     /* Above the opening page (150) as well as the pads: the masthead is on
        screen from the first frame, standing over the drawings and the
        demonstration alike, and it is the one wordmark the page has. Below
@@ -191,7 +194,7 @@
     transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
   }
   /* the drawn word, sized by height so it sits in the row like type */
-  .brand svg{ display:block; height:32px; width:auto; }
+  .brand svg{ display:block; height:26px; width:auto; }
   .brand:hover{
     transform:scale(1.0225);
     filter:
@@ -257,12 +260,12 @@
     header{
       min-height:0;
       padding:
-        calc(14px + env(safe-area-inset-top))
+        calc(10px + env(safe-area-inset-top))
         calc(20px + env(safe-area-inset-right))
-        14px
+        10px
         calc(20px + env(safe-area-inset-left));
     }
-    .brand svg{ height:24px; }
+    .brand svg{ height:20px; }
     .cart-btn{ font-size:8.5px; letter-spacing:.18em; }
   }
 
@@ -1958,8 +1961,42 @@
     display:block; margin-top:5px;
     font-size:10px; letter-spacing:.2em; color:var(--grey);
   }
+  /* ---------- support ----------
+     The same sheet as the catalogue, carrying a short form instead of a
+     grid: the house's small uppercase labels over hairlined fields, and the
+     shop's own black button to send. Narrow, and left, like a letter. */
+  .report{
+    max-width:520px; margin:0 44px 60px;
+    font-size:12px; line-height:1.8; color:#4c4846;
+  }
+  .report-lead{ margin:6px 0 30px; max-width:46ch; }
+  .report a{ color:var(--ink); }
+  .field{ display:block; margin-bottom:26px; }
+  .label{
+    display:block; margin-bottom:8px;
+    font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:var(--ink);
+  }
+  .report input, .report textarea{
+    display:block; width:100%; padding:8px 0;
+    font:inherit; color:var(--ink); background:none;
+    border:0; border-bottom:1px solid var(--line); border-radius:0;
+    outline:none; resize:vertical;
+  }
+  .report input:focus, .report textarea:focus{ border-bottom-color:var(--ink); }
+  .kinds{ display:flex; flex-wrap:wrap; gap:8px; }
+  .kind{
+    padding:9px 14px; border:1px solid var(--line);
+    font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink);
+    transition:border-color .2s, background .2s, color .2s;
+  }
+  .kind:hover{ border-color:var(--ink); }
+  .kind.on{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .report-send{ width:100%; margin-top:6px; }
+  .report-note{ color:#a0463a; margin:-10px 0 16px; }
+  .report-fine{ margin-top:18px; font-size:11px; color:var(--grey); max-width:46ch; }
   @media(max-width:900px){
     .cat-bar{ padding:16px 20px 14px; }
+    .report{ margin:0 20px 40px; }
     .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:0 20px 20px; }
     .cat-tile{ padding:18px 10px 16px; }
     .cat-tile img{ height:min(34vh, 300px); }
@@ -2053,6 +2090,7 @@
   <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
   <nav class="menu" id="menu" hidden>
     <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
+    <button class="menu-item" onclick="openSupport()">Support</button>
   </nav>
   <!-- the drawn wordmark, the same file the opening page shows big -->
   <div class="brand" id="brand" role="button" tabindex="0"
@@ -2067,6 +2105,38 @@
     <button class="close-cat" onclick="closeCatalogue()" aria-label="Close the catalogue">×</button>
   </div>
   <div class="cat-grid" id="catGrid"></div>
+</div>
+
+<!-- support: a report form. There is no server behind the site, so the
+     report goes the way an order does — composed into an e-mail to the
+     house address and handed to the visitor's mail app. -->
+<div class="catalogue support" id="support" hidden>
+  <div class="cat-bar">
+    <span>Support</span>
+    <button class="close-cat" onclick="closeSupport()" aria-label="Close support">×</button>
+  </div>
+  <form class="report" id="report" novalidate>
+    <p class="report-lead">Something wrong? Tell us what happened and we will
+      answer by e-mail, usually within two working days. Or write straight to
+      <a href="mailto:garnements@hotmail.com">garnements@hotmail.com</a>.</p>
+    <div class="field">
+      <span class="label">What is it about</span>
+      <div class="kinds" id="reportKinds">
+        <button type="button" class="kind" data-kind="website">The website</button>
+        <button type="button" class="kind" data-kind="payment">Payment</button>
+        <button type="button" class="kind" data-kind="damaged">A damaged or defective piece</button>
+      </div>
+    </div>
+    <label class="field"><span class="label">Your name</span><input name="name" type="text" autocomplete="name"></label>
+    <label class="field"><span class="label">Your e-mail</span><input name="email" type="email" autocomplete="email" required></label>
+    <label class="field"><span class="label">Order number, if you have one</span><input name="order" type="text"></label>
+    <label class="field"><span class="label">What happened</span><textarea name="message" rows="6" required></textarea></label>
+    <p class="report-note" id="reportNote" hidden></p>
+    <button type="submit" class="add-btn report-send">Send the report</button>
+    <p class="report-fine">Sending opens your mail app with the report written
+      out, addressed to us. Photographs of a damaged piece help — attach them
+      there before you send.</p>
+  </form>
 </div>
 
 <!-- One mount per sketchbook; makeBook() builds the stage, pad and nav inside
@@ -2116,23 +2186,23 @@
         </details>
         <details class="fold">
           <summary>Shipping &amp; Returns</summary>
-          <!-- costs and transit times are the defaults agreed for launch; the
-               14-day window is the statutory withdrawal right for distance
-               sales in Germany, so it stays 14 unless the law does -->
+          <!-- costs and transit times are the defaults agreed for launch.
+               Refunds are for a defective or transit-damaged piece, within
+               two weeks, by e-mail or the support form (see the support
+               sheet). -->
           <div class="fold-body">
             <p>Every piece is embroidered by hand in Berlin and posted from
             there, tracked, within 3–5 working days of payment.</p>
-            <p>Germany €5, 2–3 working days · free from €150<br>
+            <p>Free shipping from €100.<br>
+            Germany €5, 2–3 working days<br>
             EU €12, 4–8 working days<br>
             Rest of world €25, 7–14 working days. Import duties and taxes
             are the recipient’s.</p>
-            <p>You have 14 days from delivery to return a piece — unworn,
-            unwashed and in its original condition. Write to us first and we
-            will send return instructions. Return postage is on you, unless
-            the piece arrived faulty or wrong. Refunds go back to the original
-            payment method within 14 days of the return reaching us.</p>
-            <p>Questions before ordering —
-            <a href="mailto:Arne.Schubert@hotmail.com">write to us</a>.</p>
+            <p>A refund is possible if the piece is defective or was damaged
+            in transit. You have two weeks from delivery to tell us: write to
+            <a href="mailto:garnements@hotmail.com">garnements@hotmail.com</a>
+            or <a href="#" onclick="openSupport('damaged'); return false;">fill
+            out the report form</a>, and we will take it from there.</p>
           </div>
         </details>
       </div>
@@ -2409,7 +2479,7 @@ const SIZE_GUIDES = {
   jeans:  ["Waist","Inseam"],
   shorts: ["Waist","Inseam"]
 };
-const ORDER_EMAIL = "Arne.Schubert@hotmail.com";
+const ORDER_EMAIL = "garnements@hotmail.com";
 
 /* page order: title, colophon, S1P1–S1P11, back. Every one of these is built
    at literal A4 (2480×3508 @300dpi), so `ar` is the same 0.7071 throughout —
@@ -4941,8 +5011,62 @@ function openCatalogue(){
   catalogueEl.scrollTop = 0;
 }
 function closeCatalogue(){ catalogueEl.hidden = true; }
+
+/* ---------- support ----------
+   The report form. `kind` preselects what it is about — the shipping fold
+   opens it with "damaged" already chosen. Sending composes the report into
+   an e-mail to the house address, the same way checkout does: there is no
+   server, and the mail app is where photographs can be attached anyway. */
+const supportEl  = document.getElementById('support');
+const reportForm = document.getElementById('report');
+const reportNote = document.getElementById('reportNote');
+const KIND_LABEL = { website:'The website', payment:'Payment', damaged:'A damaged or defective piece' };
+let reportKind = '';
+function setKind(k){
+  reportKind = k;
+  document.querySelectorAll('#reportKinds .kind').forEach(b =>
+    b.classList.toggle('on', b.dataset.kind === k));
+}
+document.getElementById('reportKinds').addEventListener('click', e => {
+  const b = e.target.closest('.kind');
+  if(b) setKind(b.dataset.kind);
+});
+function openSupport(kind){
+  toggleMenu(false);
+  reportNote.hidden = true;
+  if(kind) setKind(kind);
+  supportEl.hidden = false;
+  supportEl.scrollTop = 0;
+}
+function closeSupport(){ supportEl.hidden = true; }
+reportForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = reportForm.elements;
+  const email = f.email.value.trim(), msg = f.message.value.trim();
+  if(!reportKind || !email || !msg){
+    reportNote.textContent = !reportKind
+      ? 'Choose what the report is about.'
+      : !email ? 'We need an e-mail address to answer to.' : 'Tell us what happened.';
+    reportNote.hidden = false;
+    return;
+  }
+  reportNote.hidden = true;
+  const lines = [
+    'Report — ' + KIND_LABEL[reportKind],
+    '',
+    'Name:  ' + (f.name.value.trim() || '—'),
+    'E-mail: ' + email,
+    'Order: ' + (f.order.value.trim() || '—'),
+    '',
+    msg
+  ];
+  const subject = 'Support: ' + KIND_LABEL[reportKind] + ' — garnements';
+  window.location.href = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
+});
+
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
+  if(!supportEl.hidden){ closeSupport(); return; }
   if(!catalogueEl.hidden){ closeCatalogue(); return; }
   if(!menuEl.hidden) toggleMenu(false);
 });
