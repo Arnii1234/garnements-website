@@ -1525,18 +1525,16 @@
   /* ---------- the wordmark ----------
      Big, and set high — its centre at MARK_TOP (40%) of the screen rather
      than the middle. It never changes: no scale, no colour shift, no fade.
-     Only where it stands, and only upward: it leaves through the top edge,
-     and where it leaves the masthead's own small mark is waiting. */
+     Only where it stands, and only upward: it leaves through the top edge
+     the moment the page is scrolled, and where it leaves the masthead's own
+     small mark is waiting. */
   .intro-mark{
     position:absolute; left:50%; top:40%;
-    transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0) scale(var(--mark-s,1));
+    transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
     font-family:'Bodoni Moda',serif;
     font-size:clamp(40px, 9.6vw, 166px);
     font-weight:400; letter-spacing:.13em;
-    /* the same lift and the same collapse the masthead's mark has under a
-       real pointer (see .brand:hover / :active), at the same speeds — this
-       is the actual gesture being rehearsed by the pointer below */
-    transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
+
     /* letter-spacing hangs an extra gap off the last letter, so a centred
        line sits half that gap left of true centre — the same correction
        pageTexture() makes when it draws this type onto a flip texture */
@@ -1545,23 +1543,14 @@
     z-index:3; pointer-events:none;
     will-change:transform;
   }
-  .intro-mark.hover{
-    --mark-s:1.0225;
-    filter:
-      drop-shadow(0 3px 5px rgba(35,31,32,.28))
-      drop-shadow(0 12px 20px rgba(35,31,32,.16));
-  }
-  .intro-mark.press{
-    --mark-s:1;
-    transition:transform .1s ease-out, filter .1s ease-out;
-    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
-  }
-  /* ---------- the pointer that presses it ----------
-     The site's one mechanic, acted out on the wordmark: a pointer comes in,
-     hovers it (the mark lifts, the way it does under your own pointer),
-     presses it (the ring), and the piece appears. Same drawn pointer and
-     same ring as the sketchbook demonstration used, placed by script on the
-     mark's own measured centre. */
+  /* ---------- the pointer that presses a drawing ----------
+     The site's one mechanic, acted out on one of the scattered drawings:
+     a pointer comes in from the left, reaches the drawing (which lifts the
+     moment the pointer touches it, exactly as a hotspot in the sketchbook
+     does under your own pointer), presses it (the ring), and the piece it
+     is stitched on appears. Same drawn pointer and same ring as the
+     sketchbook demonstration used, placed by script on the drawing's own
+     measured centre. */
   .intro-cursor{
     position:absolute; left:50%; top:40%;
     width:19px; height:28px; opacity:0;
@@ -1580,22 +1569,47 @@
     opacity:calc(var(--tap,0) * (1 - var(--tap,0)) * 2.4);
     transform:scale(calc(.24 + var(--tap,0) * 1.15));
   }
+  /* ---------- the drawing that gets pressed ----------
+     One figure in the scatter is the one the pointer works (press:1 in
+     FIGURES, d:0 so it holds still while the rest scroll — like the
+     wordmark, the things being acted on stand still). The lift and the
+     collapse are the real hotspot's own (see .design-spot:hover
+     .design-art), a shade bigger because this drawing is faint and far. */
+  .intro-sketch .cut{
+    transition:transform .34s cubic-bezier(.34,.08,.24,1), filter .34s;
+  }
+  .intro-sketch .cut.hover{
+    transform:scale(1.06);
+    filter:
+      drop-shadow(0 3px 5px rgba(35,31,32,.26))
+      drop-shadow(0 12px 20px rgba(35,31,32,.15));
+  }
+  .intro-sketch .cut.press{
+    transform:scale(1);
+    transition:transform .1s ease-out, filter .1s ease-out;
+    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
+  }
   /* ---------- what the press brings up ----------
-     A model wearing the piece, standing behind the wordmark: slightly faded
-     on purpose, so it reads as something the mark has summoned rather than
-     the mark reading as a caption on a photograph. Under the mark (z 2
-     against 3), centred a little below it so the word sits across the
-     chest. Height, not width, so it clears the top and bottom on any
-     screen. */
-  .intro-model{
-    position:absolute; left:50%; top:58%;
-    height:min(66vh, 620px); width:auto;
+     The piece the drawing is stitched on, standing on a small plate of the
+     same matte paper the product window uses (--panel) — so the thing the
+     press summons is a piece of the shop, in the shop's own material, and
+     not a photograph floating on the page. On the left, across from the
+     drawing it came out of; the wordmark has left by the time it appears.
+     Height, not width, so it clears the top and bottom on any screen. */
+  .intro-piece{
+    position:absolute; left:27%; top:54%;
     transform:translate(-50%,-50%);
+    padding:clamp(14px, 2.4vw, 28px);
+    background:var(--panel);
     opacity:0; z-index:2; pointer-events:none;
-    will-change:opacity;
+    will-change:opacity, transform;
+  }
+  .intro-piece img{
+    display:block; height:min(60vh, 580px); width:auto;
   }
   @media(max-width:760px){
-    .intro-model{ height:min(56vh, 520px); top:60%; }
+    .intro-piece{ left:50%; top:56%; }
+    .intro-piece img{ height:min(50vh, 460px); }
   }
 
   /* ---------- the scattered sketches ----------
@@ -1908,7 +1922,7 @@
            the masthead does; no whitespace between them so it is still read
            and selected as one word -->
       <h1 class="intro-mark" id="introMark"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></h1>
-      <img class="intro-model" id="introModel" src="assets/pink%20tee%20front%20cutout.webp" alt="">
+      <div class="intro-piece" id="introPiece"><img src="assets/pink%20tee%20front%20cutout.webp" alt=""></div>
       <div class="intro-cursor" id="introCursor" aria-hidden="true">
         <svg viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
       </div>
@@ -4868,7 +4882,10 @@ relayout();
     {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
     {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:83, y:3,  h:38, o:.26, d:1.35},
+    /* the one the pointer presses: held still (d:0) on the right, a shade
+       darker than the rest so it is plainly a drawing and not a ghost of
+       one, and lifted to full ink under the pointer (see the paint) */
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:77, y:34, h:40, o:.5, d:0, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -4886,7 +4903,18 @@ relayout();
     {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:87, h:16, o:.22, d:1.60},
     {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:90, h:24, o:.24, d:1.55},
     {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:85, h:10, o:.20, d:1.75, opt:1},
-    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:44, y:16, h:8, o:.18, d:1.85, opt:1}
+    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:44, y:16, h:8, o:.18, d:1.85, opt:1},
+    /* three more waiting just BELOW the fold. Every drawing starts on the
+       first screen and every one of them moves up, so without these the
+       band coming in from the bottom was empty until the first ones had
+       gone all the way round — a screen of nothing in the lower half. These
+       four are already in the band, spread down to 116%, so it is never
+       empty. Kept inside the wrap's range (see measure's gap floor) so they
+       are not folded to the top. */
+    {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:40, y:103, h:18, o:.22, d:1.25},
+    {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:60, y:107, h:26, o:.24, d:1.55, opt:1},
+    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:28, y:109, h:12, o:.20, d:1.70},
+    {f:'S1P7 Black Tee 2 design.svg',   b:[285,25,2193,3483],   x:48, y:116, h:22, o:.24, d:1.10}
   ];
   /* How fast the scatter rides the scroll: a drawing moves this many
      pixels for every pixel scrolled, times its own `d`. Written against the
@@ -5010,8 +5038,9 @@ relayout();
       `--py:${(-by / bh * 100).toFixed(2)}%`;
     el.innerHTML = `<span class="cut"><img src="${url(s.f)}" alt=""></span>`;
     scatterEl.appendChild(el);
-    return {el, s};
+    return {el, s, cut: el.firstElementChild};
   });
+  const pressFig = figures.find(fg => fg.s.press);
 
   const cl01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   /* how far p has travelled through the window a..b, as its own 0..1 — the
@@ -5026,11 +5055,12 @@ relayout();
      the same 40% .intro-mark's `top` puts it at */
   const MARK_TOP = .40;
   const mark   = document.getElementById('introMark');
-  const model  = document.getElementById('introModel');
+  const pieceBox = document.getElementById('introPiece');
   const cursor = document.getElementById('introCursor');
-  /* where the pointer starts (off to the lower right, cursorRun px out) and
-     how far from the mark's centre it lands — measured, see measure() */
-  let curFromX = 260, curFromY = 160;
+  /* the pointer's way in: from off the LEFT edge to the pressed drawing's
+     centre — measured, see measure(). figLeft is where it first touches
+     the drawing, which is where the hover begins. */
+  let curFromX = -600, curFromY = 90, figLeft = 0, curTargetX = 0;
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
      just outside the pad and on a wide screen they genuinely come in from
@@ -5071,14 +5101,17 @@ relayout();
     stageW = intro.clientWidth;
     /* each drawing's own box, for the wrap in the paint: its resting top in
        px and its height, a small margin so it is only ever re-placed once
-       every part of it is clear of the frame, and its own extra gap — up to
-       half a screen of nothing before it comes round again, different for
-       each drawing, so no two of them recur on the same beat */
+       every part of it is clear of the frame, and its own extra gap — a
+       fifth of a screen or a little less before it comes round again,
+       different for each drawing, so no two of them recur on the same beat.
+       Never under .20: the drawings seeded below the fold sit at up to
+       116% and have to fall inside the band, or the wrap would fold them
+       to the top of the first screen. */
     figures.forEach((fg, i) => {
       fg.hpx  = fg.el.offsetHeight;
       fg.top0 = fg.s.y / 100 * stageH;
       fg.marg = 16;
-      fg.gap  = (noise(i, 7) + 1) * .25 * stageH;
+      fg.gap  = (.20 + (noise(i, 7) + 1) * .03) * stageH;
     });
     /* The mark's whole journey, in px: from its centre at MARK_TOP of the
        screen to the top edge, then its own half-height so the last of it is
@@ -5089,16 +5122,20 @@ relayout();
     const h = mark.offsetHeight, vh = intro.clientHeight;
     markTravel = MARK_TOP * vh + 0.6 * h;
     markGoneK  = (MARK_TOP * vh + 0.5 * h) / markTravel;
-    /* The pointer lands on the mark, a little right of its middle (on the
-       "m") and just below its centre line, the way a hand lands on a word.
-       offsetLeft/Top are the mark's UNTRANSFORMED anchor — the point its
-       translate(-50%,-50%) centres it on — so this is right whatever the
-       scroll has done to --mark-y. Its run in is measured from the window,
-       capped, like the pads' pointers were. */
-    cursor.style.left = (mark.offsetLeft + mark.offsetWidth * .07).toFixed(1) + 'px';
-    cursor.style.top  = (mark.offsetTop  + mark.offsetHeight * .06).toFixed(1) + 'px';
-    const run = Math.min(320, intro.clientWidth * .32);
-    curFromX = run; curFromY = run * .62;
+    /* The pointer lands on the pressed drawing, at its middle and a little
+       above its centre line (a standing figure's chest). That drawing holds
+       still (d:0), so its layout box IS its place on screen. It starts off
+       the left edge of the window entirely, and slightly below its target,
+       so it comes up and across the page to get there. */
+    if(pressFig){
+      const fe = pressFig.el;
+      figLeft    = fe.offsetLeft;
+      curTargetX = fe.offsetLeft + fe.offsetWidth * .5;
+      cursor.style.left = curTargetX.toFixed(1) + 'px';
+      cursor.style.top  = (fe.offsetTop + fe.offsetHeight * .42).toFixed(1) + 'px';
+      curFromX = -(curTargetX + 40);
+      curFromY = Math.min(160, stageH * .16);
+    }
   };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
@@ -5125,40 +5162,55 @@ relayout();
      where its scroll offset says it should. */
   let lastP = -1, lastEntering = false, lastGone = false, lastHover = false, lastPress = false;
   function paintScroll(p){
-    /* ---------- the wordmark, pressed ----------
-       It holds still while the drawings scroll past it — the one fixed
-       thing on a moving page — and is acted on: a pointer arrives, hovers,
-       presses, and the piece appears behind it. Every beat is a window of p
-       and nothing else, so scrolling back up runs it backwards: the model
-       fades, the pointer un-presses and leaves. Class toggles carry the
-       hover and the press because those have transitions (the same ones
-       the masthead's mark has under a real pointer); everything continuous
-       is written per frame. */
-    /* 1. the pointer comes in from the lower right */
-    const inC = io(seg(p, .06, .22));
+    /* ---------- a drawing, pressed ----------
+       The site's mechanic, acted out on one of the scattered drawings
+       while the wordmark and that drawing hold still and the rest scroll
+       past: a pointer comes in from the left, the drawing lifts the moment
+       the pointer touches it, the pointer presses, and the piece appears
+       on the left. Every beat is a window of p and nothing else, so
+       scrolling back up runs it backwards: the piece goes, the pointer
+       un-presses and leaves the way it came. Class toggles carry the lift
+       and the press because those have transitions (the real hotspot's);
+       everything continuous is written per frame. */
+    /* 1. the pointer comes in from off the left edge */
+    const inC = io(seg(p, .04, .24));
     const tap = seg(p, .30, .38);
-    cursor.style.opacity = (seg(p, .05, .11) * (1 - seg(p, .52, .60))).toFixed(3);
+    const curDX = (1 - inC) * curFromX;
+    cursor.style.opacity = (1 - seg(p, .52, .60)).toFixed(3);
     cursor.style.transform =
-      `translate3d(${((1 - inC) * curFromX).toFixed(1)}px,${((1 - inC) * curFromY).toFixed(1)}px,0)` +
+      `translate3d(${curDX.toFixed(1)}px,${((1 - inC) * curFromY).toFixed(1)}px,0)` +
       ` scale(${(1 - .17 * Math.sin(tap * Math.PI)).toFixed(3)})`;
     cursor.style.setProperty('--tap', tap.toFixed(3));
-    /* 2. hover, then press: the lift the mark takes under a pointer, and the
-          collapse under the click, on the same thresholds the pointer uses */
-    const hover = p >= .22 && p < .62;
-    const press = p >= .31 && p < .36;
-    if(hover !== lastHover){ mark.classList.toggle('hover', hover); lastHover = hover; }
-    if(press !== lastPress){ mark.classList.toggle('press', press); lastPress = press; }
-    /* 3. the model appears behind the word — faded, on purpose — and goes
-          again as the word leaves */
-    model.style.opacity = (.78 * seg(p, .34, .48) * (1 - seg(p, .62, .72))).toFixed(3);
+    /* 2. hover from the moment the tip crosses the drawing's left edge —
+          worked out from where the pointer actually is, not from a scroll
+          threshold, so it is exactly when it touches — then the press.
+          hoverK also carries the drawing up to full ink over the first
+          40px of contact. */
+    const tipX   = curTargetX + curDX;
+    const hoverK = p < .62 ? cl01((tipX - figLeft) / 40) : 0;
+    const hover  = hoverK > 0;
+    const press  = p >= .31 && p < .36;
+    if(pressFig){
+      const cut = pressFig.cut;
+      if(hover !== lastHover){ cut.classList.toggle('hover', hover); lastHover = hover; }
+      if(press !== lastPress){ cut.classList.toggle('press', press); lastPress = press; }
+    }
+    /* 3. the piece arrives on the left, on its plate, sliding in a little
+          from the side the pointer came from — and goes again before the
+          sketchbook comes up */
+    const pin = seg(p, .34, .46);
+    pieceBox.style.opacity = (pin * (1 - seg(p, .62, .72))).toFixed(3);
+    pieceBox.style.transform =
+      `translate(-50%,-50%) translate3d(${((1 - io(pin)) * -28).toFixed(1)}px,0,0)`;
 
-    /* 4. the mark: upward, and nothing else — all the way out through the
-       top, not parked near it and not faded. Linear against the scroll
-       rather than eased, so it leaves at the wheel's own pace like
-       everything else on this page. The masthead's small mark takes over
-       the frame the last of this one crosses the edge (markGoneK, see
-       measure). */
-    const markK = seg(p, .62, .80);
+    /* 4. the mark: upward from the first pixel of scroll, and nothing else
+       — all the way out through the top, not parked near it and not faded.
+       Linear against the scroll rather than eased, so it leaves at the
+       wheel's own pace like everything else on this page. The masthead's
+       small mark takes over the frame the last of this one crosses the
+       edge (markGoneK, see measure). It is gone before the pointer reaches
+       the drawing, so the press has the page to itself. */
+    const markK = seg(p, 0, .22);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     const gone = markK >= markGoneK;
     if(gone !== lastGone){ document.body.classList.toggle('mark-gone', gone); lastGone = gone; }
@@ -5203,8 +5255,9 @@ relayout();
          sketchbooks as the ground those stand on. Faded by 70%, not gone:
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
+      const o = s.press ? s.o + (1 - s.o) * hoverK : s.o;
       el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .30, .50)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        (o * (1 - .55 * seg(p, .30, .50)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
