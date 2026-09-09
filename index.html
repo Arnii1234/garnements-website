@@ -177,8 +177,6 @@
     background:transparent;
   }
   .brand{
-    font-family:'Bodoni Moda',serif;font-size:22px;font-weight:500;
-    letter-spacing:.14em;
     /* the way back to the opening page — see the masthead handler in the
        opening sequence. Kept a div rather than promoted to a <button>:
        header aligns on the baseline, and a button brings its own line-height
@@ -192,6 +190,8 @@
     transform-origin:center center;
     transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
   }
+  /* the drawn word, sized by height so it sits in the row like type */
+  .brand svg{ display:block; height:32px; width:auto; }
   .brand:hover{
     transform:scale(1.0225);
     filter:
@@ -210,11 +210,15 @@
      against the paper (measured), which is the floor for a mark this size:
      lighter still and the pink went to nothing. The five cycle, so ten
      letters read as two passes. */
-  .brand span:nth-child(5n+1), .intro-mark span:nth-child(5n+1){ color:#231f20; }   /* black      */
-  .brand span:nth-child(5n+2), .intro-mark span:nth-child(5n+2){ color:#ad9474; }   /* sand beige */
-  .brand span:nth-child(5n+3), .intro-mark span:nth-child(5n+3){ color:#c9849a; }   /* dusty pink */
-  .brand span:nth-child(5n+4), .intro-mark span:nth-child(5n+4){ color:#9c7f6b; }   /* soft brown */
-  .brand span:nth-child(5n+5), .intro-mark span:nth-child(5n+5){ color:#6f95aa; }   /* slate blue */
+  /* The wordmark is Arne's own handwriting — assets/Garnements.svg, one
+     path per letter, inlined here (twice: masthead and opening page) so
+     each letter can take its colour as a fill. The paths are in reading
+     order, so nth-of-type counts letters. */
+  .brand path:nth-of-type(5n+1), .intro-mark path:nth-of-type(5n+1){ fill:#231f20; }   /* black      */
+  .brand path:nth-of-type(5n+2), .intro-mark path:nth-of-type(5n+2){ fill:#ad9474; }   /* sand beige */
+  .brand path:nth-of-type(5n+3), .intro-mark path:nth-of-type(5n+3){ fill:#c9849a; }   /* dusty pink */
+  .brand path:nth-of-type(5n+4), .intro-mark path:nth-of-type(5n+4){ fill:#9c7f6b; }   /* soft brown */
+  .brand path:nth-of-type(5n+5), .intro-mark path:nth-of-type(5n+5){ fill:#6f95aa; }   /* slate blue */
   /* The two are one mark at two sizes, and only one of them is ever on
      the page: the big one stands on the opening page and rises out through
      the top as you scroll, and the moment the last of it has left, this
@@ -258,7 +262,7 @@
         14px
         calc(20px + env(safe-area-inset-left));
     }
-    .brand{ font-size:15px; letter-spacing:.12em; }
+    .brand svg{ height:24px; }
     .cart-btn{ font-size:8.5px; letter-spacing:.18em; }
   }
 
@@ -1531,18 +1535,14 @@
   .intro-mark{
     position:absolute; left:50%; top:40%;
     transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(40px, 9.6vw, 166px);
-    font-weight:400; letter-spacing:.13em;
-
-    /* letter-spacing hangs an extra gap off the last letter, so a centred
-       line sits half that gap left of true centre — the same correction
-       pageTexture() makes when it draws this type onto a flip texture */
-    text-indent:.13em;
-    white-space:nowrap; color:var(--ink);
+    /* sized by WIDTH: the drawing is 3.4 wide to 1 tall, and it is the
+       width that has to fit the page. The height follows from the viewBox,
+       and measure() reads it off the element for the mark's exit. */
+    width:clamp(240px, 54vw, 860px);
     z-index:3; pointer-events:none;
     will-change:transform;
   }
+  .intro-mark svg{ display:block; width:100%; height:auto; }
   /* ---------- the pointer that presses a drawing ----------
      The site's one mechanic, acted out on one of the scattered drawings:
      a pointer comes in from the left, reaches the drawing (which lifts the
@@ -1918,10 +1918,9 @@
 <div class="intro" id="intro">
   <div class="intro-track">
     <div class="intro-stage">
-      <!-- one letter per span so each can take its own colour, exactly as
-           the masthead does; no whitespace between them so it is still read
-           and selected as one word -->
-      <h1 class="intro-mark" id="introMark"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></h1>
+      <!-- Arne's drawn wordmark, one path per letter (see the colour rules
+           at .brand path) -->
+      <h1 class="intro-mark" id="introMark"><svg class="mark-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></h1>
       <div class="intro-piece" id="introPiece"><img src="assets/pink%20tee%20front%20cutout.webp" alt=""></div>
       <div class="intro-cursor" id="introCursor" aria-hidden="true">
         <svg viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
@@ -1972,10 +1971,9 @@
 </div>
 
 <header>
-  <!-- one letter per span so each can take its own colour; no whitespace
-       between them, so it is still read and selected as one word -->
+  <!-- the drawn wordmark, the same file the opening page shows big -->
   <div class="brand" id="brand" role="button" tabindex="0"
-       aria-label="garnements — back to the opening page"><span>g</span><span>a</span><span>r</span><span>n</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>s</span></div>
+       aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
 
@@ -4885,7 +4883,7 @@ relayout();
     /* the one the pointer presses: held still (d:0) on the right, a shade
        darker than the rest so it is plainly a drawing and not a ghost of
        one, and lifted to full ink under the pointer (see the paint) */
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:77, y:34, h:40, o:.5, d:0, press:1},
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:80, y:36, h:40, o:.5, d:0, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
