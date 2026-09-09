@@ -1538,7 +1538,7 @@
     /* sized by WIDTH: the drawing is 3.4 wide to 1 tall, and it is the
        width that has to fit the page. The height follows from the viewBox,
        and measure() reads it off the element for the mark's exit. */
-    width:clamp(240px, 54vw, 860px);
+    width:clamp(220px, 48vw, 780px);
     z-index:3; pointer-events:none;
     will-change:transform;
   }
@@ -1593,11 +1593,12 @@
      The piece the drawing is stitched on, standing on a small plate of the
      same matte paper the product window uses (--panel) — so the thing the
      press summons is a piece of the shop, in the shop's own material, and
-     not a photograph floating on the page. On the left, across from the
-     drawing it came out of; the wordmark has left by the time it appears.
-     Height, not width, so it clears the top and bottom on any screen. */
+     not a photograph floating on the page. In the middle of the screen,
+     exactly where the drawing stood when it was pressed — the one becomes
+     the other; the wordmark has left by the time it appears. Height, not
+     width, so it clears the top and bottom on any screen. */
   .intro-piece{
-    position:absolute; left:27%; top:54%;
+    position:absolute; left:50%; top:50%;
     transform:translate(-50%,-50%);
     padding:clamp(14px, 2.4vw, 28px);
     background:var(--panel);
@@ -1608,7 +1609,6 @@
     display:block; height:min(60vh, 580px); width:auto;
   }
   @media(max-width:760px){
-    .intro-piece{ left:50%; top:56%; }
     .intro-piece img{ height:min(50vh, 460px); }
   }
 
@@ -1886,6 +1886,85 @@
   @media(prefers-reduced-motion:reduce){
     .intro, .scatter-layer, .intro-ground{ display:none; }
   }
+
+  /* ---------- the menu ----------
+     Three lines, top left, the house's own weight of line. It opens a
+     short list under itself; the one thing on it for now is the catalogue.
+     It stands in the masthead, so it is there on the opening page too. */
+  .menu-btn{
+    grid-column:1; justify-self:start;
+    width:22px; height:15px; padding:0;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .menu-btn span{ display:block; height:1px; background:var(--ink); }
+  .menu{
+    position:absolute; left:44px; top:100%;
+    background:var(--bg); border:1px solid var(--ink);
+    padding:6px 0; min-width:150px;
+  }
+  .menu-item{
+    display:block; width:100%; text-align:left;
+    padding:10px 18px;
+    font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--ink);
+  }
+  .menu-item:hover{ background:var(--panel); }
+  @media(max-width:900px){
+    .menu{ left:20px; }
+  }
+
+  /* ---------- the catalogue ----------
+     Every piece at once, on one grid ruled with hairlines: the page you
+     scroll down when you would rather see everything than turn pages.
+     Above the shop, the cart and the opening page (z 200), below the veil.
+     It is its own scroller — the page underneath does not scroll. A tile
+     is a photograph of the piece on the model where there is one, the
+     drawing where there is not; pressing one opens the piece in the shop.
+     One gap of one pixel over an ink ground is the grid: lines that are
+     exactly as thin as a line can be. */
+  .catalogue{
+    position:fixed; inset:0; z-index:200;
+    background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .cat-bar{
+    position:sticky; top:0; z-index:1;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:22px 44px 18px; background:var(--bg);
+    font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:var(--ink);
+  }
+  .close-cat{ font-size:24px; font-weight:300; line-height:1; padding:0 2px; }
+  .cat-grid{
+    display:grid; grid-template-columns:repeat(4, 1fr);
+    gap:1px; background:var(--ink); border:1px solid var(--ink);
+    margin:0 44px 44px;
+  }
+  .cat-tile{
+    background:var(--bg); padding:28px 18px 22px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    color:var(--ink);
+  }
+  .cat-tile img{
+    display:block; height:min(44vh, 380px); width:auto; max-width:100%;
+    object-fit:contain;
+    transition:transform .34s cubic-bezier(.34,.08,.24,1);
+  }
+  .cat-tile:hover img{ transform:scale(1.03); }
+  .cat-name{
+    display:block; margin-top:18px;
+    font-family:'Bodoni Moda',serif; font-size:14px; letter-spacing:.04em;
+  }
+  .cat-price{
+    display:block; margin-top:5px;
+    font-size:10px; letter-spacing:.2em; color:var(--grey);
+  }
+  @media(max-width:900px){
+    .cat-bar{ padding:16px 20px 14px; }
+    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:0 20px 20px; }
+    .cat-tile{ padding:18px 10px 16px; }
+    .cat-tile img{ height:min(34vh, 300px); }
+    .cat-name{ font-size:12px; margin-top:12px; }
+  }
 </style>
 </head>
 <body>
@@ -1971,11 +2050,24 @@
 </div>
 
 <header>
+  <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
+  <nav class="menu" id="menu" hidden>
+    <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
+  </nav>
   <!-- the drawn wordmark, the same file the opening page shows big -->
   <div class="brand" id="brand" role="button" tabindex="0"
        aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
+
+<!-- the catalogue: built by buildCatalogue() from PRODUCTS -->
+<div class="catalogue" id="catalogue" hidden>
+  <div class="cat-bar">
+    <span>Catalogue</span>
+    <button class="close-cat" onclick="closeCatalogue()" aria-label="Close the catalogue">×</button>
+  </div>
+  <div class="cat-grid" id="catGrid"></div>
+</div>
 
 <!-- One mount per sketchbook; makeBook() builds the stage, pad and nav inside
      each. Everything the pads share — products, modal, cart — stays global.
@@ -4798,6 +4890,63 @@ addEventListener('resize', relayout);
 document.fonts?.ready.then(relayout);
 relayout();
 
+/* ---------- the menu and the catalogue ---------- */
+const menuBtn = document.getElementById('menuBtn');
+const menuEl  = document.getElementById('menu');
+function toggleMenu(open){
+  const on = open === undefined ? menuEl.hidden : open;
+  menuEl.hidden = !on;
+  menuBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+menuBtn.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
+/* a click anywhere else folds it away */
+document.addEventListener('click', e => {
+  if(!menuEl.hidden && !menuEl.contains(e.target)) toggleMenu(false);
+});
+/* One tile per piece, in the order PRODUCTS lists them. The photograph on
+   the model where there is one (a colourway's first, for the pieces that
+   come in colours), the drawing where there is not. Lazy, so opening the
+   menu costs nothing until the grid is actually looked at. */
+function buildCatalogue(){
+  const grid = document.getElementById('catGrid');
+  if(grid.childElementCount) return;
+  grid.innerHTML = Object.entries(PRODUCTS).map(([id, p]) => {
+    const photo = (p.photos && p.photos[0])
+      || (p.colours && p.colours[0].photos && p.colours[0].photos[0])
+      || p.img;
+    return `<button class="cat-tile" data-id="${id}">` +
+      `<img src="${photo}" alt="${fullName(p)}" loading="lazy">` +
+      `<span class="cat-name">${fullName(p)}</span>` +
+      `<span class="cat-price">${euro(cents(p))}</span></button>`;
+  }).join('');
+  /* pressing a tile is the same as pressing the drawing in the sketchbook:
+     the piece opens in the shop. If the opening page is still up, the shop
+     is brought in first (see __enterShop in the opening sequence). */
+  grid.addEventListener('click', e => {
+    const tile = e.target.closest('.cat-tile');
+    if(!tile) return;
+    /* stopped here, or the page's own "clicked outside the book" handler
+       sees the same click a moment later and closes the piece it opened */
+    e.stopPropagation();
+    closeCatalogue();
+    if(window.__enterShop) window.__enterShop();
+    openModal([tile.dataset.id]);
+  });
+}
+const catalogueEl = document.getElementById('catalogue');
+function openCatalogue(){
+  toggleMenu(false);
+  buildCatalogue();
+  catalogueEl.hidden = false;
+  catalogueEl.scrollTop = 0;
+}
+function closeCatalogue(){ catalogueEl.hidden = true; }
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(!catalogueEl.hidden){ closeCatalogue(); return; }
+  if(!menuEl.hidden) toggleMenu(false);
+});
+
 /* ============================================================
    OPENING SEQUENCE
    Drives the landing layer above. Wrapped in its own scope: it shares
@@ -4880,14 +5029,13 @@ relayout();
     {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
     {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    /* the one the pointer presses. It starts BELOW the fold and rides the
-       scroll up like the rest, then LOCKS in place for as long as the
-       pointer is working it (LOCK_A..LOCK_B in the paint) and carries on
-       up afterwards. `d` is chosen so that at LOCK_A it has arrived at
-       36% of the screen: 1.10 − LOCK_A × (track − 1) × d × FIG_RATE = .36.
-       A shade darker than the rest, and lifted to full ink under the
-       pointer (see the paint). It never wraps. */
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:80, y:110, h:40, o:.5, d:1.18, press:1},
+    /* the one the pointer presses. It starts off the LOWER RIGHT corner
+       and comes in on an arc to the middle of the screen as the page is
+       scrolled (see the paint), LOCKS there for as long as the pointer is
+       working it, and is gone the moment it is pressed — the piece takes
+       its place. A shade darker than the rest, and lifted to full ink
+       under the pointer. It never wraps. */
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:96, y:108, h:40, o:.5, d:1.18, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5064,8 +5212,8 @@ relayout();
      the drawing, which is where the hover begins. */
   let curFromX = -600, curFromY = 90, figLeft = 0, curTargetX = 0;
   /* the stretch of the scroll the pressed drawing holds still for: from
-     the pointer's arrival to the moment the piece has faded. Outside it
-     the drawing rides the scroll like any other. */
+     the pointer's arrival to the moment the piece has faded. Before it the
+     drawing is arriving on its arc; after it, it is gone. */
   const LOCK_A = .22, LOCK_B = .50;
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
@@ -5136,12 +5284,16 @@ relayout();
        to the window's edge (it used to come from off the edge, which was
        most of the screen to cross for a beat this short). */
     if(pressFig){
-      const fe = pressFig.el;
-      figLeft    = fe.offsetLeft;
-      curTargetX = fe.offsetLeft + fe.offsetWidth * .5;
-      const lockedTop = pressFig.top0 - LOCK_A * maxScroll * pressFig.s.d * FIG_RATE;
+      const fe = pressFig.el, fg = pressFig;
+      /* where it starts (its layout box, off the lower right) and where it
+         locks: centred across the screen, standing from 30% down to 70% */
+      fg.left0 = fe.offsetLeft;
+      fg.lockX = stageW / 2 - fe.offsetWidth / 2;
+      fg.lockY = stageH * .30;
+      figLeft    = fg.lockX;
+      curTargetX = fg.lockX + fe.offsetWidth * .5;
       cursor.style.left = curTargetX.toFixed(1) + 'px';
-      cursor.style.top  = (lockedTop + fe.offsetHeight * .42).toFixed(1) + 'px';
+      cursor.style.top  = (fg.lockY + fe.offsetHeight * .42).toFixed(1) + 'px';
       curFromX = -(curTargetX + 40) * .4;
       curFromY = Math.min(160, stageH * .16) * .4;
     }
@@ -5196,7 +5348,7 @@ relayout();
           hoverK also carries the drawing up to full ink over the first
           40px of contact. */
     const tipX   = curTargetX + curDX;
-    const hoverK = p < .46 ? cl01((tipX - figLeft) / 40) : 0;
+    const hoverK = p < .36 ? cl01((tipX - figLeft) / 40) : 0;
     const hover  = hoverK > 0;
     const press  = p >= .31 && p < .36;
     if(pressFig){
@@ -5204,14 +5356,13 @@ relayout();
       if(hover !== lastHover){ cut.classList.toggle('hover', hover); lastHover = hover; }
       if(press !== lastPress){ cut.classList.toggle('press', press); lastPress = press; }
     }
-    /* 3. the piece arrives on the left, on its plate, sliding in a little
-          from the side the pointer came from — and then piece, pointer and
-          the lifted drawing all go in the same quick beat (.46–.50), after
-          which the drawing unlocks and scrolls on (see the figures loop) */
-    const pin = seg(p, .34, .44);
+    /* 3. the piece takes the drawing's place — where it stood, on its
+          plate, rising a little into position as the drawing goes — and
+          then piece and pointer go in the same quick beat (.46–.50) */
+    const pin = seg(p, .33, .42);
     pieceBox.style.opacity = (pin * (1 - seg(p, .46, .50))).toFixed(3);
     pieceBox.style.transform =
-      `translate(-50%,-50%) translate3d(${((1 - io(pin)) * -28).toFixed(1)}px,0,0)`;
+      `translate(-50%,-50%) translate3d(0,${((1 - io(pin)) * 18).toFixed(1)}px,0)`;
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
        — all the way out through the top, not parked near it and not faded.
@@ -5233,20 +5384,26 @@ relayout();
       const {el, s} = fg;
       if(!fg.hpx) return;                 /* stepped out on a phone */
       if(s.press){
-        /* The pressed drawing: the scroll it answers to is the real scroll
-           with the locked stretch cut out of it — so it comes up from below
-           the fold, stops dead where the pointer meets it, and once the
-           piece has gone picks up exactly where it left off. No wrap. Its
-           ink: resting opacity, up to full under the pointer (hoverK), and
-           then quickly back down to a faint scenery grey once the press is
-           over — the same beat the piece fades on — so it reads as a
-           drawing that was chosen and is now just a drawing again. */
-        const sp = p < LOCK_A ? p : p < LOCK_B ? LOCK_A : p - (LOCK_B - LOCK_A);
-        const top = fg.top0 - sp * maxScroll * s.d * FIG_RATE;
-        el.style.transform = `translate3d(0,${(top - fg.top0).toFixed(1)}px,0)`;
+        /* The pressed drawing comes in on an ARC: from its box off the
+           lower right corner, up the right side and sweeping left into the
+           middle of the screen, arriving exactly as the pointer does
+           (LOCK_A). A quadratic curve with its control point near the
+           corner of start-x / end-y is what makes it rise first and come
+           in level, the way a hand brings a sheet in. It holds there while
+           the pointer works it, and is GONE at the press (.32–.36) — the
+           piece appears in its place. Past the locked stretch it is
+           invisible, so it simply carries on up with the scroll. Its ink:
+           resting opacity, up to full under the pointer (hoverK). */
+        const t = cl01((p < LOCK_A ? p : LOCK_A) / LOCK_A), u = 1 - t;
+        const cx = fg.left0 - (fg.left0 - fg.lockX) * .10;
+        const cy = fg.lockY + (fg.top0 - fg.lockY) * .08;
+        const x = u*u*fg.left0 + 2*u*t*cx + t*t*fg.lockX;
+        const y = u*u*fg.top0  + 2*u*t*cy + t*t*fg.lockY;
+        const after = p > LOCK_B ? (p - LOCK_B) * maxScroll * s.d * FIG_RATE : 0;
+        el.style.transform =
+          `translate3d(${(x - fg.left0).toFixed(1)}px,${(y - fg.top0 - after).toFixed(1)}px,0)`;
         const lit = s.o + (1 - s.o) * hoverK;
-        const o = lit + (.22 - lit) * seg(p, .46, .50);
-        el.style.opacity = (o * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        el.style.opacity = (lit * (1 - seg(p, .32, .36))).toFixed(3);
         return;
       }
       /* where the drawing's top would be, unwrapped — then folded back into
@@ -5462,7 +5619,16 @@ relayout();
                       puts the pads and their lift back where the scroll says */
   }
   /* no link out any more: the shop arrives when the scroll runs out (see
-     onScroll), which is the one gesture the whole page has been asking for */
+     onScroll), which is the one gesture the whole page has been asking for.
+     The one exception is the catalogue, which can open a piece from the
+     opening page: it jumps the scroller to its end so the page's state
+     matches, and hands over. */
+  window.__enterShop = () => {
+    if(dismissed) return;
+    intro.scrollTop = maxScroll;
+    onScroll();
+    dismiss();
+  };
 
   /* Painted from the scroller rather than from a permanent rAF loop, now
      that nothing on this page moves on its own. Coalesced into one frame:
