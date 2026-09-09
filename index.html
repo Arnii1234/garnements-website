@@ -1527,13 +1527,13 @@
   }
 
   /* ---------- the wordmark ----------
-     Big, and set high — its centre at MARK_TOP (40%) of the screen rather
-     than the middle. It never changes: no scale, no colour shift, no fade.
+     Big, its centre at MARK_TOP (47%) of the screen — a hair above the
+     middle, which is where the eye puts the middle. It never changes: no scale, no colour shift, no fade.
      Only where it stands, and only upward: it leaves through the top edge
      the moment the page is scrolled, and where it leaves the masthead's own
      small mark is waiting. */
   .intro-mark{
-    position:absolute; left:50%; top:40%;
+    position:absolute; left:50%; top:47%;
     transform:translate(-50%,-50%) translate3d(0,var(--mark-y,0px),0);
     /* sized by WIDTH: the drawing is 3.4 wide to 1 tall, and it is the
        width that has to fit the page. The height follows from the viewBox,
@@ -4880,10 +4880,14 @@ relayout();
     {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
     {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    /* the one the pointer presses: held still (d:0) on the right, a shade
-       darker than the rest so it is plainly a drawing and not a ghost of
-       one, and lifted to full ink under the pointer (see the paint) */
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:80, y:36, h:40, o:.5, d:0, press:1},
+    /* the one the pointer presses. It starts BELOW the fold and rides the
+       scroll up like the rest, then LOCKS in place for as long as the
+       pointer is working it (LOCK_A..LOCK_B in the paint) and carries on
+       up afterwards. `d` is chosen so that at LOCK_A it has arrived at
+       36% of the screen: 1.10 − LOCK_A × (track − 1) × d × FIG_RATE = .36.
+       A shade darker than the rest, and lifted to full ink under the
+       pointer (see the paint). It never wraps. */
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:80, y:110, h:40, o:.5, d:1.18, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5050,8 +5054,8 @@ relayout();
      frame inside the paint. */
   let maxScroll = 0, stageH = 0, stageW = 0, markTravel = 0, markGoneK = 1;
   /* where the mark's centre stands, as a share of the screen's height —
-     the same 40% .intro-mark's `top` puts it at */
-  const MARK_TOP = .40;
+     the same 47% .intro-mark's `top` puts it at */
+  const MARK_TOP = .47;
   const mark   = document.getElementById('introMark');
   const pieceBox = document.getElementById('introPiece');
   const cursor = document.getElementById('introCursor');
@@ -5059,6 +5063,10 @@ relayout();
      centre — measured, see measure(). figLeft is where it first touches
      the drawing, which is where the hover begins. */
   let curFromX = -600, curFromY = 90, figLeft = 0, curTargetX = 0;
+  /* the stretch of the scroll the pressed drawing holds still for: from
+     the pointer's arrival to the moment the piece has faded. Outside it
+     the drawing rides the scroll like any other. */
+  const LOCK_A = .22, LOCK_B = .50;
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
      just outside the pad and on a wide screen they genuinely come in from
@@ -5121,18 +5129,21 @@ relayout();
     markTravel = MARK_TOP * vh + 0.6 * h;
     markGoneK  = (MARK_TOP * vh + 0.5 * h) / markTravel;
     /* The pointer lands on the pressed drawing, at its middle and a little
-       above its centre line (a standing figure's chest). That drawing holds
-       still (d:0), so its layout box IS its place on screen. It starts off
-       the left edge of the window entirely, and slightly below its target,
-       so it comes up and across the page to get there. */
+       above its centre line (a standing figure's chest) — where the drawing
+       WILL be once it has locked (LOCK_A), worked out from its start below
+       the fold and its own rate, since it is moving until then. The
+       pointer starts a way off to the lower left of that: 40% of the way
+       to the window's edge (it used to come from off the edge, which was
+       most of the screen to cross for a beat this short). */
     if(pressFig){
       const fe = pressFig.el;
       figLeft    = fe.offsetLeft;
       curTargetX = fe.offsetLeft + fe.offsetWidth * .5;
+      const lockedTop = pressFig.top0 - LOCK_A * maxScroll * pressFig.s.d * FIG_RATE;
       cursor.style.left = curTargetX.toFixed(1) + 'px';
-      cursor.style.top  = (fe.offsetTop + fe.offsetHeight * .42).toFixed(1) + 'px';
-      curFromX = -(curTargetX + 40);
-      curFromY = Math.min(160, stageH * .16);
+      cursor.style.top  = (lockedTop + fe.offsetHeight * .42).toFixed(1) + 'px';
+      curFromX = -(curTargetX + 40) * .4;
+      curFromY = Math.min(160, stageH * .16) * .4;
     }
   };
   measure();
@@ -5174,7 +5185,7 @@ relayout();
     const inC = io(seg(p, .04, .24));
     const tap = seg(p, .30, .38);
     const curDX = (1 - inC) * curFromX;
-    cursor.style.opacity = (1 - seg(p, .52, .60)).toFixed(3);
+    cursor.style.opacity = (seg(p, .02, .07) * (1 - seg(p, .46, .50))).toFixed(3);
     cursor.style.transform =
       `translate3d(${curDX.toFixed(1)}px,${((1 - inC) * curFromY).toFixed(1)}px,0)` +
       ` scale(${(1 - .17 * Math.sin(tap * Math.PI)).toFixed(3)})`;
@@ -5185,7 +5196,7 @@ relayout();
           hoverK also carries the drawing up to full ink over the first
           40px of contact. */
     const tipX   = curTargetX + curDX;
-    const hoverK = p < .62 ? cl01((tipX - figLeft) / 40) : 0;
+    const hoverK = p < .46 ? cl01((tipX - figLeft) / 40) : 0;
     const hover  = hoverK > 0;
     const press  = p >= .31 && p < .36;
     if(pressFig){
@@ -5194,10 +5205,11 @@ relayout();
       if(press !== lastPress){ cut.classList.toggle('press', press); lastPress = press; }
     }
     /* 3. the piece arrives on the left, on its plate, sliding in a little
-          from the side the pointer came from — and goes again before the
-          sketchbook comes up */
-    const pin = seg(p, .34, .46);
-    pieceBox.style.opacity = (pin * (1 - seg(p, .62, .72))).toFixed(3);
+          from the side the pointer came from — and then piece, pointer and
+          the lifted drawing all go in the same quick beat (.46–.50), after
+          which the drawing unlocks and scrolls on (see the figures loop) */
+    const pin = seg(p, .34, .44);
+    pieceBox.style.opacity = (pin * (1 - seg(p, .46, .50))).toFixed(3);
     pieceBox.style.transform =
       `translate(-50%,-50%) translate3d(${((1 - io(pin)) * -28).toFixed(1)}px,0,0)`;
 
@@ -5220,6 +5232,23 @@ relayout();
     figures.forEach((fg, i) => {
       const {el, s} = fg;
       if(!fg.hpx) return;                 /* stepped out on a phone */
+      if(s.press){
+        /* The pressed drawing: the scroll it answers to is the real scroll
+           with the locked stretch cut out of it — so it comes up from below
+           the fold, stops dead where the pointer meets it, and once the
+           piece has gone picks up exactly where it left off. No wrap. Its
+           ink: resting opacity, up to full under the pointer (hoverK), and
+           then quickly back down to a faint scenery grey once the press is
+           over — the same beat the piece fades on — so it reads as a
+           drawing that was chosen and is now just a drawing again. */
+        const sp = p < LOCK_A ? p : p < LOCK_B ? LOCK_A : p - (LOCK_B - LOCK_A);
+        const top = fg.top0 - sp * maxScroll * s.d * FIG_RATE;
+        el.style.transform = `translate3d(0,${(top - fg.top0).toFixed(1)}px,0)`;
+        const lit = s.o + (1 - s.o) * hoverK;
+        const o = lit + (.22 - lit) * seg(p, .46, .50);
+        el.style.opacity = (o * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        return;
+      }
       /* where the drawing's top would be, unwrapped — then folded back into
          the band that runs from just above the frame to just below it (plus
          this drawing's own gap), so one that has left by the top comes
@@ -5253,9 +5282,8 @@ relayout();
          sketchbooks as the ground those stand on. Faded by 70%, not gone:
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
-      const o = s.press ? s.o + (1 - s.o) * hoverK : s.o;
       el.style.opacity =
-        (o * (1 - .55 * seg(p, .30, .50)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+        (s.o * (1 - .55 * seg(p, .56, .78)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5351,8 +5379,8 @@ relayout();
        below the window to its place, one to one with the wheel, the way the
        drawings behind it have been moving all along — so the shop arrives
        as the next thing down the page rather than appearing. It overlaps
-       the wordmark's exit — the mark is out by p ≈ .78 and the pad starts
-       up at .72, so the page is never empty. 1.1 screens rather than 1, so
+       the press's aftermath — the piece is gone by .50 and the pad starts
+       up at .56, so the page is never empty for long. 1.1 screens rather than 1, so
        nothing of it
        shows before it starts — the pads can be taller than the room they
        are scaled into. `entering` lifts it above the opening page's ground
@@ -5368,10 +5396,10 @@ relayout();
        as before, so neither owner wipes the other. Cleared again at the
        hand-over (see dismiss), so the stylesheet's own transform takes back
        over the moment the pads are home. */
-    const arrive = seg(p, .72, .985);
+    const arrive = seg(p, .56, .985);
     fitEntry.style.transform =
       `translateY(${((1 - arrive) * stageH * 1.1).toFixed(1)}px) scale(var(--fit-scale,1))`;
-    const entering = p >= .72;
+    const entering = p >= .56;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
