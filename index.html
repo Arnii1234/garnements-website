@@ -1975,9 +1975,9 @@
   .cat-grid{
     display:grid; grid-template-columns:repeat(4, 1fr);
     gap:8px;
-    /* the same 8px between the boxes and to the left, right and bottom
-       edges — only the room under the masthead is its own */
-    margin:36px 8px 8px;
+    /* the same 8px between the boxes and to every edge, the masthead's
+       line included */
+    margin:8px;
   }
   .cat-tile{
     background:var(--bg); border:.5px solid var(--ink);
@@ -2064,7 +2064,7 @@
   @media(max-width:900px){
     .sheet-title{ margin:22px 20px 0; }
     .report{ margin:18px 20px 40px; }
-    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 6px 6px; gap:6px; }
+    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:6px; gap:6px; }
     .cat-tile{ padding:16px 8px 14px; }
     .cat-tile img{ height:min(32vh, 280px); }
     .viewer img{ max-width:76vw; height:min(70vh, 700px); }
@@ -2565,7 +2565,9 @@ const ORDER_EMAIL = "garnements@hotmail.com";
    read as card rather than paper keys off that flag, not the type. */
 const BOOK1_PAGES = [
   {type:"title", img:"assets/title 1 new.svg", ar:0.7071, board:true},
-  {type:"colophon"},
+  /* no colophon page: the cover opens straight onto the first drawings.
+     The colophon's markup and paint are still here (type "colophon") in
+     case it is ever wanted back — it is just not in this list. */
   {type:"art", img:"assets/S1P1.svg", ar:0.7071, designs:[
     {product:"backpack", file:"assets/S1P1 backpack design.svg"}]},
   {type:"art", img:"assets/S1P2.svg", ar:0.7071, designs:[
@@ -5581,12 +5583,12 @@ document.addEventListener('keydown', e => {
             /* half a random direction, half straight out from the drawing's
                middle — so the puff expands towards the viewer as much as it
                scatters — and a speed of its own */
-            const ang = r2 * 6.28318, sp = (60 + 200 * r3) * dpr;
+            const ang = r2 * 6.28318, sp = (24 + 80 * r3) * dpr;
             const rl = Math.hypot(px - cx, py - cy) || 1;
             let ux = Math.cos(ang) * .5 + (px - cx) / rl * .5;
             let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
             const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
-            const bend = (r1 - .5) * 90 * dpr;
+            const bend = (r1 - .5) * 36 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
