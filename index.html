@@ -6027,14 +6027,11 @@ document.addEventListener('keydown', e => {
   intro.addEventListener('scroll', onScroll, {passive:true});
   paintScroll(0); lastP = 0;
 
-  /* Getting back. Once the layer is pointer-transparent the wheel lands on
-     the shop instead, and the shop does not scroll (body is overflow:hidden
-     by design), so an upward wheel there would otherwise do nothing at all.
-     This carries it to the layer's own scroller by hand, which is enough to
-     wake it — from the next event on, the revived layer is catching wheels
-     natively again and this bails out at the `dismissed` check.
-     Locked while a sketchbook is open, and only then: reading a book is the
-     one moment where an upward flick means "go back a page", not "leave". */
+  /* No way back by scrolling. Once the shop is up, an upward wheel or a
+     downward drag stays in the shop — the opening page is reached again
+     only through Home in the menu, or the wordmark (goHome below). The
+     layer keeps its scroller and its position all the same, so goHome
+     can put it back to the top and show it again. */
   /* The masthead stands ABOVE the opening page, so a wheel turned over it
      lands on the masthead and not on the layer's scroller, and the page
      would not move for the top 64px of the window. Handed across by hand
@@ -6046,32 +6043,6 @@ document.addEventListener('keydown', e => {
     intro.scrollTop = Math.max(0, intro.scrollTop + e.deltaY);
     onScroll();
   }, {passive:true});
-  const canReturn = () => dismissed && activeIndex === -1;
-  addEventListener('wheel', e => {
-    if(!canReturn() || e.deltaY >= 0) return;
-    revive();
-    intro.scrollTop = Math.max(0, intro.scrollTop + e.deltaY);
-    onScroll();
-  }, {passive:true});
-  /* the same bridge for touch. Guarded on the drag being mostly VERTICAL,
-     because the picker underneath answers horizontal drags of its own (see
-     the roster) and the two must not both claim one gesture. */
-  let bridgeX = 0, bridgeY = 0, bridging = false;
-  addEventListener('touchstart', e => {
-    bridging = canReturn();
-    if(bridging){ bridgeX = e.touches[0].clientX; bridgeY = e.touches[0].clientY; }
-  }, {passive:true});
-  addEventListener('touchmove', e => {
-    if(!bridging || !canReturn()) return;
-    const dx = e.touches[0].clientX - bridgeX;
-    const dy = e.touches[0].clientY - bridgeY;
-    if(Math.abs(dy) < Math.abs(dx) || dy <= 0) return;   /* down-drag only */
-    bridgeX = e.touches[0].clientX; bridgeY = e.touches[0].clientY;
-    revive();
-    intro.scrollTop = Math.max(0, intro.scrollTop - dy);
-    onScroll();
-  }, {passive:true});
-  addEventListener('touchend', () => { bridging = false; }, {passive:true});
 
   /* ---------- the masthead is the way home ----------
      Deliberately NOT subject to the lock the scroll bridge obeys. That lock
