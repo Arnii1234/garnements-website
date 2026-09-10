@@ -805,8 +805,10 @@
        railShift's `reserve`), so it stays whole and on the right however the
        window is zoomed. */
     width:var(--panel-w);
-    /* the same white as the rest of the page — one paper everywhere */
+    /* the same white as the rest of the page — one paper everywhere, with
+       a hairline down the split where the panel meets the sketchbook */
     background:var(--bg);
+    border-right:.5px solid var(--ink);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
@@ -1524,8 +1526,9 @@
      magnifying glass searches the scrolling drawings while one of them
      comes up the page and bends in to the middle; the glass finds it,
      becomes the arrow, presses; everything is pulverised to dust; the
-     sketchbook appears. At 240 that is a screen and a half of scrolling. */
-  .intro-track{ height:240vh; position:relative; }
+     sketchbook appears. At 270 that is a screen and three quarters of
+     scrolling, most of the last third of it the dust. */
+  .intro-track{ height:270vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1969,11 +1972,11 @@
   /* each photograph in its own ink box, white space between them */
   .cat-grid{
     display:grid; grid-template-columns:repeat(4, 1fr);
-    gap:clamp(18px, 3vw, 40px);
+    gap:8px;
     margin:36px 44px 60px;
   }
   .cat-tile{
-    background:var(--bg); border:1px solid var(--ink);
+    background:var(--bg); border:.5px solid var(--ink);
     padding:24px 14px 18px;
     display:flex; flex-direction:column; align-items:center; text-align:center;
     color:var(--ink);
@@ -2057,7 +2060,7 @@
   @media(max-width:900px){
     .sheet-title{ margin:22px 20px 0; }
     .report{ margin:18px 20px 40px; }
-    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 20px 30px; gap:14px; }
+    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 20px 30px; gap:6px; }
     .cat-tile{ padding:16px 8px 14px; }
     .cat-tile img{ height:min(32vh, 280px); }
     .viewer img{ max-width:76vw; height:min(70vh, 700px); }
@@ -5044,39 +5047,62 @@ function buildCatalogue(){
   if(grid.childElementCount) return;
   grid.innerHTML = Object.entries(PRODUCTS).map(([id, p]) => {
     /* photographs only: a piece that has not been shot yet is left out
-       rather than shown as its drawing or a rendering */
-    const photo = (p.photos && p.photos[0])
-      || (p.colours && p.colours[0].photos && p.colours[0].photos[0]);
-    if(!photo) return '';
-    return `<button class="cat-tile" data-id="${id}">` +
-      `<img src="${photo}" alt="${fullName(p)}" loading="lazy">` +
-      `<span class="cat-name">${fullName(p)}</span></button>`;
+       rather than shown as its drawing or a rendering. A piece that comes
+       in colours is one tile PER colour (the black bag, the brown bag),
+       each with its own photographs. */
+    const tile = (photo, name, colour) =>
+      `<button class="cat-tile" data-id="${id}"${colour === undefined ? '' : ` data-colour="${colour}"`}>` +
+      `<img src="${photo}" alt="${name}" loading="lazy">` +
+      `<span class="cat-name">${name}</span></button>`;
+    if(p.colours){
+      return p.colours.map((c, ci) => c.photos && c.photos[0]
+        ? tile(c.photos[0], `${fullName(p)} · ${c.name}`, ci) : '').join('');
+    }
+    return p.photos && p.photos[0] ? tile(p.photos[0], fullName(p)) : '';
   }).join('');
   /* pressing a tile opens that piece's photographs in the viewer */
   grid.addEventListener('click', e => {
     const tile = e.target.closest('.cat-tile');
     if(!tile) return;
     e.stopPropagation();
-    openViewer(tile.dataset.id);
+    openViewer(tile.dataset.id, tile.dataset.colour === undefined ? undefined : +tile.dataset.colour);
   });
 }
-/* every photograph a piece has, across its colourways */
-const shotsFor = p => (p.photos || []).concat(
-  ...(p.colours || []).map(c => c.photos || []));
+/* every photograph a piece has — for one colourway when asked, otherwise
+   all of them */
+const shotsFor = (p, colour) => colour !== undefined && p.colours
+  ? (p.colours[colour].photos || [])
+  : (p.photos || []).concat(...(p.colours || []).map(c => c.photos || []));
 const viewerEl = document.getElementById('viewer');
 const lbImg = document.getElementById('lbImg');
 let lbShots = [], lbAt = 0, lbId = '';
 function showShot(i){
-  lbAt = Math.max(0, Math.min(lbShots.length - 1, i));
+  /* round and round: past the last shot is the first again, and before
+     the first the last — so an arrow can be pressed forever */
+  const n = lbShots.length;
+  lbAt = ((i % n) + n) % n;
   lbImg.src = lbShots[lbAt];
-  document.getElementById('lbPrev').disabled = lbAt === 0;
-  document.getElementById('lbNext').disabled = lbAt === lbShots.length - 1;
+  /* one photograph only (the bags): nothing to move through, so no arrows */
+  document.getElementById('lbPrev').hidden = n < 2;
+  document.getElementById('lbNext').hidden = n < 2;
 }
-function openViewer(id){
+/* where in the sketchbook a piece is drawn — "Season 1 · Page 2", read off
+   the page's own file name (S1P2.svg) via pageOf; nothing for a piece that
+   is not drawn on any page yet */
+function pageLabel(id){
+  const loc = pageOf(id);
+  const pg = loc && BOOK1_PAGES[loc.page];
+  const m = /S(\d+)P(\d+)/.exec((pg && pg.img) || '');
+  return m ? `Season ${m[1]} · Page ${m[2]}` : '';
+}
+function openViewer(id, colour){
   const p = PRODUCTS[id]; if(!p) return;
-  lbId = id; lbShots = shotsFor(p);
+  lbId = id; lbShots = shotsFor(p, colour);
   if(!lbShots.length) return;
-  document.getElementById('lbName').textContent = fullName(p);
+  document.getElementById('lbName').textContent =
+    fullName(p) + (colour !== undefined && p.colours ? ` · ${p.colours[colour].name}` : '');
+  /* the way into the shop is named for the page the piece is drawn on */
+  document.getElementById('lbOpen').textContent = pageLabel(id) || 'see the piece';
   viewerEl.hidden = false;
   showShot(0);
 }
@@ -5460,29 +5486,46 @@ document.addEventListener('keydown', e => {
      arrow is back on the cowboy (LOOP_B) */
   const LOCK_A = .30, LOOP_A = .34, LOOP_B = .44;
   /* ---------- the dust ----------
-     Every drawing on the page, pulverised. At the first frame of the
-     vanish the drawings are sampled — each one's sheet is drawn, cropped
+     Every drawing on the page, pulverised — at the screen's own resolution.
+     Before the vanish (once the cowboy has locked and every drawing's
+     place at the vanish is known) each drawing's sheet is drawn, cropped
      to its own box, onto a small canvas at exactly the size it stands on
-     screen, and every dark pixel becomes a particle: its place, its ink.
-     From then on the drawings themselves are hidden and only the
-     particles are painted, each leaving on its own delay (a sweep across
-     each drawing, left to right, with some grain in it) along its own
-     drift — up and to the right, the way dust goes — thinning to nothing
-     as it travels. All of it a pure function of the vanish's progress, so
-     scrolling back gathers the dust into the drawings again. */
-  let motes = [], motesFor = -1, dustOK = true, dpr = 1;
-  const VANISH_A = .50, VANISH_B = .66;
+     screen in DEVICE pixels, and every inked pixel becomes a mote: its
+     place, its ink. On a retina screen that is four motes to the CSS
+     pixel, several hundred thousand across the page.
+
+     That many cannot be drawn one call each. Instead every frame writes
+     them straight into a pixel buffer — one device pixel per mote, ink
+     with its own alpha, the brightest write winning where two land — and
+     hands the buffer to the canvas in one call. Only the pixels touched
+     are cleared again next frame.
+
+     Each mote leaves on its own delay (from the middle of its drawing
+     outward, with grain in it) along its own direction — all directions
+     alike, so a drawing puffs apart rather than blows one way — on a path
+     that bends a little as it goes, thinning to nothing. All of it a pure
+     function of the vanish's progress, so scrolling back gathers the dust
+     into the drawings again. */
+  let moteN = 0, moteCap = 0, motesFor = -1, dustOK = true, dpr = 1, dustW = 0, dustH = 0;
+  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, pix, pix32, touched, dustImg;
+  const VANISH_A = .50, VANISH_B = .78;
+  const MOTE_CAP = 420000;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    dust.width  = Math.round(stageW * dpr);
-    dust.height = Math.round(stageH * dpr);
-    dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    dustW = Math.round(stageW * dpr); dustH = Math.round(stageH * dpr);
+    dust.width = dustW; dust.height = dustH;
+    dustImg = dctx.createImageData(dustW, dustH);
+    pix = dustImg.data; pix32 = new Uint32Array(pix.buffer);
     motesFor = -1;                         /* sampled at the old size */
   }
   function sampleDust(){
-    motes = [];
+    moteN = 0;
     try{
+      /* first pass: how many, so the arrays are sized once — and if the
+         page would exceed the cap, every k-th pixel is kept, evenly */
+      const grabs = [];
+      let total = 0;
       figures.forEach((fg, i) => {
         if(!fg.hpx) return;
         const img = fg.el.querySelector('img');
@@ -5491,66 +5534,98 @@ document.addEventListener('keydown', e => {
         const w = fg.el.offsetWidth, h = fg.hpx;
         if(w < 2 || h < 2) return;
         const [bx, by, bw, bh] = fg.s.b;
-        const sc = w / bw;                 /* artboard unit → screen px */
+        const sc = w / bw * dpr;           /* artboard unit → device px */
         const c = document.createElement('canvas');
-        c.width = Math.ceil(w); c.height = Math.ceil(h);
+        c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
         const x2 = c.getContext('2d');
         x2.drawImage(img, -bx * sc, -by * sc, ART_SVG_W * sc, ART_SVG_H * sc);
         const data = x2.getImageData(0, 0, c.width, c.height).data;
         const o = fg.s.press ? 1 : fg.s.o;
-        /* step 2 on a small drawing, 3 on a big one — enough grain to read
-           as the drawing, few enough to paint every frame */
-        const step = w * h > 70000 ? 3 : 2;
-        const seed = i * 7919;
-        for(let py = 0; py < c.height; py += step){
-          for(let px = 0; px < c.width; px += step){
-            const j = (py * c.width + px) * 4;
+        let count = 0;
+        for(let j = 3; j < data.length; j += 4) if(data[j] >= 40) count++;
+        grabs.push({fg, i, x, y, c, data, o, count});
+        total += count;
+      });
+      const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
+      moteCap = Math.min(total, MOTE_CAP) + 16;
+      mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
+      mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
+      mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
+      mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
+      touched = new Int32Array(moteCap);
+      grabs.forEach(({fg, i, x, y, c, data, o}) => {
+        const W = c.width, H = c.height, cx = W / 2, cy = H / 2;
+        const half = Math.hypot(cx, cy);
+        const seed = i * 7919, figD = .30 * hash(i + 41);
+        let acc = 0;
+        for(let py = 0; py < H; py++){
+          for(let px = 0; px < W; px++){
+            const j = (py * W + px) * 4;
             const a = data[j + 3];
             if(a < 40) continue;
+            acc += keep; if(acc < 1) continue; acc -= 1;
+            if(moteN >= moteCap) return;
             const lum = (data[j] * .3 + data[j + 1] * .59 + data[j + 2] * .11);
             const ink = (a / 255) * (1 - lum / 255) * o;
-            if(ink < .08) continue;
+            if(ink < .06) continue;
             const n = seed + py * 977 + px;
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
-            motes.push({
-              x: x + px + (r2 - .5) * step, y: y + py + (r3 - .5) * step, a: ink, sz: step * .95,
-              d: .62 * (.25 * hash(i + 41) + .40 * r1 + .35 * (px / c.width)),
-              vx: 70 + 160 * r2, vy: -(30 + 130 * r3), ph: r1 * 6.2832
-            });
+            /* any direction, one speed range; a bend at right angles to it
+               so no mote flies straight */
+            const ang = r2 * 6.28318, sp = (50 + 170 * r3) * dpr;
+            const ux = Math.cos(ang), uy = Math.sin(ang);
+            const bend = (r1 - .5) * 90 * dpr;
+            mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
+            mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
+            mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
+            /* from the middle outward, with grain and the drawing's own
+               offset — the delays span the first six tenths of the vanish */
+            mD[moteN] = .62 * (figD + .45 * r1 + .25 * (Math.hypot(px - cx, py - cy) / half));
+            mA[moteN] = ink;
+            moteN++;
           }
         }
       });
-      /* bucketed by ink so the paint sets a fill style eight times a
-         frame, not once per mote */
-      motes.forEach(m => { m.b = Math.min(7, Math.floor(m.a * 8)); });
-      motes.sort((m1, m2) => m1.b - m2.b);
     }catch(e){
       /* a tainted canvas (a page opened as a file) — the drawings simply
          fade instead, see the figures loop */
-      dustOK = false; motes = [];
+      dustOK = false; moteN = 0;
       console.warn('intro: dust unavailable', e);
     }
   }
+  let touchedN = 0;
+  /* a read-out for checking the dust in a console: how many motes, at what ratio */
+  window.__dustStats = () => ({ moteN, moteCap, dpr, dustW, dustH });
   function paintDust(v){
-    dctx.clearRect(0, 0, stageW, stageH);
-    if(v <= 0 || v >= 1) return;
+    if(v <= 0 || v >= 1){
+      if(touchedN){ for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0; touchedN = 0; }
+      dctx.clearRect(0, 0, dustW, dustH);
+      return;
+    }
     if(motesFor !== 1){ sampleDust(); motesFor = 1; }
+    for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0;
+    touchedN = 0;
     const fadeIn = seg(v, 0, .14);
-    let b = -1;
-    for(let i = 0; i < motes.length; i++){
-      const m = motes[i];
-      const k = m.d >= 1 ? 0 : cl01((v - m.d) / (1 - m.d));
+    const W = dustW, H = dustH;
+    for(let i = 0; i < moteN; i++){
+      const d = mD[i];
+      const k = v <= d ? 0 : (v - d) / (1 - d);
       const rem = 1 - k;
       if(rem <= 0) continue;
-      if(m.b !== b){ b = m.b; dctx.fillStyle = `rgba(35,31,32,${((b + 1) / 8 * .9).toFixed(2)})`; }
-      const e = k * k * (3 - 2 * k);
-      const x = m.x + m.vx * e + 14 * Math.sin(m.ph + e * 9) * e;
-      const y = m.y + m.vy * e + 8 * Math.cos(m.ph + e * 7) * e;
-      const sz = m.sz * (1 - .4 * k) * (rem < .25 ? rem * 4 : 1);
-      dctx.globalAlpha = Math.pow(rem, 1.5) * fadeIn;
-      dctx.fillRect(x, y, sz, sz);
+      const e = k * k * (3 - 2 * k), bend = e * (1 - e);
+      const x = mX[i] + mVX[i] * e + mWX[i] * bend;
+      const y = mY[i] + mVY[i] * e + mWY[i] * bend;
+      if(x < 0 || y < 0 || x >= W || y >= H) continue;
+      const a = mA[i] * rem * Math.sqrt(rem) * fadeIn * 255;
+      if(a < 4) continue;
+      const idx = (y | 0) * W + (x | 0);
+      const old = pix32[idx] >>> 24;
+      if(a > old){
+        if(!old) touched[touchedN++] = idx;
+        pix32[idx] = ((a | 0) << 24) | (32 << 16) | (31 << 8) | 35;
+      }
     }
-    dctx.globalAlpha = 1;
+    dctx.putImageData(dustImg, 0, 0);
   }
   /* where a drawing stands at a given p — the same arithmetic the paint
      uses, so the dust is sampled exactly where the drawings are */
@@ -5751,6 +5826,10 @@ document.addEventListener('keydown', e => {
           figures loop, which hides them, and paintDust, which blows them
           away) */
     const vanish = seg(p, VANISH_A, VANISH_B);
+    /* sampled ahead of time — once the cowboy has locked every drawing's
+       place at the vanish is known — so the first frame of the vanish
+       does not stall on a few hundred thousand pixels */
+    if(dustOK && motesFor !== 1 && p >= LOCK_A + .06 && p < VANISH_A){ sampleDust(); motesFor = 1; }
     if(dustOK) paintDust(vanish);
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
@@ -5927,11 +6006,11 @@ document.addEventListener('keydown', e => {
        fitToViewport keeps writing as before, so neither owner wipes the
        other. Both cleared again at the hand-over (see dismiss), so the
        stylesheet's own rule takes back over the moment the pads are home. */
-    const appear = io(seg(p, .66, .92));
+    const appear = io(seg(p, .78, .96));
     fitEntry.style.opacity = appear.toFixed(3);
     fitEntry.style.transform =
       `translateY(${((1 - appear) * 40).toFixed(1)}px) scale(var(--fit-scale,1))`;
-    const entering = p >= .64;
+    const entering = p >= .76;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
