@@ -5583,12 +5583,12 @@ document.addEventListener('keydown', e => {
             /* half a random direction, half straight out from the drawing's
                middle — so the puff expands towards the viewer as much as it
                scatters — and a speed of its own */
-            const ang = r2 * 6.28318, sp = (24 + 80 * r3) * dpr;
+            const ang = r2 * 6.28318, sp = (5 + 16 * r3) * dpr;
             const rl = Math.hypot(px - cx, py - cy) || 1;
             let ux = Math.cos(ang) * .5 + (px - cx) / rl * .5;
             let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
             const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
-            const bend = (r1 - .5) * 36 * dpr;
+            const bend = (r1 - .5) * 7 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
