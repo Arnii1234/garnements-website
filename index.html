@@ -2062,6 +2062,17 @@
   .report-send{ width:100%; margin-top:6px; }
   .report-note{ color:#a0463a; margin:-10px 0 16px; }
   .report-fine{ margin-top:18px; font-size:11px; color:var(--grey); max-width:46ch; }
+  /* the attachments: the native file control is hidden and a small ruled
+     button stands in for it, with the chosen files listed beside */
+  .attach{ display:block; cursor:pointer; }
+  .attach input{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  .attach-btn{
+    display:inline-block; padding:9px 14px; border:1px solid var(--line);
+    font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink);
+    transition:border-color .2s;
+  }
+  .attach:hover .attach-btn{ border-color:var(--ink); }
+  .attach-list{ display:block; margin-top:8px; font-size:11px; color:var(--grey); }
   @media(max-width:900px){
     .sheet-title{ margin:22px 20px 0; }
     .report{ margin:18px 20px 40px; }
@@ -2188,8 +2199,7 @@
   <h2 class="sheet-title">Support</h2>
   <form class="report" id="report" novalidate>
     <p class="report-lead">Something wrong? Tell us what happened and we will
-      answer by e-mail, usually within two working days. Or write straight to
-      <a href="mailto:garnements@hotmail.com">garnements@hotmail.com</a>.</p>
+      answer by e-mail, usually within two working days.</p>
     <div class="field">
       <span class="label">What is it about</span>
       <div class="kinds" id="reportKinds">
@@ -2202,11 +2212,19 @@
     <label class="field"><span class="label">Your e-mail</span><input name="email" type="email" autocomplete="email" required></label>
     <label class="field"><span class="label">Order number, if you have one</span><input name="order" type="text"></label>
     <label class="field"><span class="label">What happened</span><textarea name="message" rows="6" required></textarea></label>
+    <div class="field">
+      <span class="label">Photographs or screenshots</span>
+      <label class="attach">
+        <input name="files" id="reportFiles" type="file" accept="image/*,.pdf" multiple>
+        <span class="attach-btn">Add photographs</span>
+        <span class="attach-list" id="attachList">None yet — a picture of the damage, or of what went wrong on screen, helps a lot.</span>
+      </label>
+    </div>
     <p class="report-note" id="reportNote" hidden></p>
     <button type="submit" class="add-btn report-send">Send the report</button>
-    <p class="report-fine">Sending opens your mail app with the report written
-      out, addressed to us. Photographs of a damaged piece help — attach them
-      there before you send.</p>
+    <p class="report-fine" id="reportFine">Sending hands the report to your mail
+      app, addressed to us, with the photographs where your device allows it —
+      otherwise add them there before you send.</p>
   </form>
 </div>
 
@@ -5171,7 +5189,16 @@ function openSupport(kind){
   supportEl.scrollTop = 0;
 }
 function closeSupport(){ supportEl.hidden = true; }
-reportForm.addEventListener('submit', e => {
+/* the chosen files, listed as they are chosen */
+const reportFiles = document.getElementById('reportFiles');
+const attachList  = document.getElementById('attachList');
+reportFiles.addEventListener('change', () => {
+  const names = [...reportFiles.files].map(f => f.name);
+  attachList.textContent = names.length
+    ? names.join(' · ')
+    : 'None yet — a picture of the damage, or of what went wrong on screen, helps a lot.';
+});
+reportForm.addEventListener('submit', async e => {
   e.preventDefault();
   const f = reportForm.elements;
   const email = f.email.value.trim(), msg = f.message.value.trim();
@@ -5193,6 +5220,26 @@ reportForm.addEventListener('submit', e => {
     msg
   ];
   const subject = 'Support: ' + KIND_LABEL[reportKind] + ' — garnements';
+  const files = [...reportFiles.files];
+  /* With photographs, the device's own share sheet is the one road that
+     can carry files without a server behind the site — on a phone, and on
+     Safari on a Mac, it offers Mail with the pictures already attached.
+     Where the browser cannot share files (or the visitor closes the
+     sheet), the report goes by mail link as before, and the note asks for
+     the pictures to be added there. */
+  if(files.length && navigator.canShare && navigator.canShare({files})){
+    try{
+      await navigator.share({ title: subject, text: lines.join('\n') + '\n\nTo: ' + ORDER_EMAIL, files });
+      return;
+    }catch(err){
+      if(err && err.name === 'AbortError') return;      /* they closed it */
+    }
+  }
+  if(files.length){
+    reportNote.textContent = 'Your mail app is opening with the report — please add the ' +
+      (files.length === 1 ? 'photograph' : files.length + ' photographs') + ' to it there before sending.';
+    reportNote.hidden = false;
+  }
   window.location.href = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
 });
 
