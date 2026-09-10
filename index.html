@@ -1523,7 +1523,7 @@
      The beats now: the wordmark rises out and the masthead takes it; a
      magnifying glass searches the scrolling drawings while one of them
      comes up the page and bends in to the middle; the glass finds it,
-     becomes the arrow, presses; everything vanishes in sparkles; the
+     becomes the arrow, presses; everything is pulverised to dust; the
      sketchbook appears. At 240 that is a screen and a half of scrolling. */
   .intro-track{ height:240vh; position:relative; }
   .intro-stage{
@@ -1575,7 +1575,7 @@
     opacity:var(--morph,0);
   }
   .intro-cursor .glass{
-    position:absolute; left:-12px; top:-12px; width:34px; height:34px; display:block;
+    position:absolute; left:-17px; top:-17px; width:44px; height:44px; display:block;
     filter:drop-shadow(0 1px 2px rgba(35,31,32,.22));
     opacity:calc(1 - var(--morph,0));
   }
@@ -1592,17 +1592,16 @@
     opacity:calc(var(--tap,0) * (1 - var(--tap,0)) * 2.4);
     transform:scale(calc(.24 + var(--tap,0) * 1.15));
   }
-  /* ---------- the sparkles ----------
-     What everything vanishes in: forty small four-point stars in ink,
-     scattered over the page, each one blinking once — up and gone — on its
-     own short window inside the vanish. Fine and few and quick, so it
-     reads as a shimmer across the page rather than a fireworks display.
-     Pure functions of the scroll like everything else here (see the
-     paint), so held still they hold, and scrolled back they blink again. */
-  .sparkles{ position:absolute; inset:0; z-index:6; pointer-events:none; overflow:hidden; }
-  .spark{
-    position:absolute; display:block; opacity:0;
-    fill:var(--ink); will-change:transform, opacity;
+  /* ---------- the dust ----------
+     What everything vanishes into. A canvas over the drawings' layer (146:
+     above the scatter at 145, below the opening page at 150) on which the
+     drawings are re-drawn as their own ink, pixel by pixel, and blown away:
+     see the dust in the opening sequence. Fixed and full-screen, like the
+     layer it stands over; it paints nothing until the vanish begins. */
+  .dust{
+    position:fixed; inset:0; z-index:146;
+    width:100%; height:100%;
+    pointer-events:none;
   }
   /* ---------- the drawing that gets pressed ----------
      One figure in the scatter is the one the glass finds and the arrow
@@ -2092,6 +2091,7 @@
 <div class="intro-ground" id="introGround" aria-hidden="true"></div>
 
 <div class="scatter-layer" id="introScatter" aria-hidden="true"></div>
+<canvas class="dust" id="introDust" aria-hidden="true"></canvas>
 
 <!-- The opening page itself: everything that DOES leave. -->
 <div class="intro" id="intro">
@@ -2100,7 +2100,6 @@
       <!-- Arne's drawn wordmark, one path per letter (see the colour rules
            at .brand path) -->
       <h1 class="intro-mark" id="introMark"><svg class="mark-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></h1>
-      <div class="sparkles" id="introSparkles" aria-hidden="true"></div>
       <div class="intro-cursor" id="introCursor" aria-hidden="true">
         <svg class="glass" viewBox="0 0 34 34"><circle cx="13" cy="13" r="10"/><line x1="20.6" y1="20.6" x2="31" y2="31"/></svg>
         <svg class="arrow" viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
@@ -5259,14 +5258,16 @@ document.addEventListener('keydown', e => {
     {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
     {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    /* the one the glass finds and the arrow presses. It starts below the
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:83, y:3,  h:38, o:.26, d:1.35},
+    /* the one the glass finds and the arrow presses: the cowboy, the
+       drawing stitched on the Cowboy Shootout sweater. It starts below the
        fold on the right and comes UP the page with the scroll like any
        other drawing, then bends in to the middle of the screen — passing
        by, and arriving — exactly as the glass reaches it (LOCK_A, see the
        paint). It holds there while it is worked, and goes with everything
        else at the vanish. A shade darker than the rest, and lifted to
-       full ink once spotted. It never wraps. */
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:78, y:112, h:40, o:.5, d:1.18, press:1},
+       full ink once found. It never wraps. */
+    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:78, y:112, h:40, o:.5, d:1.18, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5280,7 +5281,6 @@ document.addEventListener('keydown', e => {
        a drawing cut through the middle by the frame is what says there is
        more page below this, now that nothing on the page says "scroll" in
        words */
-    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:19, y:84, h:32, o:.24, d:1.50, opt:1},
     {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:87, h:16, o:.22, d:1.60},
     {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:90, h:24, o:.24, d:1.55},
     {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:85, h:10, o:.20, d:1.75, opt:1},
@@ -5436,7 +5436,8 @@ document.addEventListener('keydown', e => {
      the same 47% .intro-mark's `top` puts it at */
   const MARK_TOP = .47;
   const mark   = document.getElementById('introMark');
-  const sparkBox = document.getElementById('introSparkles');
+  const dust = document.getElementById('introDust');
+  const dctx = dust.getContext('2d');
   const cursor = document.getElementById('introCursor');
   /* The glass's search: a path through the drawings, in from the left,
      dipping and rising over the scatter before it comes to rest on the one
@@ -5454,39 +5455,140 @@ document.addEventListener('keydown', e => {
       .5 * ((2 * b) + (-a + c2) * u + (2*a - 5*b + 4*c2 - d) * u*u + (-a + 3*b - 3*c2 + d) * u*u*u);
     return [c(p0[0], p1[0], p2[0], p3[0]), c(p0[1], p1[1], p2[1], p3[1])];
   };
-  /* where the pressed drawing has arrived and the glass has found it */
-  const LOCK_A = .30;
-  /* the sparkles: forty, placed once (in % of the stage, so a resize needs
-     nothing), each with its own short window inside the vanish */
-  const SPARKS = Array.from({length: 40}, (_, i) => ({
-    x: (noise(i, 11) + 1) * 50, y: (noise(i, 13) + 1) * 50,
-    size: 5 + (noise(i, 17) + 1) * 3.5,
-    a: .47 + (noise(i, 19) + 1) * .05
-  }));
-  SPARKS.forEach(sp => {
-    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    el.setAttribute('class', 'spark');
-    el.setAttribute('viewBox', '0 0 16 16');
-    el.innerHTML = '<path d="M8 0 L9.6 6.4 L16 8 L9.6 9.6 L8 16 L6.4 9.6 L0 8 L6.4 6.4 Z"/>';
-    el.style.cssText = `left:${sp.x.toFixed(2)}%;top:${sp.y.toFixed(2)}%;width:${sp.size.toFixed(1)}px;height:${sp.size.toFixed(1)}px`;
-    sparkBox.appendChild(el);
-    sp.el = el;
-  });
-  /* How far the two pointers and the pad travel to get where they are going.
-     Sized off the window rather than fixed, so on a phone they come in from
-     just outside the pad and on a wide screen they genuinely come in from
-     the sides of the picture — and capped, because past a point a longer
-     run is only a longer wait. */
-  let cursorRun = 240, bookRise = 150, curStartL = -240, curStartR = 240;
-  /* How far right the demonstration has to sit for the PAD to be the thing
-     in the middle of the screen: half the room its absent partner is holding
-     open beside it. Taken from the laid-out boxes rather than from the gap
-     and the photo's width, so it is right whatever the flex row resolves to.
-     Sideways only, and so only while the two of them ARE side by side — on a
-     narrow screen the piece arrives underneath instead, where it takes no
-     horizontal room to hold and the pad is already centred; shifting there
-     would push it off centre to make space nothing is using. */
-  let demoShift = 0;
+  /* where the pressed drawing has arrived (LOCK_A); where the glass, past
+     it, has become the arrow and starts its loop back (LOOP_A); where the
+     arrow is back on the cowboy (LOOP_B) */
+  const LOCK_A = .30, LOOP_A = .34, LOOP_B = .44;
+  /* ---------- the dust ----------
+     Every drawing on the page, pulverised. At the first frame of the
+     vanish the drawings are sampled — each one's sheet is drawn, cropped
+     to its own box, onto a small canvas at exactly the size it stands on
+     screen, and every dark pixel becomes a particle: its place, its ink.
+     From then on the drawings themselves are hidden and only the
+     particles are painted, each leaving on its own delay (a sweep across
+     each drawing, left to right, with some grain in it) along its own
+     drift — up and to the right, the way dust goes — thinning to nothing
+     as it travels. All of it a pure function of the vanish's progress, so
+     scrolling back gathers the dust into the drawings again. */
+  let motes = [], motesFor = -1, dustOK = true, dpr = 1;
+  const VANISH_A = .50, VANISH_B = .66;
+  const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+  function sizeDust(){
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    dust.width  = Math.round(stageW * dpr);
+    dust.height = Math.round(stageH * dpr);
+    dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    motesFor = -1;                         /* sampled at the old size */
+  }
+  function sampleDust(){
+    motes = [];
+    try{
+      figures.forEach((fg, i) => {
+        if(!fg.hpx) return;
+        const img = fg.el.querySelector('img');
+        if(!img || !img.complete) return;
+        const {x, y} = figPos(fg, i, VANISH_A);
+        const w = fg.el.offsetWidth, h = fg.hpx;
+        if(w < 2 || h < 2) return;
+        const [bx, by, bw, bh] = fg.s.b;
+        const sc = w / bw;                 /* artboard unit → screen px */
+        const c = document.createElement('canvas');
+        c.width = Math.ceil(w); c.height = Math.ceil(h);
+        const x2 = c.getContext('2d');
+        x2.drawImage(img, -bx * sc, -by * sc, ART_SVG_W * sc, ART_SVG_H * sc);
+        const data = x2.getImageData(0, 0, c.width, c.height).data;
+        const o = fg.s.press ? 1 : fg.s.o;
+        /* step 2 on a small drawing, 3 on a big one — enough grain to read
+           as the drawing, few enough to paint every frame */
+        const step = w * h > 70000 ? 3 : 2;
+        const seed = i * 7919;
+        for(let py = 0; py < c.height; py += step){
+          for(let px = 0; px < c.width; px += step){
+            const j = (py * c.width + px) * 4;
+            const a = data[j + 3];
+            if(a < 40) continue;
+            const lum = (data[j] * .3 + data[j + 1] * .59 + data[j + 2] * .11);
+            const ink = (a / 255) * (1 - lum / 255) * o;
+            if(ink < .08) continue;
+            const n = seed + py * 977 + px;
+            const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
+            motes.push({
+              x: x + px + (r2 - .5) * step, y: y + py + (r3 - .5) * step, a: ink, sz: step * .95,
+              d: .62 * (.25 * hash(i + 41) + .40 * r1 + .35 * (px / c.width)),
+              vx: 70 + 160 * r2, vy: -(30 + 130 * r3), ph: r1 * 6.2832
+            });
+          }
+        }
+      });
+      /* bucketed by ink so the paint sets a fill style eight times a
+         frame, not once per mote */
+      motes.forEach(m => { m.b = Math.min(7, Math.floor(m.a * 8)); });
+      motes.sort((m1, m2) => m1.b - m2.b);
+    }catch(e){
+      /* a tainted canvas (a page opened as a file) — the drawings simply
+         fade instead, see the figures loop */
+      dustOK = false; motes = [];
+      console.warn('intro: dust unavailable', e);
+    }
+  }
+  function paintDust(v){
+    dctx.clearRect(0, 0, stageW, stageH);
+    if(v <= 0 || v >= 1) return;
+    if(motesFor !== 1){ sampleDust(); motesFor = 1; }
+    const fadeIn = seg(v, 0, .14);
+    let b = -1;
+    for(let i = 0; i < motes.length; i++){
+      const m = motes[i];
+      const k = m.d >= 1 ? 0 : cl01((v - m.d) / (1 - m.d));
+      const rem = 1 - k;
+      if(rem <= 0) continue;
+      if(m.b !== b){ b = m.b; dctx.fillStyle = `rgba(35,31,32,${((b + 1) / 8 * .9).toFixed(2)})`; }
+      const e = k * k * (3 - 2 * k);
+      const x = m.x + m.vx * e + 14 * Math.sin(m.ph + e * 9) * e;
+      const y = m.y + m.vy * e + 8 * Math.cos(m.ph + e * 7) * e;
+      const sz = m.sz * (1 - .4 * k) * (rem < .25 ? rem * 4 : 1);
+      dctx.globalAlpha = Math.pow(rem, 1.5) * fadeIn;
+      dctx.fillRect(x, y, sz, sz);
+    }
+    dctx.globalAlpha = 1;
+  }
+  /* where a drawing stands at a given p — the same arithmetic the paint
+     uses, so the dust is sampled exactly where the drawings are */
+  function figPos(fg, i, p){
+    const s = fg.s;
+    if(s.press){
+      const t = cl01(p / LOCK_A);
+      let x = fg.left0, y;
+      if(t < .55){
+        y = fg.top0 - (fg.top0 - fg.bendY) * (t / .55);
+      }else{
+        const c = (t - .55) / .45, u = 1 - c;
+        x = u*u*fg.left0 + 2*u*c*fg.left0 + c*c*fg.lockX;
+        y = u*u*fg.bendY + 2*u*c*fg.lockY + c*c*fg.lockY;
+      }
+      return {x, y};
+    }
+    const lo    = -(fg.hpx + fg.marg);
+    const range = stageH + fg.hpx + 2 * fg.marg + fg.gap;
+    const raw   = fg.top0 - p * maxScroll * s.d * FIG_RATE;
+    const k     = Math.floor((raw - lo) / range);
+    const top   = ((raw - lo) % range + range) % range + lo;
+    const dx    = k === 0 ? 0 : noise(i, k) * stageW * .2;
+    return {x: fg.left0 + dx, y: top};
+  }
+  /* the glass's place at a given p, along the search path and then the
+     loop — used by the paint, and by measure() to find the frame it first
+     crosses the cowboy */
+  let loopPath = [], crossP = LOCK_A;
+  function glassAt(p){
+    if(!searchPath.length) return [curTargetX, curTargetY];
+    if(p < LOOP_A){
+      const t = seg(p, .04, LOOP_A);
+      return spline(searchPath, t);
+    }
+    const t = seg(p, LOOP_A, LOOP_B);
+    return spline(loopPath, 1 - (1 - t) * (1 - t));
+  }
   const measure = () => {
     maxScroll = intro.scrollHeight - intro.clientHeight;
     cursorRun = Math.min(300, intro.clientWidth  * .30);
@@ -5521,6 +5623,7 @@ document.addEventListener('keydown', e => {
     figures.forEach((fg, i) => {
       fg.hpx  = fg.el.offsetHeight;
       fg.top0 = fg.s.y / 100 * stageH;
+      fg.left0 = fg.el.offsetLeft;
       fg.marg = 16;
       fg.gap  = (.20 + (noise(i, 7) + 1) * .03) * stageH;
     });
@@ -5550,14 +5653,38 @@ document.addEventListener('keydown', e => {
       curTargetY = fg.lockY + fe.offsetHeight * .42;
       cursor.style.left = curTargetX.toFixed(1) + 'px';
       cursor.style.top  = curTargetY.toFixed(1) + 'px';
+      /* The search: in from the left, over the scatter, ACROSS the cowboy
+         and a little past him. Then the loop: from that overshoot, up and
+         round in a circle, and back down onto him. */
       searchPath = [
         [-40,          stageH * .62],
         [stageW * .18, stageH * .44],
         [stageW * .36, stageH * .68],
-        [stageW * .58, stageH * .40],
+        [curTargetX,   curTargetY],
+        [curTargetX + stageW * .13, curTargetY - stageH * .14]
+      ];
+      const ox = curTargetX + stageW * .13, oy = curTargetY - stageH * .14;
+      const r = Math.min(90, stageW * .07);
+      loopPath = [
+        [ox, oy],
+        [ox + r * .9,  oy - r * .9],
+        [ox + r * .2,  oy - r * 1.9],
+        [ox - r * 1.0, oy - r * 1.4],
+        [ox - r * 1.1, oy - r * .2],
         [curTargetX,   curTargetY]
       ];
+      /* the frame the glass's lens first crosses the cowboy's box: that is
+         when he lifts. Found by walking the search path, so it is exactly
+         where the glass actually is, whatever the window's shape. */
+      const bx0 = fg.lockX - 8, bx1 = fg.lockX + fe.offsetWidth + 8;
+      const by0 = fg.lockY - 8, by1 = fg.lockY + fe.offsetHeight + 8;
+      crossP = LOCK_A;
+      for(let q = .04; q <= LOOP_A; q += .0025){
+        const [gx, gy] = glassAt(q);
+        if(gx >= bx0 && gx <= bx1 && gy >= by0 && gy <= by1){ crossP = q; break; }
+      }
     }
+    sizeDust();
   };
   measure();
   /* lastP is cleared alongside, not just recomputed: a resize can leave the
@@ -5586,45 +5713,45 @@ document.addEventListener('keydown', e => {
   function paintScroll(p){
     /* ---------- the search, the find, the press, the vanish ----------
        The site's mechanic as a small story, while the drawings scroll
-       past: a magnifying glass comes in and searches among them; one
-       drawing comes up the page and bends in to the middle, and the glass
-       comes to rest on it — spotted, it lifts; the glass turns into the
-       arrow; the arrow presses; and everything goes, in a shimmer of
-       sparkles, leaving the sketchbook. Every beat is a window of p and
-       nothing else, so scrolling back up runs it all backwards. Class
-       toggles carry the lift and the press because those have
-       transitions (the real hotspot's); everything continuous is written
-       per frame. */
-    /* 1. the glass searches: along its path, in from the left, slowing as
-          it arrives (ease-out), fading in as it sets off */
-    const st  = seg(p, .04, LOCK_A);
-    const [sx, sy] = searchPath.length ? spline(searchPath, 1 - (1 - st) * (1 - st)) : [curTargetX, curTargetY];
-    const tap = seg(p, .40, .46);
-    cursor.style.opacity = (seg(p, .02, .06) * (1 - seg(p, .46, .52))).toFixed(3);
+       past: a magnifying glass comes in — swelling as it arrives, then
+       snapping small — and searches among the drawings; the cowboy comes
+       up the page and bends in to the middle; the glass crosses him and
+       he lifts; the glass, past him, becomes the arrow, loops round and
+       comes back down onto him; presses; and everything on the page is
+       pulverised into nothing, leaving the sketchbook. Every beat is a
+       window of p and nothing else, so scrolling back up runs it all
+       backwards. Class toggles carry the lift and the press because those
+       have transitions (the real hotspot's); everything continuous is
+       written per frame. */
+    /* 1. the glass: along its path, with the pop on entry — up to two and
+          a half times its size over the first stretch, then rapidly back
+          to one — and the press dip later, both on the same scale */
+    const [gx, gy] = glassAt(p);
+    const pk  = seg(p, .03, .11);
+    const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
+    const tap = seg(p, .45, .50);
+    cursor.style.opacity = (seg(p, .02, .05) * (1 - seg(p, VANISH_A, VANISH_A + .06))).toFixed(3);
     cursor.style.transform =
-      `translate3d(${(sx - curTargetX).toFixed(1)}px,${(sy - curTargetY).toFixed(1)}px,0)` +
-      ` scale(${(1 - .17 * Math.sin(tap * Math.PI)).toFixed(3)})`;
+      `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
+      ` scale(${((1 + 1.5 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
     cursor.style.setProperty('--tap', tap.toFixed(3));
-    /* 2. found: the drawing lifts and comes up to full ink the moment the
-          glass settles on it; then the glass becomes the arrow */
-    const hoverK = p < .46 ? seg(p, LOCK_A, LOCK_A + .03) : 0;
+    /* 2. found: the cowboy lifts and comes up to full ink the frame the
+          lens crosses him (crossP, see measure); past him the glass
+          becomes the arrow and loops back */
+    const hoverK = p < VANISH_A ? seg(p, crossP, crossP + .02) : 0;
     const hover  = hoverK > 0;
-    const press  = p >= .41 && p < .44;
-    cursor.style.setProperty('--morph', seg(p, .34, .38).toFixed(3));
+    const press  = p >= .46 && p < .49;
+    cursor.style.setProperty('--morph', seg(p, LOCK_A, LOOP_A).toFixed(3));
     if(pressFig){
       const cut = pressFig.cut;
       if(hover !== lastHover){ cut.classList.toggle('hover', hover); lastHover = hover; }
       if(press !== lastPress){ cut.classList.toggle('press', press); lastPress = press; }
     }
-    /* 3. the vanish: every drawing on the page goes (see the figures loop,
-          which reads `vanish`), and the sparkles blink across it */
-    const vanish = seg(p, .46, .58);
-    SPARKS.forEach(sp => {
-      const k = seg(p, sp.a, sp.a + .05), w = Math.sin(k * Math.PI);
-      sp.el.style.opacity = (w * .85).toFixed(3);
-      sp.el.style.transform =
-        `translate(-50%,-50%) scale(${(.3 + .9 * w).toFixed(3)}) rotate(${(k * 90).toFixed(1)}deg)`;
-    });
+    /* 3. the vanish: every drawing on the page is pulverised (see the
+          figures loop, which hides them, and paintDust, which blows them
+          away) */
+    const vanish = seg(p, VANISH_A, VANISH_B);
+    if(dustOK) paintDust(vanish);
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
        — all the way out through the top, not parked near it and not faded.
@@ -5645,29 +5772,23 @@ document.addEventListener('keydown', e => {
     figures.forEach((fg, i) => {
       const {el, s} = fg;
       if(!fg.hpx) return;                 /* stepped out on a phone */
+      /* the drawings cross-fade into their dust over the vanish's first
+         stretch (the dust fades up over the same frames, see paintDust),
+         so the moment the ink turns to grain is never seen as a cut;
+         without the dust (a tainted canvas) they simply fade */
+      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - vanish;
+      const {x, y} = figPos(fg, i, p);
       if(s.press){
         /* The pressed drawing: up the page with the scroll first, straight,
            like every other drawing — then, past the bend point, a curve
            that carries on upward and sweeps left into the middle of the
-           screen, arriving as the glass does (LOCK_A). The curve's control
-           point sits directly above the straight run, so the bend is
-           tangent to it and the drawing simply seems to drift in as it
-           passes. It holds there once arrived, and goes in the vanish with
-           everything else. Its ink: resting opacity, up to full once
-           spotted (hoverK). */
-        const t = cl01(p / LOCK_A);
-        let x = fg.left0, y;
-        if(t < .55){
-          y = fg.top0 - (fg.top0 - fg.bendY) * (t / .55);
-        }else{
-          const c = (t - .55) / .45, u = 1 - c;
-          x = u*u*fg.left0 + 2*u*c*fg.left0 + c*c*fg.lockX;
-          y = u*u*fg.bendY + 2*u*c*fg.lockY + c*c*fg.lockY;
-        }
+           screen, arriving as the glass does (LOCK_A) — see figPos. It
+           holds there once arrived. Its ink: resting opacity, up to full
+           once found (hoverK). */
         el.style.transform =
           `translate3d(${(x - fg.left0).toFixed(1)}px,${(y - fg.top0).toFixed(1)}px,0)`;
         const lit = s.o + (1 - s.o) * hoverK;
-        el.style.opacity = (lit * (1 - vanish)).toFixed(3);
+        el.style.opacity = (lit * shown).toFixed(3);
         return;
       }
       /* where the drawing's top would be, unwrapped — then folded back into
@@ -5679,14 +5800,8 @@ document.addEventListener('keydown', e => {
          across the page — up to a fifth of the width either way — which is
          what keeps the returning scatter irregular. The first pass has no
          offset, so the landing composition is exactly the one in the list. */
-      const lo    = -(fg.hpx + fg.marg);
-      const range = stageH + fg.hpx + 2 * fg.marg + fg.gap;
-      const raw   = fg.top0 - p * maxScroll * s.d * FIG_RATE;
-      const k     = Math.floor((raw - lo) / range);
-      const top   = ((raw - lo) % range + range) % range + lo;
-      const dx    = k === 0 ? 0 : noise(i, k) * stageW * .2;
       el.style.transform =
-        `translate3d(${dx.toFixed(1)}px,${(top - fg.top0).toFixed(1)}px,0)`;
+        `translate3d(${(x - fg.left0).toFixed(1)}px,${(y - fg.top0).toFixed(1)}px,0)`;
       /* No fade-IN: the scatter IS the landing page, so it is already
          standing there at rest and only ever thins out on the way down.
          Two stages, and the second one is late on purpose. They used to be
@@ -5705,7 +5820,7 @@ document.addEventListener('keydown', e => {
          that the pads are plainly the subject. */
       /* and every drawing goes in the vanish — nothing is left under the
          sketchbook; the shop stands on plain paper */
-      el.style.opacity = (s.o * (1 - vanish)).toFixed(3);
+      el.style.opacity = (s.o * shown).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5797,7 +5912,7 @@ document.addEventListener('keydown', e => {
 
     /* ---------- the appearance ----------
        The real sketchbook, appearing where everything just vanished:
-       over the stretch after the sparkles it comes up out of nothing —
+       over the stretch after the dust it comes up out of nothing —
        a fade, with a small rise of 40px so it settles rather than merely
        switches on — driven by the scroll like everything else, so it
        can be scrolled back into nothing. `entering` lifts it above the
@@ -5812,11 +5927,11 @@ document.addEventListener('keydown', e => {
        fitToViewport keeps writing as before, so neither owner wipes the
        other. Both cleared again at the hand-over (see dismiss), so the
        stylesheet's own rule takes back over the moment the pads are home. */
-    const appear = io(seg(p, .60, .90));
+    const appear = io(seg(p, .66, .92));
     fitEntry.style.opacity = appear.toFixed(3);
     fitEntry.style.transform =
       `translateY(${((1 - appear) * 40).toFixed(1)}px) scale(var(--fit-scale,1))`;
-    const entering = p >= .58;
+    const entering = p >= .64;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
