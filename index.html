@@ -1526,9 +1526,11 @@
      magnifying glass searches the scrolling drawings while one of them
      comes up the page and bends in to the middle; the glass finds it,
      becomes the arrow, presses; everything is pulverised to dust; the
-     sketchbook appears. At 270 that is a screen and three quarters of
-     scrolling, most of the last third of it the dust. */
-  .intro-track{ height:270vh; position:relative; }
+     sketchbook appears. The SCROLL ends at the press: at 190 that is
+     nine tenths of a screen of scrolling, and what follows — the dust and
+     the sketchbook appearing — runs on its own clock (see play() in the
+     opening sequence), so the wheel has nothing more to say to it. */
+  .intro-track{ height:190vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1973,7 +1975,9 @@
   .cat-grid{
     display:grid; grid-template-columns:repeat(4, 1fr);
     gap:8px;
-    margin:36px 44px 60px;
+    /* the same 8px between the boxes and to the left, right and bottom
+       edges — only the room under the masthead is its own */
+    margin:36px 8px 8px;
   }
   .cat-tile{
     background:var(--bg); border:.5px solid var(--ink);
@@ -2060,7 +2064,7 @@
   @media(max-width:900px){
     .sheet-title{ margin:22px 20px 0; }
     .report{ margin:18px 20px 40px; }
-    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 20px 30px; gap:6px; }
+    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 6px 6px; gap:6px; }
     .cat-tile{ padding:16px 8px 14px; }
     .cat-tile img{ height:min(32vh, 280px); }
     .viewer img{ max-width:76vw; height:min(70vh, 700px); }
@@ -5484,7 +5488,7 @@ document.addEventListener('keydown', e => {
   /* where the pressed drawing has arrived (LOCK_A); where the glass, past
      it, has become the arrow and starts its loop back (LOOP_A); where the
      arrow is back on the cowboy (LOOP_B) */
-  const LOCK_A = .30, LOOP_A = .34, LOOP_B = .44;
+  const LOCK_A = .60, LOOP_A = .68, LOOP_B = .88;
   /* ---------- the dust ----------
      Every drawing on the page, pulverised — at the screen's own resolution.
      Before the vanish (once the cowboy has locked and every drawing's
@@ -5508,7 +5512,9 @@ document.addEventListener('keydown', e => {
      into the drawings again. */
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = true, dpr = 1, dustW = 0, dustH = 0;
   let mX, mY, mVX, mVY, mWX, mWY, mD, mA, pix, pix32, touched, dustImg;
-  const VANISH_A = .50, VANISH_B = .78;
+  /* the ending, on a clock (ms): the dust, then the sketchbook over it */
+  const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3500;
+  let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 420000;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
@@ -5530,7 +5536,7 @@ document.addEventListener('keydown', e => {
         if(!fg.hpx) return;
         const img = fg.el.querySelector('img');
         if(!img || !img.complete) return;
-        const {x, y} = figPos(fg, i, VANISH_A);
+        const {x, y} = figPos(fg, i, 1);
         const w = fg.el.offsetWidth, h = fg.hpx;
         if(w < 2 || h < 2) return;
         const [bx, by, bw, bh] = fg.s.b;
@@ -5572,15 +5578,24 @@ document.addEventListener('keydown', e => {
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
             /* any direction, one speed range; a bend at right angles to it
                so no mote flies straight */
-            const ang = r2 * 6.28318, sp = (50 + 170 * r3) * dpr;
-            const ux = Math.cos(ang), uy = Math.sin(ang);
+            /* half a random direction, half straight out from the drawing's
+               middle — so the puff expands towards the viewer as much as it
+               scatters — and a speed of its own */
+            const ang = r2 * 6.28318, sp = (60 + 200 * r3) * dpr;
+            const rl = Math.hypot(px - cx, py - cy) || 1;
+            let ux = Math.cos(ang) * .5 + (px - cx) / rl * .5;
+            let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
+            const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
             const bend = (r1 - .5) * 90 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
             /* from the middle outward, with grain and the drawing's own
                offset — the delays span the first six tenths of the vanish */
-            mD[moteN] = .62 * (figD + .45 * r1 + .25 * (Math.hypot(px - cx, py - cy) / half));
+            /* from the middle outward, with grain, and a ripple across the
+               drawing so the dissolve runs through it in waves */
+            mD[moteN] = .55 * (figD + .35 * r1 + .25 * (rl / half))
+                      + .10 * (.5 + .5 * Math.sin(px * .045 + py * .03));
             mA[moteN] = ink;
             moteN++;
           }
@@ -5612,17 +5627,18 @@ document.addEventListener('keydown', e => {
       const k = v <= d ? 0 : (v - d) / (1 - d);
       const rem = 1 - k;
       if(rem <= 0) continue;
-      const e = k * k * (3 - 2 * k), bend = e * (1 - e);
+      /* out fast, then slower and slower: a cubic ease-out */
+      const ik = 1 - k, e = 1 - ik * ik * ik, bend = e * (1 - e);
       const x = mX[i] + mVX[i] * e + mWX[i] * bend;
       const y = mY[i] + mVY[i] * e + mWY[i] * bend;
       if(x < 0 || y < 0 || x >= W || y >= H) continue;
-      const a = mA[i] * rem * Math.sqrt(rem) * fadeIn * 255;
+      const a = Math.sqrt(mA[i]) * rem * Math.sqrt(rem) * fadeIn * 255;
       if(a < 4) continue;
       const idx = (y | 0) * W + (x | 0);
       const old = pix32[idx] >>> 24;
       if(a > old){
         if(!old) touched[touchedN++] = idx;
-        pix32[idx] = ((a | 0) << 24) | (32 << 16) | (31 << 8) | 35;
+        pix32[idx] = ((a | 0) << 24);      /* black, at its own alpha */
       }
     }
     dctx.putImageData(dustImg, 0, 0);
@@ -5658,7 +5674,7 @@ document.addEventListener('keydown', e => {
   function glassAt(p){
     if(!searchPath.length) return [curTargetX, curTargetY];
     if(p < LOOP_A){
-      const t = seg(p, .04, LOOP_A);
+      const t = seg(p, .08, LOOP_A);
       return spline(searchPath, t);
     }
     const t = seg(p, LOOP_A, LOOP_B);
@@ -5754,7 +5770,7 @@ document.addEventListener('keydown', e => {
       const bx0 = fg.lockX - 8, bx1 = fg.lockX + fe.offsetWidth + 8;
       const by0 = fg.lockY - 8, by1 = fg.lockY + fe.offsetHeight + 8;
       crossP = LOCK_A;
-      for(let q = .04; q <= LOOP_A; q += .0025){
+      for(let q = .08; q <= LOOP_A; q += .0025){
         const [gx, gy] = glassAt(q);
         if(gx >= bx0 && gx <= bx1 && gy >= by0 && gy <= by1){ crossP = q; break; }
       }
@@ -5802,10 +5818,10 @@ document.addEventListener('keydown', e => {
           a half times its size over the first stretch, then rapidly back
           to one — and the press dip later, both on the same scale */
     const [gx, gy] = glassAt(p);
-    const pk  = seg(p, .03, .11);
+    const pk  = seg(p, .06, .20);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
-    const tap = seg(p, .45, .50);
-    cursor.style.opacity = (seg(p, .02, .05) * (1 - seg(p, VANISH_A, VANISH_A + .06))).toFixed(3);
+    const tap = seg(p, .90, 1);
+    cursor.style.opacity = (seg(p, .04, .09) * (1 - seg(vanishNow, 0, .2))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${((1 + 1.5 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
@@ -5813,9 +5829,9 @@ document.addEventListener('keydown', e => {
     /* 2. found: the cowboy lifts and comes up to full ink the frame the
           lens crosses him (crossP, see measure); past him the glass
           becomes the arrow and loops back */
-    const hoverK = p < VANISH_A ? seg(p, crossP, crossP + .02) : 0;
+    const hoverK = vanishNow < .5 ? seg(p, crossP, crossP + .02) : 0;
     const hover  = hoverK > 0;
-    const press  = p >= .46 && p < .49;
+    const press  = p >= .92 && p < .98;
     cursor.style.setProperty('--morph', seg(p, LOCK_A, LOOP_A).toFixed(3));
     if(pressFig){
       const cut = pressFig.cut;
@@ -5825,11 +5841,12 @@ document.addEventListener('keydown', e => {
     /* 3. the vanish: every drawing on the page is pulverised (see the
           figures loop, which hides them, and paintDust, which blows them
           away) */
-    const vanish = seg(p, VANISH_A, VANISH_B);
+    /* the vanish is not the scroll's: it is play()'s clock, read here */
+    const vanish = vanishNow;
     /* sampled ahead of time — once the cowboy has locked every drawing's
-       place at the vanish is known — so the first frame of the vanish
-       does not stall on a few hundred thousand pixels */
-    if(dustOK && motesFor !== 1 && p >= LOCK_A + .06 && p < VANISH_A){ sampleDust(); motesFor = 1; }
+       place at the end is known — so the first frame of the dust does not
+       stall on a few hundred thousand pixels */
+    if(dustOK && motesFor !== 1 && p >= LOCK_A + .06 && !playing){ sampleDust(); motesFor = 1; }
     if(dustOK) paintDust(vanish);
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
@@ -5839,7 +5856,7 @@ document.addEventListener('keydown', e => {
        small mark takes over the frame the last of this one crosses the
        edge (markGoneK, see measure). It is gone before the pointer reaches
        the drawing, so the press has the page to itself. */
-    const markK = seg(p, 0, .22);
+    const markK = seg(p, 0, .40);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     const gone = markK >= markGoneK;
     if(gone !== lastGone){ document.body.classList.toggle('mark-gone', gone); lastGone = gone; }
@@ -6006,11 +6023,13 @@ document.addEventListener('keydown', e => {
        fitToViewport keeps writing as before, so neither owner wipes the
        other. Both cleared again at the hand-over (see dismiss), so the
        stylesheet's own rule takes back over the moment the pads are home. */
-    const appear = io(seg(p, .78, .96));
+    const appear = appearNow;
     fitEntry.style.opacity = appear.toFixed(3);
+    /* from the middle out — a scale from .92 to 1, no direction to it — so
+       the sketchbook arrives balanced in every direction */
     fitEntry.style.transform =
-      `translateY(${((1 - appear) * 40).toFixed(1)}px) scale(var(--fit-scale,1))`;
-    const entering = p >= .76;
+      `scale(calc(var(--fit-scale,1) * ${(.92 + .08 * appear).toFixed(4)}))`;
+    const entering = appear > 0;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
@@ -6062,9 +6081,31 @@ document.addEventListener('keydown', e => {
       fitEntry.classList.remove('entering'); lastEntering = false;
     }, 700);
   }
+  /* ---------- the ending ----------
+     From the press on, time — not the wheel — carries the page: the dust
+     over VANISH_MS, the sketchbook fading up from APPEAR_AT over
+     APPEAR_MS, the hand-over at END_MS. The scroll is ignored throughout
+     (see onScroll); the paint is still driven through paintScroll, at p = 1,
+     so everything else on the page holds exactly where the press left it. */
+  function play(){
+    if(playing || dismissed) return;
+    playing = true;
+    const t0 = performance.now();
+    const tick = now => {
+      if(!playing) return;
+      const t = now - t0;
+      vanishNow = cl01(t / VANISH_MS);
+      appearNow = io(cl01((t - APPEAR_AT) / APPEAR_MS));
+      paintScroll(1);
+      if(t < END_MS) requestAnimationFrame(tick);
+      else { vanishNow = 1; appearNow = 1; paintScroll(1); dismiss(); }
+    };
+    requestAnimationFrame(tick);
+  }
   function revive(){
     if(!dismissed) return;
     dismissed = false;
+    playing = false; vanishNow = 0; appearNow = 0;
     intro.classList.remove('done');
     ground.classList.remove('done');
     scatterEl.classList.remove('settled');
@@ -6080,8 +6121,11 @@ document.addEventListener('keydown', e => {
      matches, and hands over. */
   window.__enterShop = () => {
     if(dismissed) return;
+    /* straight to the end state: no dust to play, the drawings gone, the
+       sketchbook fully there */
+    playing = false; vanishNow = 1; appearNow = 1;
     intro.scrollTop = maxScroll;
-    onScroll();
+    paintScroll(1); lastP = 1;
     dismiss();
   };
 
@@ -6099,8 +6143,9 @@ document.addEventListener('keydown', e => {
          nothing below can force a synchronous layout by asking again after
          something has already been written */
       const p = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
+      if(playing) return;                /* the ending has its own clock */
       if(p !== lastP){ paintScroll(p); lastP = p; }
-      if(p > .995) dismiss();
+      if(p > .995) play();
     });
   }
   intro.addEventListener('scroll', onScroll, {passive:true});
