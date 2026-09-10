@@ -81,7 +81,7 @@
     /* the lift a waiting book takes under the pointer — well clear of --idle,
        so "this is the one you'd press" is legible from across the page
        instead of something you confirm by looking twice */
-    --idle-hover:.965;
+    --idle-hover:.91;
     /* the covers' board tone — shared at :root rather than scoped to
        .leaf.cover so .board (a sibling of the leaves, not a descendant of
        any one of them) can paint the exact same colour behind them. Kept
@@ -239,7 +239,6 @@
   }
   /* No cart on the opening page either — see .menu-btn above */
   body.entry .cart-btn{ opacity:0; pointer-events:none; }
-  .cart-btn:hover{border-color:var(--ink);}
   /* On a phone the masthead was competing with the book below it rather than
      sitting quietly above it — sized for a desktop window, it read as loud
      as the sketchbook itself on a narrow screen. Padding comes down with it,
@@ -1563,7 +1562,7 @@
      measured centre. */
   .intro-cursor{
     position:absolute; left:50%; top:40%;
-    width:19px; height:28px; opacity:0;
+    width:46px; height:69px; opacity:0;
     z-index:4; pointer-events:none;
   }
   /* Two faces on one point. It arrives as a magnifying glass and searches
@@ -1573,29 +1572,32 @@
      the ring pulses from and what the script steers; --morph (0 glass, 1
      arrow) cross-fades them, per frame, so it runs backwards intact. */
   .intro-cursor .arrow{
-    position:absolute; left:0; top:0; width:100%; height:100%; display:block;
+    position:absolute; left:-4px; top:-4px; width:100%; height:100%; display:block;
     fill:var(--ink); stroke:var(--panel);
-    stroke-width:2.2; stroke-linejoin:round;
-    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
+    stroke-width:1; stroke-linejoin:round;
+    filter:drop-shadow(0 2px 4px rgba(35,31,32,.26));
     opacity:var(--morph,0);
   }
+  /* Big, on purpose: the glass is the one thing on the opening page that
+     has to be seen, so it is drawn at a size no drawing competes with —
+     and it still swells to twice this on entry (see the paint) */
   .intro-cursor .glass{
-    position:absolute; left:-17px; top:-17px; width:44px; height:44px; display:block;
-    filter:drop-shadow(0 1px 2px rgba(35,31,32,.22));
+    position:absolute; left:-46px; top:-46px; width:120px; height:120px; display:block;
+    filter:drop-shadow(0 2px 5px rgba(35,31,32,.22));
     opacity:calc(1 - var(--morph,0));
   }
   .intro-cursor .glass circle{
-    fill:rgba(255,255,255,.55); stroke:var(--ink); stroke-width:1.3;
+    fill:rgba(255,255,255,.55); stroke:var(--ink); stroke-width:.6;
+  }
+  /* a phone's screen is a third as wide, and the same glass would cover
+     most of it at the swell — two thirds the size there, still the biggest
+     thing on the page */
+  @media (max-width:600px){
+    .intro-cursor{ width:34px; height:51px; }
+    .intro-cursor .glass{ left:-31px; top:-31px; width:80px; height:80px; }
   }
   .intro-cursor .glass line{
-    stroke:var(--ink); stroke-width:2.6; stroke-linecap:round;
-  }
-  .intro-cursor::after{
-    content:''; position:absolute; left:1px; top:1px;
-    width:30px; height:30px; margin:-15px 0 0 -15px;
-    border:1px solid var(--ink); border-radius:50%;
-    opacity:calc(var(--tap,0) * (1 - var(--tap,0)) * 2.4);
-    transform:scale(calc(.24 + var(--tap,0) * 1.15));
+    stroke:var(--ink); stroke-width:1.15; stroke-linecap:round;
   }
   /* ---------- the dust ----------
      What everything vanishes into. A canvas over the drawings' layer (146:
@@ -5340,14 +5342,16 @@ document.addEventListener('keydown', e => {
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
     {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:83, y:3,  h:38, o:.26, d:1.35},
     /* the one the glass finds and the arrow presses: the cowboy, the
-       drawing stitched on the Cowboy Shootout sweater. It starts below the
-       fold on the right and comes UP the page with the scroll like any
-       other drawing, then bends in to the middle of the screen — passing
-       by, and arriving — exactly as the glass reaches it (LOCK_A, see the
-       paint). It holds there while it is worked, and goes with everything
-       else at the vanish. A shade darker than the rest, and lifted to
-       full ink once found. It never wraps. */
-    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:78, y:112, h:40, o:.5, d:1.18, press:1},
+       drawing stitched on the Cowboy Shootout sweater. It starts just under
+       the fold, right of the middle, and comes straight UP the page with
+       the scroll like any other drawing — no bend, no steering — and the
+       glass, wandering across, simply passes over him on its way: the
+       frame the lens reaches him (crossP, see measure) he stops dead and
+       lifts, and is worked where he stands. Where he starts (y) is
+       overwritten by measure so that he is exactly under the lens on that
+       frame. A shade darker than the rest, lifted to full ink once found;
+       never wraps. */
+    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:61, y:100, h:40, o:.5, d:1.18, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5698,16 +5702,10 @@ document.addEventListener('keydown', e => {
   function figPos(fg, i, p){
     const s = fg.s;
     if(s.press){
-      const t = cl01(p / LOCK_A);
-      let x = fg.left0, y;
-      if(t < .55){
-        y = fg.top0 - (fg.top0 - fg.bendY) * (t / .55);
-      }else{
-        const c = (t - .55) / .45, u = 1 - c;
-        x = u*u*fg.left0 + 2*u*c*fg.left0 + c*c*fg.lockX;
-        y = u*u*fg.bendY + 2*u*c*fg.lockY + c*c*fg.lockY;
-      }
-      return {x, y};
+      /* straight up at the scatter's own rate until the glass reaches him
+         (crossP), then held where he stands: lockY is where that puts him */
+      const y = fg.startY - fg.rise * Math.min(p, crossP);
+      return {x: fg.left0, y};
     }
     const lo    = -(fg.hpx + fg.marg);
     const range = stageH + fg.hpx + 2 * fg.marg + fg.gap;
@@ -5720,7 +5718,14 @@ document.addEventListener('keydown', e => {
   /* the glass's place at a given p, along the search path and then the
      loop — used by the paint, and by measure() to find the frame it first
      crosses the cowboy */
-  let loopPath = [], crossP = LOCK_A;
+  /* the frame the lens reaches the cowboy: the search path's fourth
+     waypoint is on him, and a Catmull-Rom spline through five points is at
+     its fourth exactly three quarters of the way along — so this is not
+     searched for, it is where the path is built to be. The cowboy stops a
+     breath earlier, as the lens's edge rather than its centre reaches him,
+     which is what the small lead is. */
+  const P_MEET = .08 + .75 * (LOOP_A - .08);
+  let loopPath = [], crossP = P_MEET - .025;
   function glassAt(p){
     if(!searchPath.length) return [curTargetX, curTargetY];
     if(p < LOOP_A){
@@ -5782,28 +5787,32 @@ document.addEventListener('keydown', e => {
        from off the left edge through the scatter to there. */
     if(pressFig){
       const fe = pressFig.el, fg = pressFig;
-      /* where it starts (its layout box, below the fold on the right), how
-         far it rises straight before bending, and where it comes to rest:
-         centred across the screen, standing from 30% down to 70% */
+      /* He rides the scroll at the scatter's own rate, straight up his own
+         column, and stops the frame the lens reaches him (crossP) — so
+         where he stops is where he stands then: his chest at 30% of the
+         screen's height, standing down to about 70%. His start is worked
+         back from that: far enough below to arrive there on that frame,
+         which lands him just under the fold at rest. */
       fg.left0 = fe.offsetLeft;
-      fg.lockX = stageW / 2 - fe.offsetWidth / 2;
+      fg.rise  = maxScroll * fg.s.d * FIG_RATE;
       fg.lockY = stageH * .30;
-      fg.bendY = fg.lockY + (fg.top0 - fg.lockY) * .38;
-      curTargetX = fg.lockX + fe.offsetWidth * .5;
+      fg.startY = fg.lockY + fg.rise * crossP;
+      curTargetX = fg.left0 + fe.offsetWidth * .5;
       curTargetY = fg.lockY + fe.offsetHeight * .42;
       cursor.style.left = curTargetX.toFixed(1) + 'px';
       cursor.style.top  = curTargetY.toFixed(1) + 'px';
-      /* The search: in from the left, over the scatter, ACROSS the cowboy
-         and a little past him. Then the loop: from that overshoot, up and
-         round in a circle, and back down onto him. */
+      /* The search: in from the left, wandering over the scatter, ACROSS
+         the cowboy — on him at its fourth point, see P_MEET — and a little
+         past him. Then the loop: from that overshoot, up and round in a
+         circle, and back down onto him. */
       searchPath = [
-        [-40,          stageH * .62],
-        [stageW * .18, stageH * .44],
-        [stageW * .36, stageH * .68],
+        [-70,          stageH * .60],
+        [stageW * .22, stageH * .42],
+        [stageW * .42, stageH * .64],
         [curTargetX,   curTargetY],
-        [curTargetX + stageW * .13, curTargetY - stageH * .14]
+        [curTargetX + stageW * .12, curTargetY - stageH * .13]
       ];
-      const ox = curTargetX + stageW * .13, oy = curTargetY - stageH * .14;
+      const ox = curTargetX + stageW * .12, oy = curTargetY - stageH * .13;
       const r = Math.min(90, stageW * .07);
       loopPath = [
         [ox, oy],
@@ -5813,16 +5822,6 @@ document.addEventListener('keydown', e => {
         [ox - r * 1.1, oy - r * .2],
         [curTargetX,   curTargetY]
       ];
-      /* the frame the glass's lens first crosses the cowboy's box: that is
-         when he lifts. Found by walking the search path, so it is exactly
-         where the glass actually is, whatever the window's shape. */
-      const bx0 = fg.lockX - 8, bx1 = fg.lockX + fe.offsetWidth + 8;
-      const by0 = fg.lockY - 8, by1 = fg.lockY + fe.offsetHeight + 8;
-      crossP = LOCK_A;
-      for(let q = .08; q <= LOOP_A; q += .0025){
-        const [gx, gy] = glassAt(q);
-        if(gx >= bx0 && gx <= bx1 && gy >= by0 && gy <= by1){ crossP = q; break; }
-      }
     }
     sizeDust();
   };
@@ -5864,18 +5863,18 @@ document.addEventListener('keydown', e => {
        backwards. Class toggles carry the lift and the press because those
        have transitions (the real hotspot's); everything continuous is
        written per frame. */
-    /* 1. the glass: along its path, with the pop on entry — up to two and
-          a half times its size over the first stretch, then rapidly back
-          to one — and the press dip later, both on the same scale */
+    /* 1. the glass: along its path, with the pop on entry — swelling to
+          twice its (already big) size over the first stretch, once it is
+          fully on screen, then rapidly back to one — and the press dip
+          later, both on the same scale */
     const [gx, gy] = glassAt(p);
-    const pk  = seg(p, .06, .20);
+    const pk  = seg(p, .13, .29);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
     const tap = seg(p, .90, 1);
     cursor.style.opacity = (seg(p, .04, .09) * (1 - seg(vanishNow, 0, .2))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
-      ` scale(${((1 + 1.5 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
-    cursor.style.setProperty('--tap', tap.toFixed(3));
+      ` scale(${((1 + 1.0 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
     /* 2. found: the cowboy lifts and comes up to full ink the frame the
           lens crosses him (crossP, see measure); past him the glass
           becomes the arrow and loops back */
