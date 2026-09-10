@@ -143,11 +143,12 @@
      product window and the cart drawer. */
   #fit.entering{
     z-index:146;
+    /* a compositor layer for opacity as well: the appearance is a fade */
     /* promoted for the stretch it moves: the pad is a deep tree with a
        wide soft shadow under it, and moving that un-promoted meant
        re-painting all of it on every frame — the stutter the entrance used
        to have. Rasterised once and slid, it costs what the drawings cost. */
-    will-change:transform;
+    will-change:transform, opacity;
   }
   button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;}
 
@@ -169,9 +170,6 @@
        put it off-centre by half the cart */
     display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
     padding:0 44px; min-height:48px;
-    /* a hairline closing the row off underneath — the same one-pixel ink
-       line the catalogue's grid is ruled with */
-    border-bottom:1px solid var(--ink);
     /* Above the opening page (150) as well as the pads: the masthead is on
        screen from the first frame, standing over the drawings and the
        demonstration alike, and it is the one wordmark the page has. Below
@@ -193,7 +191,10 @@
     transform-origin:center center;
     transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
   }
-  /* the drawn word, sized by height so it sits in the row like type */
+  /* the drawn word, sized by height so it sits in the row like type. In
+     the masthead the letters are spread out — each path is shifted along
+     by 30.7 units in the markup, three times the word's natural width —
+     so the small mark reads as a line across the top rather than a knot. */
   .brand svg{ display:block; height:26px; width:auto; }
   .brand:hover{
     transform:scale(1.0225);
@@ -236,10 +237,7 @@
     padding-bottom:2px;border-bottom:1px solid transparent;
     transition:border-color .25s, opacity .5s;
   }
-  /* No cart on the opening page. It belongs to the shop, and the shop has
-     not arrived yet — it comes in with the sketchbook, the moment the
-     hand-over makes the pad pressable (see dismiss / revive in the opening
-     sequence, which own body.entry). */
+  /* No cart on the opening page either — see .menu-btn above */
   body.entry .cart-btn{ opacity:0; pointer-events:none; }
   .cart-btn:hover{border-color:var(--ink);}
   /* On a phone the masthead was competing with the book below it rather than
@@ -265,7 +263,7 @@
         10px
         calc(20px + env(safe-area-inset-left));
     }
-    .brand svg{ height:20px; }
+    .brand svg{ height:16px; }   /* spread wide, it needs the room */
     .cart-btn{ font-size:8.5px; letter-spacing:.18em; }
   }
 
@@ -1517,13 +1515,12 @@
      the track is; the demonstration is a share of the track, so the track's
      length is what sets ITS pace.
 
-     The beats now: the drawings scroll while the wordmark holds still; a
-     pointer comes in, hovers it, presses it; the model appears behind it;
-     the pointer leaves; the mark rises out through the top and the masthead
-     takes it; the sketchbook comes up from the bottom. At 320 the whole of
-     that is a little over two screens of scrolling, and the last beat runs
-     at about twice the wheel. */
-  .intro-track{ height:320vh; position:relative; }
+     The beats now: the wordmark rises out and the masthead takes it; a
+     magnifying glass searches the scrolling drawings while one of them
+     comes up the page and bends in to the middle; the glass finds it,
+     becomes the arrow, presses; everything vanishes in sparkles; the
+     sketchbook appears. At 240 that is a screen and a half of scrolling. */
+  .intro-track{ height:240vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1559,11 +1556,29 @@
     width:19px; height:28px; opacity:0;
     z-index:4; pointer-events:none;
   }
-  .intro-cursor svg{
-    width:100%; height:100%; display:block;
+  /* Two faces on one point. It arrives as a magnifying glass and searches
+     the drawings; once it has found the one, the glass becomes the arrow
+     that presses it. Both are drawn so their working point — the lens's
+     centre, the arrow's tip — sits on the element's (1,1), which is what
+     the ring pulses from and what the script steers; --morph (0 glass, 1
+     arrow) cross-fades them, per frame, so it runs backwards intact. */
+  .intro-cursor .arrow{
+    position:absolute; left:0; top:0; width:100%; height:100%; display:block;
     fill:var(--ink); stroke:var(--panel);
     stroke-width:2.2; stroke-linejoin:round;
     filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
+    opacity:var(--morph,0);
+  }
+  .intro-cursor .glass{
+    position:absolute; left:-12px; top:-12px; width:34px; height:34px; display:block;
+    filter:drop-shadow(0 1px 2px rgba(35,31,32,.22));
+    opacity:calc(1 - var(--morph,0));
+  }
+  .intro-cursor .glass circle{
+    fill:rgba(255,255,255,.55); stroke:var(--ink); stroke-width:1.3;
+  }
+  .intro-cursor .glass line{
+    stroke:var(--ink); stroke-width:2.6; stroke-linecap:round;
   }
   .intro-cursor::after{
     content:''; position:absolute; left:1px; top:1px;
@@ -1572,12 +1587,23 @@
     opacity:calc(var(--tap,0) * (1 - var(--tap,0)) * 2.4);
     transform:scale(calc(.24 + var(--tap,0) * 1.15));
   }
+  /* ---------- the sparkles ----------
+     What everything vanishes in: forty small four-point stars in ink,
+     scattered over the page, each one blinking once — up and gone — on its
+     own short window inside the vanish. Fine and few and quick, so it
+     reads as a shimmer across the page rather than a fireworks display.
+     Pure functions of the scroll like everything else here (see the
+     paint), so held still they hold, and scrolled back they blink again. */
+  .sparkles{ position:absolute; inset:0; z-index:6; pointer-events:none; overflow:hidden; }
+  .spark{
+    position:absolute; display:block; opacity:0;
+    fill:var(--ink); will-change:transform, opacity;
+  }
   /* ---------- the drawing that gets pressed ----------
-     One figure in the scatter is the one the pointer works (press:1 in
-     FIGURES, d:0 so it holds still while the rest scroll — like the
-     wordmark, the things being acted on stand still). The lift and the
-     collapse are the real hotspot's own (see .design-spot:hover
-     .design-art), a shade bigger because this drawing is faint and far. */
+     One figure in the scatter is the one the glass finds and the arrow
+     presses (press:1 in FIGURES). The lift and the collapse are the real
+     hotspot's own (see .design-spot:hover .design-art), a shade bigger
+     because this drawing is faint and far. */
   .intro-sketch .cut{
     transition:transform .34s cubic-bezier(.34,.08,.24,1), filter .34s;
   }
@@ -1592,29 +1618,6 @@
     transition:transform .1s ease-out, filter .1s ease-out;
     filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
   }
-  /* ---------- what the press brings up ----------
-     The piece the drawing is stitched on, standing on a small plate of the
-     same matte paper the product window uses (--panel) — so the thing the
-     press summons is a piece of the shop, in the shop's own material, and
-     not a photograph floating on the page. In the middle of the screen,
-     exactly where the drawing stood when it was pressed — the one becomes
-     the other; the wordmark has left by the time it appears. Height, not
-     width, so it clears the top and bottom on any screen. */
-  .intro-piece{
-    position:absolute; left:50%; top:50%;
-    transform:translate(-50%,-50%);
-    padding:clamp(14px, 2.4vw, 28px);
-    background:var(--panel);
-    opacity:0; z-index:2; pointer-events:none;
-    will-change:opacity, transform;
-  }
-  .intro-piece img{
-    display:block; height:min(60vh, 580px); width:auto;
-  }
-  @media(max-width:760px){
-    .intro-piece img{ height:min(50vh, 460px); }
-  }
-
   /* ---------- the scattered sketches ----------
      Every drawing on this page is one of these. There is no second kind,
      and nothing is driven by a clock: a drawing stands perfectly still
@@ -1897,9 +1900,23 @@
   .menu-btn{
     grid-column:1; justify-self:start;
     width:22px; height:15px; padding:0;
-    display:flex; flex-direction:column; justify-content:space-between;
+    display:block; position:relative;
+    transition:opacity .5s;
   }
-  .menu-btn span{ display:block; height:1px; background:var(--ink); }
+  /* three lines drawn from ONE span and two shadows of it, rather than
+     three spans laid out by flex inside a <button> — Safari does not lay
+     out flex children of a button reliably, and the lines went missing */
+  .menu-btn span{
+    position:absolute; left:0; top:0;
+    display:block; width:22px; height:1px; background:var(--ink);
+    box-shadow:0 7px 0 var(--ink), 0 14px 0 var(--ink);
+  }
+  /* On the opening page the masthead is the wordmark and nothing else —
+     no menu, no cart, no line under the row. The only way in is down.
+     All three arrive with the shop (see dismiss / revive in the opening
+     sequence, which own body.entry). */
+  body.entry .menu-btn{ opacity:0; pointer-events:none; }
+  body:not(.entry) header{ border-bottom:1px solid var(--ink); }
   .menu{
     position:absolute; left:44px; top:100%;
     background:var(--bg); border:1px solid var(--ink);
@@ -1921,8 +1938,8 @@
      scroll down when you would rather see everything than turn pages.
      Above the shop, the cart and the opening page (z 200), below the veil.
      It is its own scroller — the page underneath does not scroll. A tile
-     is a photograph of the piece on the model where there is one, the
-     drawing where there is not; pressing one opens the piece in the shop.
+     is a photograph of the piece on the model — pieces not yet photographed
+     are left out; pressing one opens the piece in the shop.
      One gap of one pixel over an ink ground is the grid: lines that are
      exactly as thin as a line can be. */
   .catalogue{
@@ -2037,9 +2054,10 @@
       <!-- Arne's drawn wordmark, one path per letter (see the colour rules
            at .brand path) -->
       <h1 class="intro-mark" id="introMark"><svg class="mark-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></h1>
-      <div class="intro-piece" id="introPiece"><img src="assets/pink%20tee%20front%20cutout.webp" alt=""></div>
+      <div class="sparkles" id="introSparkles" aria-hidden="true"></div>
       <div class="intro-cursor" id="introCursor" aria-hidden="true">
-        <svg viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
+        <svg class="glass" viewBox="0 0 34 34"><circle cx="13" cy="13" r="10"/><line x1="20.6" y1="20.6" x2="31" y2="31"/></svg>
+        <svg class="arrow" viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
       </div>
 
       <!-- The walkthrough: a sketchbook arrives, a pointer opens it, a second
@@ -2094,7 +2112,7 @@
   </nav>
   <!-- the drawn wordmark, the same file the opening page shows big -->
   <div class="brand" id="brand" role="button" tabindex="0"
-       aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
+       aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 414.4 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path transform="translate(30.7 0)" d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path transform="translate(61.4 0)" d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path transform="translate(92.1 0)" d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path transform="translate(122.8 0)" d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path transform="translate(153.5 0)" d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path transform="translate(184.2 0)" d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path transform="translate(214.9 0)" d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path transform="translate(245.6 0)" d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path transform="translate(276.3 0)" d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
 
@@ -4973,17 +4991,18 @@ menuBtn.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
 document.addEventListener('click', e => {
   if(!menuEl.hidden && !menuEl.contains(e.target)) toggleMenu(false);
 });
-/* One tile per piece, in the order PRODUCTS lists them. The photograph on
-   the model where there is one (a colourway's first, for the pieces that
-   come in colours), the drawing where there is not. Lazy, so opening the
-   menu costs nothing until the grid is actually looked at. */
+/* One tile per photographed piece, in the order PRODUCTS lists them (a
+   colourway's first shot, for the pieces that come in colours). Lazy, so
+   opening the menu costs nothing until the grid is actually looked at. */
 function buildCatalogue(){
   const grid = document.getElementById('catGrid');
   if(grid.childElementCount) return;
   grid.innerHTML = Object.entries(PRODUCTS).map(([id, p]) => {
+    /* photographs only: a piece that has not been shot yet is left out
+       rather than shown as its drawing or a rendering */
     const photo = (p.photos && p.photos[0])
-      || (p.colours && p.colours[0].photos && p.colours[0].photos[0])
-      || p.img;
+      || (p.colours && p.colours[0].photos && p.colours[0].photos[0]);
+    if(!photo) return '';
     return `<button class="cat-tile" data-id="${id}">` +
       `<img src="${photo}" alt="${fullName(p)}" loading="lazy">` +
       `<span class="cat-name">${fullName(p)}</span>` +
@@ -5153,13 +5172,14 @@ document.addEventListener('keydown', e => {
     {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
     {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
     {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    /* the one the pointer presses. It starts off the LOWER RIGHT corner
-       and comes in on an arc to the middle of the screen as the page is
-       scrolled (see the paint), LOCKS there for as long as the pointer is
-       working it, and is gone the moment it is pressed — the piece takes
-       its place. A shade darker than the rest, and lifted to full ink
-       under the pointer. It never wraps. */
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:96, y:108, h:40, o:.5, d:1.18, press:1},
+    /* the one the glass finds and the arrow presses. It starts below the
+       fold on the right and comes UP the page with the scroll like any
+       other drawing, then bends in to the middle of the screen — passing
+       by, and arriving — exactly as the glass reaches it (LOCK_A, see the
+       paint). It holds there while it is worked, and goes with everything
+       else at the vanish. A shade darker than the rest, and lifted to
+       full ink once spotted. It never wraps. */
+    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:78, y:112, h:40, o:.5, d:1.18, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5329,16 +5349,42 @@ document.addEventListener('keydown', e => {
      the same 47% .intro-mark's `top` puts it at */
   const MARK_TOP = .47;
   const mark   = document.getElementById('introMark');
-  const pieceBox = document.getElementById('introPiece');
+  const sparkBox = document.getElementById('introSparkles');
   const cursor = document.getElementById('introCursor');
-  /* the pointer's way in: from off the LEFT edge to the pressed drawing's
-     centre — measured, see measure(). figLeft is where it first touches
-     the drawing, which is where the hover begins. */
-  let curFromX = -600, curFromY = 90, figLeft = 0, curTargetX = 0;
-  /* the stretch of the scroll the pressed drawing holds still for: from
-     the pointer's arrival to the moment the piece has faded. Before it the
-     drawing is arriving on its arc; after it, it is gone. */
-  const LOCK_A = .22, LOCK_B = .50;
+  /* The glass's search: a path through the drawings, in from the left,
+     dipping and rising over the scatter before it comes to rest on the one
+     (the last point is the pressed drawing's own centre — measured, see
+     measure()). A Catmull-Rom spline through these, so it wanders rather
+     than zig-zags. */
+  let searchPath = [], curTargetX = 0, curTargetY = 0;
+  const spline = (pts, t) => {
+    const n = pts.length - 1;
+    const f = Math.min(n - 1e-9, Math.max(0, t * n));
+    const i = Math.floor(f), u = f - i;
+    const P = k => pts[Math.max(0, Math.min(n, k))];
+    const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const c = (a, b, c2, d) =>
+      .5 * ((2 * b) + (-a + c2) * u + (2*a - 5*b + 4*c2 - d) * u*u + (-a + 3*b - 3*c2 + d) * u*u*u);
+    return [c(p0[0], p1[0], p2[0], p3[0]), c(p0[1], p1[1], p2[1], p3[1])];
+  };
+  /* where the pressed drawing has arrived and the glass has found it */
+  const LOCK_A = .30;
+  /* the sparkles: forty, placed once (in % of the stage, so a resize needs
+     nothing), each with its own short window inside the vanish */
+  const SPARKS = Array.from({length: 40}, (_, i) => ({
+    x: (noise(i, 11) + 1) * 50, y: (noise(i, 13) + 1) * 50,
+    size: 5 + (noise(i, 17) + 1) * 3.5,
+    a: .47 + (noise(i, 19) + 1) * .05
+  }));
+  SPARKS.forEach(sp => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    el.setAttribute('class', 'spark');
+    el.setAttribute('viewBox', '0 0 16 16');
+    el.innerHTML = '<path d="M8 0 L9.6 6.4 L16 8 L9.6 9.6 L8 16 L6.4 9.6 L0 8 L6.4 6.4 Z"/>';
+    el.style.cssText = `left:${sp.x.toFixed(2)}%;top:${sp.y.toFixed(2)}%;width:${sp.size.toFixed(1)}px;height:${sp.size.toFixed(1)}px`;
+    sparkBox.appendChild(el);
+    sp.el = el;
+  });
   /* How far the two pointers and the pad travel to get where they are going.
      Sized off the window rather than fixed, so on a phone they come in from
      just outside the pad and on a wide screen they genuinely come in from
@@ -5400,26 +5446,30 @@ document.addEventListener('keydown', e => {
     const h = mark.offsetHeight, vh = intro.clientHeight;
     markTravel = MARK_TOP * vh + 0.6 * h;
     markGoneK  = (MARK_TOP * vh + 0.5 * h) / markTravel;
-    /* The pointer lands on the pressed drawing, at its middle and a little
-       above its centre line (a standing figure's chest) — where the drawing
-       WILL be once it has locked (LOCK_A), worked out from its start below
-       the fold and its own rate, since it is moving until then. The
-       pointer starts a way off to the lower left of that: 40% of the way
-       to the window's edge (it used to come from off the edge, which was
-       most of the screen to cross for a beat this short). */
+    /* The glass comes to rest on the pressed drawing, at its middle and a
+       little above its centre line (a standing figure's chest) — where the
+       drawing WILL be once it has arrived (LOCK_A). Its search path runs
+       from off the left edge through the scatter to there. */
     if(pressFig){
       const fe = pressFig.el, fg = pressFig;
-      /* where it starts (its layout box, off the lower right) and where it
-         locks: centred across the screen, standing from 30% down to 70% */
+      /* where it starts (its layout box, below the fold on the right), how
+         far it rises straight before bending, and where it comes to rest:
+         centred across the screen, standing from 30% down to 70% */
       fg.left0 = fe.offsetLeft;
       fg.lockX = stageW / 2 - fe.offsetWidth / 2;
       fg.lockY = stageH * .30;
-      figLeft    = fg.lockX;
+      fg.bendY = fg.lockY + (fg.top0 - fg.lockY) * .38;
       curTargetX = fg.lockX + fe.offsetWidth * .5;
+      curTargetY = fg.lockY + fe.offsetHeight * .42;
       cursor.style.left = curTargetX.toFixed(1) + 'px';
-      cursor.style.top  = (fg.lockY + fe.offsetHeight * .42).toFixed(1) + 'px';
-      curFromX = -(curTargetX + 40) * .4;
-      curFromY = Math.min(160, stageH * .16) * .4;
+      cursor.style.top  = curTargetY.toFixed(1) + 'px';
+      searchPath = [
+        [-40,          stageH * .62],
+        [stageW * .18, stageH * .44],
+        [stageW * .36, stageH * .68],
+        [stageW * .58, stageH * .40],
+        [curTargetX,   curTargetY]
+      ];
     }
   };
   measure();
@@ -5447,46 +5497,47 @@ document.addEventListener('keydown', e => {
      where its scroll offset says it should. */
   let lastP = -1, lastEntering = false, lastGone = false, lastHover = false, lastPress = false;
   function paintScroll(p){
-    /* ---------- a drawing, pressed ----------
-       The site's mechanic, acted out on one of the scattered drawings
-       while the wordmark and that drawing hold still and the rest scroll
-       past: a pointer comes in from the left, the drawing lifts the moment
-       the pointer touches it, the pointer presses, and the piece appears
-       on the left. Every beat is a window of p and nothing else, so
-       scrolling back up runs it backwards: the piece goes, the pointer
-       un-presses and leaves the way it came. Class toggles carry the lift
-       and the press because those have transitions (the real hotspot's);
-       everything continuous is written per frame. */
-    /* 1. the pointer comes in from off the left edge */
-    const inC = io(seg(p, .04, .24));
-    const tap = seg(p, .30, .38);
-    const curDX = (1 - inC) * curFromX;
-    cursor.style.opacity = (seg(p, .02, .07) * (1 - seg(p, .46, .50))).toFixed(3);
+    /* ---------- the search, the find, the press, the vanish ----------
+       The site's mechanic as a small story, while the drawings scroll
+       past: a magnifying glass comes in and searches among them; one
+       drawing comes up the page and bends in to the middle, and the glass
+       comes to rest on it — spotted, it lifts; the glass turns into the
+       arrow; the arrow presses; and everything goes, in a shimmer of
+       sparkles, leaving the sketchbook. Every beat is a window of p and
+       nothing else, so scrolling back up runs it all backwards. Class
+       toggles carry the lift and the press because those have
+       transitions (the real hotspot's); everything continuous is written
+       per frame. */
+    /* 1. the glass searches: along its path, in from the left, slowing as
+          it arrives (ease-out), fading in as it sets off */
+    const st  = seg(p, .04, LOCK_A);
+    const [sx, sy] = searchPath.length ? spline(searchPath, 1 - (1 - st) * (1 - st)) : [curTargetX, curTargetY];
+    const tap = seg(p, .40, .46);
+    cursor.style.opacity = (seg(p, .02, .06) * (1 - seg(p, .46, .52))).toFixed(3);
     cursor.style.transform =
-      `translate3d(${curDX.toFixed(1)}px,${((1 - inC) * curFromY).toFixed(1)}px,0)` +
+      `translate3d(${(sx - curTargetX).toFixed(1)}px,${(sy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${(1 - .17 * Math.sin(tap * Math.PI)).toFixed(3)})`;
     cursor.style.setProperty('--tap', tap.toFixed(3));
-    /* 2. hover from the moment the tip crosses the drawing's left edge —
-          worked out from where the pointer actually is, not from a scroll
-          threshold, so it is exactly when it touches — then the press.
-          hoverK also carries the drawing up to full ink over the first
-          40px of contact. */
-    const tipX   = curTargetX + curDX;
-    const hoverK = p < .36 ? cl01((tipX - figLeft) / 40) : 0;
+    /* 2. found: the drawing lifts and comes up to full ink the moment the
+          glass settles on it; then the glass becomes the arrow */
+    const hoverK = p < .46 ? seg(p, LOCK_A, LOCK_A + .03) : 0;
     const hover  = hoverK > 0;
-    const press  = p >= .31 && p < .36;
+    const press  = p >= .41 && p < .44;
+    cursor.style.setProperty('--morph', seg(p, .34, .38).toFixed(3));
     if(pressFig){
       const cut = pressFig.cut;
       if(hover !== lastHover){ cut.classList.toggle('hover', hover); lastHover = hover; }
       if(press !== lastPress){ cut.classList.toggle('press', press); lastPress = press; }
     }
-    /* 3. the piece takes the drawing's place — where it stood, on its
-          plate, rising a little into position as the drawing goes — and
-          then piece and pointer go in the same quick beat (.46–.50) */
-    const pin = seg(p, .33, .42);
-    pieceBox.style.opacity = (pin * (1 - seg(p, .46, .50))).toFixed(3);
-    pieceBox.style.transform =
-      `translate(-50%,-50%) translate3d(0,${((1 - io(pin)) * 18).toFixed(1)}px,0)`;
+    /* 3. the vanish: every drawing on the page goes (see the figures loop,
+          which reads `vanish`), and the sparkles blink across it */
+    const vanish = seg(p, .46, .58);
+    SPARKS.forEach(sp => {
+      const k = seg(p, sp.a, sp.a + .05), w = Math.sin(k * Math.PI);
+      sp.el.style.opacity = (w * .85).toFixed(3);
+      sp.el.style.transform =
+        `translate(-50%,-50%) scale(${(.3 + .9 * w).toFixed(3)}) rotate(${(k * 90).toFixed(1)}deg)`;
+    });
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
        — all the way out through the top, not parked near it and not faded.
@@ -5508,26 +5559,28 @@ document.addEventListener('keydown', e => {
       const {el, s} = fg;
       if(!fg.hpx) return;                 /* stepped out on a phone */
       if(s.press){
-        /* The pressed drawing comes in on an ARC: from its box off the
-           lower right corner, up the right side and sweeping left into the
-           middle of the screen, arriving exactly as the pointer does
-           (LOCK_A). A quadratic curve with its control point near the
-           corner of start-x / end-y is what makes it rise first and come
-           in level, the way a hand brings a sheet in. It holds there while
-           the pointer works it, and is GONE at the press (.32–.36) — the
-           piece appears in its place. Past the locked stretch it is
-           invisible, so it simply carries on up with the scroll. Its ink:
-           resting opacity, up to full under the pointer (hoverK). */
-        const t = cl01((p < LOCK_A ? p : LOCK_A) / LOCK_A), u = 1 - t;
-        const cx = fg.left0 - (fg.left0 - fg.lockX) * .10;
-        const cy = fg.lockY + (fg.top0 - fg.lockY) * .08;
-        const x = u*u*fg.left0 + 2*u*t*cx + t*t*fg.lockX;
-        const y = u*u*fg.top0  + 2*u*t*cy + t*t*fg.lockY;
-        const after = p > LOCK_B ? (p - LOCK_B) * maxScroll * s.d * FIG_RATE : 0;
+        /* The pressed drawing: up the page with the scroll first, straight,
+           like every other drawing — then, past the bend point, a curve
+           that carries on upward and sweeps left into the middle of the
+           screen, arriving as the glass does (LOCK_A). The curve's control
+           point sits directly above the straight run, so the bend is
+           tangent to it and the drawing simply seems to drift in as it
+           passes. It holds there once arrived, and goes in the vanish with
+           everything else. Its ink: resting opacity, up to full once
+           spotted (hoverK). */
+        const t = cl01(p / LOCK_A);
+        let x = fg.left0, y;
+        if(t < .55){
+          y = fg.top0 - (fg.top0 - fg.bendY) * (t / .55);
+        }else{
+          const c = (t - .55) / .45, u = 1 - c;
+          x = u*u*fg.left0 + 2*u*c*fg.left0 + c*c*fg.lockX;
+          y = u*u*fg.bendY + 2*u*c*fg.lockY + c*c*fg.lockY;
+        }
         el.style.transform =
-          `translate3d(${(x - fg.left0).toFixed(1)}px,${(y - fg.top0 - after).toFixed(1)}px,0)`;
+          `translate3d(${(x - fg.left0).toFixed(1)}px,${(y - fg.top0).toFixed(1)}px,0)`;
         const lit = s.o + (1 - s.o) * hoverK;
-        el.style.opacity = (lit * (1 - seg(p, .32, .36))).toFixed(3);
+        el.style.opacity = (lit * (1 - vanish)).toFixed(3);
         return;
       }
       /* where the drawing's top would be, unwrapped — then folded back into
@@ -5563,8 +5616,9 @@ document.addEventListener('keydown', e => {
          sketchbooks as the ground those stand on. Faded by 70%, not gone:
          present enough to connect the two halves of the site, faint enough
          that the pads are plainly the subject. */
-      el.style.opacity =
-        (s.o * (1 - .55 * seg(p, .56, .78)) * (1 - .333 * seg(p, .95, 1))).toFixed(3);
+      /* and every drawing goes in the vanish — nothing is left under the
+         sketchbook; the shop stands on plain paper */
+      el.style.opacity = (s.o * (1 - vanish)).toFixed(3);
     });
 
     /* ---------- the demonstration, on its own clock inside the scroll ------
@@ -5654,33 +5708,28 @@ document.addEventListener('keydown', e => {
     demo.style.setProperty('--slide', ((1 - io(pin)) * demoShift).toFixed(1) + 'px');
     }
 
-    /* ---------- the entrance ----------
-       The real sketchbook, scrolled into the page. Not faded, not eased on
-       a timer: over the last stretch of the track it travels from wholly
-       below the window to its place, one to one with the wheel, the way the
-       drawings behind it have been moving all along — so the shop arrives
-       as the next thing down the page rather than appearing. It overlaps
-       the press's aftermath — the piece is gone by .50 and the pad starts
-       up at .56, so the page is never empty for long. 1.1 screens rather than 1, so
-       nothing of it
-       shows before it starts — the pads can be taller than the room they
-       are scaled into. `entering` lifts it above the opening page's ground
-       for the stretch it has to be seen through (see #fit.entering).
+    /* ---------- the appearance ----------
+       The real sketchbook, appearing where everything just vanished:
+       over the stretch after the sparkles it comes up out of nothing —
+       a fade, with a small rise of 40px so it settles rather than merely
+       switches on — driven by the scroll like everything else, so it
+       can be scrolled back into nothing. `entering` lifts it above the
+       opening page's ground for the stretch it has to be seen through
+       (see #fit.entering).
 
-       Written straight onto `transform`, not into --rise. This used to go
-       through the custom property and the entrance stuttered: a custom
-       property is INHERITED, so changing it on #fit made the browser
-       recompute the style of every element inside the sketchbook — leaves,
-       hotspots, hundreds of SVG nodes — on every frame, for a value only
-       one rule read. An inline transform invalidates one element. The scale
-       half still comes from --fit-scale, which fitToViewport keeps writing
-       as before, so neither owner wipes the other. Cleared again at the
-       hand-over (see dismiss), so the stylesheet's own transform takes back
-       over the moment the pads are home. */
-    const arrive = seg(p, .56, .985);
+       Written straight onto `transform` and `opacity`, not into a custom
+       property: a custom property is INHERITED, so changing it on #fit
+       made the browser recompute the style of every element inside the
+       sketchbook on every frame. An inline transform invalidates one
+       element. The scale half still comes from --fit-scale, which
+       fitToViewport keeps writing as before, so neither owner wipes the
+       other. Both cleared again at the hand-over (see dismiss), so the
+       stylesheet's own rule takes back over the moment the pads are home. */
+    const appear = io(seg(p, .60, .90));
+    fitEntry.style.opacity = appear.toFixed(3);
     fitEntry.style.transform =
-      `translateY(${((1 - arrive) * stageH * 1.1).toFixed(1)}px) scale(var(--fit-scale,1))`;
-    const entering = p >= .56;
+      `translateY(${((1 - appear) * 40).toFixed(1)}px) scale(var(--fit-scale,1))`;
+    const entering = p >= .58;
     if(entering !== lastEntering){
       fitEntry.classList.toggle('entering', entering);
       lastEntering = entering;
@@ -5723,6 +5772,7 @@ document.addEventListener('keydown', e => {
        at zero anyway, so the stylesheet's own scale-only rule takes over
        without anything moving */
     fitEntry.style.transform = '';
+    fitEntry.style.opacity = '';
     /* the lift above the ground comes off only once the ground has finished
        fading (.6s) — any sooner and the pads would drop behind a sheet that
        is still partly white, and blink */
