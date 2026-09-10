@@ -193,8 +193,8 @@
   }
   /* the drawn word, sized by height so it sits in the row like type. In
      the masthead the letters are spread out — each path is shifted along
-     by 30.7 units in the markup, three times the word's natural width —
-     so the small mark reads as a line across the top rather than a knot. */
+     by 15.35 units in the markup, twice the word's natural width — so the
+     small mark reads as a line across the top rather than a knot. */
   .brand svg{ display:block; height:26px; width:auto; }
   .brand:hover{
     transform:scale(1.0225);
@@ -805,7 +805,8 @@
        railShift's `reserve`), so it stays whole and on the right however the
        window is zoomed. */
     width:var(--panel-w);
-    background:var(--panel);
+    /* the same white as the rest of the page — one paper everywhere */
+    background:var(--bg);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
@@ -932,6 +933,10 @@
     position:absolute;top:14px;right:20px;font-size:21px;font-weight:300;z-index:5;
     transition:opacity .2s;
   }
+  /* no × on a laptop: the panel closes by a click outside it, Escape, or
+     the wordmark. Phones keep theirs (see the phone block), where there
+     is no outside to click. */
+  @media(min-width:901px){ .close-x{ display:none; } }
   .close-x:hover{opacity:.5;}
   .item-tabs{display:flex;gap:20px;margin-bottom:26px;flex-wrap:wrap;}
   .item-tabs button{
@@ -1899,24 +1904,30 @@
      It stands in the masthead, so it is there on the opening page too. */
   .menu-btn{
     grid-column:1; justify-self:start;
-    width:22px; height:15px; padding:0;
+    height:15px; padding:0 0 0 32px;
     display:block; position:relative;
+    font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    line-height:15px; color:var(--ink);
     transition:opacity .5s;
   }
   /* three lines drawn from ONE span and two shadows of it, rather than
      three spans laid out by flex inside a <button> — Safari does not lay
-     out flex children of a button reliably, and the lines went missing */
-  .menu-btn span{
+     out flex children of a button reliably, and the lines went missing.
+     The word sits to their right, in the house's small uppercase. */
+  .menu-btn .lines{
     position:absolute; left:0; top:0;
     display:block; width:22px; height:1px; background:var(--ink);
     box-shadow:0 7px 0 var(--ink), 0 14px 0 var(--ink);
   }
+  .menu-btn .word{ display:block; }
   /* On the opening page the masthead is the wordmark and nothing else —
      no menu, no cart, no line under the row. The only way in is down.
      All three arrive with the shop (see dismiss / revive in the opening
      sequence, which own body.entry). */
   body.entry .menu-btn{ opacity:0; pointer-events:none; }
-  body:not(.entry) header{ border-bottom:1px solid var(--ink); }
+  /* half a pixel: a true hairline on any retina screen, and the thinnest
+     line a 1× screen can draw */
+  body:not(.entry) header{ border-bottom:.5px solid var(--ink); }
   .menu{
     position:absolute; left:44px; top:100%;
     background:var(--bg); border:1px solid var(--ink);
@@ -1943,47 +1954,80 @@
      One gap of one pixel over an ink ground is the grid: lines that are
      exactly as thin as a line can be. */
   .catalogue{
-    position:fixed; inset:0; z-index:200;
+    position:fixed; top:var(--bar,48px); left:0; right:0; bottom:0;
+    /* under the masthead (155) — the menu, the mark and the cart stay in
+       place above this sheet and keep working — and above the opening page
+       (150) and the shop */
+    z-index:152;
     background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
   }
-  .cat-bar{
-    position:sticky; top:0; z-index:1;
-    display:flex; justify-content:space-between; align-items:center;
-    padding:22px 44px 18px; background:var(--bg);
+  .sheet-title{
+    margin:30px 44px 0;
     font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:var(--ink);
+    font-weight:400;
   }
-  .close-cat{ font-size:24px; font-weight:300; line-height:1; padding:0 2px; }
+  /* each photograph in its own ink box, white space between them */
   .cat-grid{
     display:grid; grid-template-columns:repeat(4, 1fr);
-    gap:1px; background:var(--ink); border:1px solid var(--ink);
-    margin:0 44px 44px;
+    gap:clamp(18px, 3vw, 40px);
+    margin:36px 44px 60px;
   }
   .cat-tile{
-    background:var(--bg); padding:28px 18px 22px;
+    background:var(--bg); border:1px solid var(--ink);
+    padding:24px 14px 18px;
     display:flex; flex-direction:column; align-items:center; text-align:center;
     color:var(--ink);
   }
   .cat-tile img{
-    display:block; height:min(44vh, 380px); width:auto; max-width:100%;
+    display:block; height:min(42vh, 360px); width:auto; max-width:100%;
     object-fit:contain;
     transition:transform .34s cubic-bezier(.34,.08,.24,1);
   }
   .cat-tile:hover img{ transform:scale(1.03); }
   .cat-name{
-    display:block; margin-top:18px;
+    display:block; margin-top:16px;
     font-family:'Bodoni Moda',serif; font-size:14px; letter-spacing:.04em;
   }
-  .cat-price{
-    display:block; margin-top:5px;
-    font-size:10px; letter-spacing:.2em; color:var(--grey);
+  /* ---------- the viewer ----------
+     A photograph very big in the middle of a white screen, with an arrow
+     either side of it to move through that piece's shots. Above everything
+     but the veil. Closes on the white around it, or Escape. */
+  .viewer{
+    position:fixed; inset:0; z-index:210;
+    background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    gap:clamp(12px, 3vw, 40px);
+  }
+  /* the display rule above would otherwise beat the `hidden` attribute */
+  .viewer[hidden]{ display:none; }
+  .viewer img{
+    display:block; height:min(82vh, 900px); width:auto; max-width:70vw;
+    object-fit:contain;
+  }
+  .lb-arrow{
+    width:44px; height:44px; flex:none;
+    font-family:'Bodoni Moda',serif; font-size:40px; font-weight:300; line-height:1;
+    color:var(--ink); opacity:.6; transition:opacity .2s;
+  }
+  .lb-arrow:hover{ opacity:1; }
+  .lb-arrow[disabled]{ opacity:.12; cursor:default; }
+  .lb-under{
+    position:absolute; left:0; right:0; bottom:22px;
+    text-align:center; pointer-events:none;
+  }
+  .lb-under .cat-name{ margin-top:0; }
+  .lb-under a{
+    display:inline-block; margin-top:8px; pointer-events:auto;
+    font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line);
   }
   /* ---------- support ----------
      The same sheet as the catalogue, carrying a short form instead of a
      grid: the house's small uppercase labels over hairlined fields, and the
      shop's own black button to send. Narrow, and left, like a letter. */
   .report{
-    max-width:520px; margin:0 44px 60px;
+    max-width:520px; margin:26px 44px 60px;
     font-size:12px; line-height:1.8; color:#4c4846;
   }
   .report-lead{ margin:6px 0 30px; max-width:46ch; }
@@ -2012,11 +2056,13 @@
   .report-note{ color:#a0463a; margin:-10px 0 16px; }
   .report-fine{ margin-top:18px; font-size:11px; color:var(--grey); max-width:46ch; }
   @media(max-width:900px){
-    .cat-bar{ padding:16px 20px 14px; }
-    .report{ margin:0 20px 40px; }
-    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:0 20px 20px; }
-    .cat-tile{ padding:18px 10px 16px; }
-    .cat-tile img{ height:min(34vh, 300px); }
+    .sheet-title{ margin:22px 20px 0; }
+    .report{ margin:18px 20px 40px; }
+    .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:22px 20px 30px; gap:14px; }
+    .cat-tile{ padding:16px 8px 14px; }
+    .cat-tile img{ height:min(32vh, 280px); }
+    .viewer img{ max-width:76vw; height:min(70vh, 700px); }
+    .lb-arrow{ width:32px; font-size:32px; }
     .cat-name{ font-size:12px; margin-top:12px; }
   }
 </style>
@@ -2105,34 +2151,34 @@
 </div>
 
 <header>
-  <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
+  <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span class="lines"></span><span class="word">Menu</span></button>
   <nav class="menu" id="menu" hidden>
+    <button class="menu-item" onclick="goHomeFromMenu()">Home</button>
     <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
     <button class="menu-item" onclick="openSupport()">Support</button>
   </nav>
   <!-- the drawn wordmark, the same file the opening page shows big -->
   <div class="brand" id="brand" role="button" tabindex="0"
-       aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 414.4 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path transform="translate(30.7 0)" d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path transform="translate(61.4 0)" d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path transform="translate(92.1 0)" d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path transform="translate(122.8 0)" d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path transform="translate(153.5 0)" d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path transform="translate(184.2 0)" d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path transform="translate(214.9 0)" d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path transform="translate(245.6 0)" d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path transform="translate(276.3 0)" d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
+       aria-label="garnements — back to the opening page"><svg class="brand-svg" viewBox="0 0 276.25 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path transform="translate(15.35 0)" d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path transform="translate(30.70 0)" d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path transform="translate(46.05 0)" d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path transform="translate(61.40 0)" d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path transform="translate(76.75 0)" d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path transform="translate(92.10 0)" d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path transform="translate(107.45 0)" d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path transform="translate(122.80 0)" d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path transform="translate(138.15 0)" d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></div>
   <button class="cart-btn" onclick="toggleCart(true)">Cart (<span id="cartCount">0</span>)</button>
 </header>
 
 <!-- the catalogue: built by buildCatalogue() from PRODUCTS -->
 <div class="catalogue" id="catalogue" hidden>
-  <div class="cat-bar">
-    <span>Catalogue</span>
-    <button class="close-cat" onclick="closeCatalogue()" aria-label="Close the catalogue">×</button>
-  </div>
   <div class="cat-grid" id="catGrid"></div>
+</div>
+<div class="viewer" id="viewer" hidden>
+  <button class="lb-arrow" id="lbPrev" aria-label="Previous photograph">‹</button>
+  <img id="lbImg" alt="">
+  <button class="lb-arrow" id="lbNext" aria-label="Next photograph">›</button>
+  <div class="lb-under"><span class="cat-name" id="lbName"></span><br><a href="#" id="lbOpen">see the piece</a></div>
 </div>
 
 <!-- support: a report form. There is no server behind the site, so the
      report goes the way an order does — composed into an e-mail to the
      house address and handed to the visitor's mail app. -->
 <div class="catalogue support" id="support" hidden>
-  <div class="cat-bar">
-    <span>Support</span>
-    <button class="close-cat" onclick="closeSupport()" aria-label="Close support">×</button>
-  </div>
+  <h2 class="sheet-title">Support</h2>
   <form class="report" id="report" novalidate>
     <p class="report-lead">Something wrong? Tell us what happened and we will
       answer by e-mail, usually within two working days. Or write straight to
@@ -5005,23 +5051,58 @@ function buildCatalogue(){
     if(!photo) return '';
     return `<button class="cat-tile" data-id="${id}">` +
       `<img src="${photo}" alt="${fullName(p)}" loading="lazy">` +
-      `<span class="cat-name">${fullName(p)}</span>` +
-      `<span class="cat-price">${euro(cents(p))}</span></button>`;
+      `<span class="cat-name">${fullName(p)}</span></button>`;
   }).join('');
-  /* pressing a tile is the same as pressing the drawing in the sketchbook:
-     the piece opens in the shop. If the opening page is still up, the shop
-     is brought in first (see __enterShop in the opening sequence). */
+  /* pressing a tile opens that piece's photographs in the viewer */
   grid.addEventListener('click', e => {
     const tile = e.target.closest('.cat-tile');
     if(!tile) return;
-    /* stopped here, or the page's own "clicked outside the book" handler
-       sees the same click a moment later and closes the piece it opened */
     e.stopPropagation();
-    closeCatalogue();
-    if(window.__enterShop) window.__enterShop();
-    openModal([tile.dataset.id]);
+    openViewer(tile.dataset.id);
   });
 }
+/* every photograph a piece has, across its colourways */
+const shotsFor = p => (p.photos || []).concat(
+  ...(p.colours || []).map(c => c.photos || []));
+const viewerEl = document.getElementById('viewer');
+const lbImg = document.getElementById('lbImg');
+let lbShots = [], lbAt = 0, lbId = '';
+function showShot(i){
+  lbAt = Math.max(0, Math.min(lbShots.length - 1, i));
+  lbImg.src = lbShots[lbAt];
+  document.getElementById('lbPrev').disabled = lbAt === 0;
+  document.getElementById('lbNext').disabled = lbAt === lbShots.length - 1;
+}
+function openViewer(id){
+  const p = PRODUCTS[id]; if(!p) return;
+  lbId = id; lbShots = shotsFor(p);
+  if(!lbShots.length) return;
+  document.getElementById('lbName').textContent = fullName(p);
+  viewerEl.hidden = false;
+  showShot(0);
+}
+function closeViewer(){ viewerEl.hidden = true; }
+document.getElementById('lbPrev').addEventListener('click', e => { e.stopPropagation(); showShot(lbAt - 1); });
+document.getElementById('lbNext').addEventListener('click', e => { e.stopPropagation(); showShot(lbAt + 1); });
+/* the white around the photograph closes it; the photograph itself does not */
+viewerEl.addEventListener('click', e => { if(e.target === viewerEl) closeViewer(); });
+/* "see the piece": the same as pressing the drawing in the sketchbook — the
+   piece opens in the shop. If the opening page is still up, the shop is
+   brought in first (see __enterShop in the opening sequence). */
+document.getElementById('lbOpen').addEventListener('click', e => {
+  e.preventDefault(); e.stopPropagation();
+  closeViewer(); closeCatalogue();
+  if(window.__enterShop) window.__enterShop();
+  openModal([lbId]);
+});
+/* Home, from the menu: the opening page, exactly as the wordmark gives it */
+function goHomeFromMenu(){
+  toggleMenu(false);
+  closeCatalogue(); closeSupport();
+  document.getElementById('brand').click();
+}
+/* and the wordmark itself folds the sheets away on its way home */
+document.getElementById('brand').addEventListener('click', () => { closeCatalogue(); closeSupport(); });
 const catalogueEl = document.getElementById('catalogue');
 function openCatalogue(){
   toggleMenu(false);
@@ -5084,6 +5165,12 @@ reportForm.addEventListener('submit', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if(!viewerEl.hidden){
+    if(e.key === 'ArrowLeft')  showShot(lbAt - 1);
+    if(e.key === 'ArrowRight') showShot(lbAt + 1);
+    if(e.key === 'Escape') closeViewer();
+    return;
+  }
   if(e.key !== 'Escape') return;
   if(!supportEl.hidden){ closeSupport(); return; }
   if(!catalogueEl.hidden){ closeCatalogue(); return; }
