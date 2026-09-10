@@ -225,12 +225,12 @@
   .brand path:nth-of-type(5n+5), .intro-mark path:nth-of-type(5n+5){ fill:#6f95aa; }   /* slate blue */
   /* The two are one mark at two sizes, and only one of them is ever on
      the page: the big one stands on the opening page and rises out through
-     the top as you scroll, and the moment the last of it has left, this
-     small one is standing in the masthead where it went — the same word,
-     handed from one to the other (see the mark in paintScroll, which owns
-     body.mark-gone). */
-  body.entry .brand{ opacity:0; pointer-events:none; transition:opacity .25s; }
-  body.entry.mark-gone .brand{ opacity:1; pointer-events:auto; }
+     the top as you scroll; the small one waits, and comes in with the
+     sketchbook at the end (the ending writes its opacity alongside the
+     pad's, see play() in the opening sequence). Then the menu, the cart,
+     the colophon line and the masthead's own line follow, a moment later,
+     at the hand-over. */
+  body.entry .brand{ opacity:0; pointer-events:none; }
   .cart-btn{
     grid-column:3; justify-self:end;
     font-size:11px;letter-spacing:.22em;text-transform:uppercase;
@@ -1908,10 +1908,10 @@
      It stands in the masthead, so it is there on the opening page too. */
   .menu-btn{
     grid-column:1; justify-self:start;
-    height:15px; padding:0 0 0 32px;
+    height:11px; padding:0 0 0 24px;
     display:block; position:relative;
     font-size:10px; letter-spacing:.24em; text-transform:uppercase;
-    line-height:15px; color:var(--ink);
+    line-height:11px; color:var(--ink);
     transition:opacity .5s;
   }
   /* three lines drawn from ONE span and two shadows of it, rather than
@@ -1920,8 +1920,8 @@
      The word sits to their right, in the house's small uppercase. */
   .menu-btn .lines{
     position:absolute; left:0; top:0;
-    display:block; width:22px; height:1px; background:var(--ink);
-    box-shadow:0 7px 0 var(--ink), 0 14px 0 var(--ink);
+    display:block; width:16px; height:1px; background:var(--ink);
+    box-shadow:0 5px 0 var(--ink), 0 10px 0 var(--ink);
   }
   .menu-btn .word{ display:block; }
   /* On the opening page the masthead is the wordmark and nothing else —
@@ -1931,7 +1931,8 @@
   body.entry .menu-btn{ opacity:0; pointer-events:none; }
   /* half a pixel: a true hairline on any retina screen, and the thinnest
      line a 1× screen can draw */
-  body:not(.entry) header{ border-bottom:.5px solid var(--ink); }
+  header{ border-bottom:.5px solid transparent; transition:border-color .5s; }
+  body:not(.entry) header{ border-color:var(--ink); }
   .menu{
     position:absolute; left:44px; top:100%;
     background:var(--bg); border:1px solid var(--ink);
@@ -5463,7 +5464,7 @@ document.addEventListener('keydown', e => {
 
   /* Layout reads, so they are taken here and on resize rather than every
      frame inside the paint. */
-  let maxScroll = 0, stageH = 0, stageW = 0, markTravel = 0, markGoneK = 1;
+  let maxScroll = 0, stageH = 0, stageW = 0, markTravel = 0;
   /* where the mark's centre stands, as a share of the screen's height —
      the same 47% .intro-mark's `top` puts it at */
   const MARK_TOP = .47;
@@ -5515,7 +5516,7 @@ document.addEventListener('keydown', e => {
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = true, dpr = 1, dustW = 0, dustH = 0;
   let mX, mY, mVX, mVY, mWX, mWY, mD, mA, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
-  const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3500;
+  const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3900;
   let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 420000;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
@@ -5583,12 +5584,12 @@ document.addEventListener('keydown', e => {
             /* half a random direction, half straight out from the drawing's
                middle — so the puff expands towards the viewer as much as it
                scatters — and a speed of its own */
-            const ang = r2 * 6.28318, sp = (5 + 16 * r3) * dpr;
+            const ang = r2 * 6.28318, sp = (6.5 + 21 * r3) * dpr;
             const rl = Math.hypot(px - cx, py - cy) || 1;
             let ux = Math.cos(ang) * .5 + (px - cx) / rl * .5;
             let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
             const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
-            const bend = (r1 - .5) * 7 * dpr;
+            const bend = (r1 - .5) * 9 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
@@ -5728,7 +5729,6 @@ document.addEventListener('keydown', e => {
        against the WIDTH while the distance is a share of the HEIGHT. */
     const h = mark.offsetHeight, vh = intro.clientHeight;
     markTravel = MARK_TOP * vh + 0.6 * h;
-    markGoneK  = (MARK_TOP * vh + 0.5 * h) / markTravel;
     /* The glass comes to rest on the pressed drawing, at its middle and a
        little above its centre line (a standing figure's chest) — where the
        drawing WILL be once it has arrived (LOCK_A). Its search path runs
@@ -5802,7 +5802,8 @@ document.addEventListener('keydown', e => {
      painted from a scroll listener instead of a permanent rAF loop: held
      still, the page now does no work at all, and every drawing sits exactly
      where its scroll offset says it should. */
-  let lastP = -1, lastEntering = false, lastGone = false, lastHover = false, lastPress = false;
+  let lastP = -1, lastEntering = false, lastHover = false, lastPress = false;
+  const brandEl = document.getElementById('brand');
   function paintScroll(p){
     /* ---------- the search, the find, the press, the vanish ----------
        The site's mechanic as a small story, while the drawings scroll
@@ -5855,13 +5856,14 @@ document.addEventListener('keydown', e => {
        — all the way out through the top, not parked near it and not faded.
        Linear against the scroll rather than eased, so it leaves at the
        wheel's own pace like everything else on this page. The masthead's
-       small mark takes over the frame the last of this one crosses the
-       edge (markGoneK, see measure). It is gone before the pointer reaches
-       the drawing, so the press has the page to itself. */
+       small mark comes later, with the sketchbook. It is gone before the
+       pointer reaches the drawing, so the press has the page to itself. */
     const markK = seg(p, 0, .40);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
-    const gone = markK >= markGoneK;
-    if(gone !== lastGone){ document.body.classList.toggle('mark-gone', gone); lastGone = gone; }
+    /* the masthead's small mark fades up with the sketchbook — an inline
+       opacity that outranks the stylesheet's 0 while the opening page is
+       up, and is cleared at the hand-over so the stylesheet takes over */
+    brandEl.style.opacity = playing || appearNow > 0 ? appearNow.toFixed(3) : '';
 
     /* the only movement any drawing makes: straight up as p grows, straight
        back down as it shrinks, at the wheel's own speed — see FIG_RATE.
@@ -6069,7 +6071,8 @@ document.addEventListener('keydown', e => {
        moving, which is what keeps them from costing anything (see
        .scatter-layer.settled) */
     scatterEl.classList.add('settled');
-    document.body.classList.remove('entry');      /* the cart arrives */
+    document.body.classList.remove('entry');      /* menu, cart, line, colophon */
+    brandEl.style.opacity = '';
     /* the inline transform the entrance was writing comes off; the pads are
        at zero anyway, so the stylesheet's own scale-only rule takes over
        without anything moving */
@@ -6108,6 +6111,7 @@ document.addEventListener('keydown', e => {
     if(!dismissed) return;
     dismissed = false;
     playing = false; vanishNow = 0; appearNow = 0;
+    brandEl.style.opacity = '';
     intro.classList.remove('done');
     ground.classList.remove('done');
     scatterEl.classList.remove('settled');
