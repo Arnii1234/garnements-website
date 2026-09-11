@@ -77,11 +77,11 @@
        the script needs the same number to park a book at the screen's edge
        (see IDLE_SCALE) — two copies of it drifting apart would put the parked
        book slightly wrong. */
-    --idle:.88;
+    --idle:.94;
     /* the lift a waiting book takes under the pointer — well clear of --idle,
        so "this is the one you'd press" is legible from across the page
        instead of something you confirm by looking twice */
-    --idle-hover:.91;
+    --idle-hover:.968;
     /* the covers' board tone — shared at :root rather than scoped to
        .leaf.cover so .board (a sibling of the leaves, not a descendant of
        any one of them) can paint the exact same colour behind them. Kept
@@ -90,7 +90,7 @@
        used to bare .board's own slightly different grey-beige, which read
        as a stray light line. Same colour on both sides of the gap and
        there is nothing left to see. */
-    --board-face:radial-gradient(128% 92% at 50% 10%, #d9d1c3 0%, #d2c9ba 44%, #c8bfae 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d3cec5 0%, #ccc7bd 44%, #c3beb3 100%);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;}
@@ -270,12 +270,12 @@
   .stage{
     position:relative;
     display:flex;justify-content:center;
-    padding:44px 16px 8px;
+    padding:24px 16px 4px;
     perspective:2000px;   /* PERSP in the script must match this */
   }
   .calendar{
     position:relative;z-index:1;
-    width:min(560px, 92vw);
+    width:min(620px, 92vw);
     aspect-ratio: 210 / 297;   /* A4 — see PAGE_H below, the same ratio in artwork units */
     transform-style:preserve-3d;
   }
@@ -284,7 +284,7 @@
      across the dividing line. Kept at the old size there; #fit takes care of
      height on its own, but nothing else watches this. */
   @media(max-width:1300px){
-    .calendar{ width:min(480px, 92vw); }
+    .calendar{ width:min(520px, 92vw); }
   }
   /* the curved sheet renders here, above the pad but below the coils */
   .glc{
@@ -369,11 +369,11 @@
      outline you see around an inner page is the back cover genuinely showing
      past it. Stiffness is handled in the flip itself (see stiffFor/flipMs). */
   .leaf.cover{
-    --board-face:radial-gradient(128% 92% at 50% 10%, #d9d1c3 0%, #d2c9ba 44%, #c8bfae 100%);
+    --board-face:radial-gradient(128% 92% at 50% 10%, #d3cec5 0%, #ccc7bd 44%, #c3beb3 100%);
   }
   .leaf.cover .leaf-face{ background:var(--board-face); }
   .leaf.cover .leaf-face.rear{
-    background:linear-gradient(#c9c0b0 0%, #c3baaa 55%, #bab19f 100%);
+    background:linear-gradient(#c4bfb5 0%, #bdb8ae 55%, #b4afa5 100%);
   }
   /* the part of the board that reaches past the sheets. Same fill as the face,
      so the two read as one piece of card. No drawn edge: the pad's own
@@ -631,7 +631,7 @@
      under it. Moving the same distance to the top drops the pad by that
      much without changing the rail's height, so the fit scale is untouched. */
   .book{
-    margin-top:38px;
+    margin-top:12px;
     transform-origin:50% 42%;
     position:relative;
   }
@@ -699,7 +699,7 @@
   /* ---------- navigation ---------- */
   .nav{
     display:flex;align-items:center;justify-content:center;gap:34px;
-    padding:26px 0 8px;
+    padding:12px 0 2px;
     /* Tied to being past the cover, not to the book being active — arrives
        with the first page rather than with the click, and on the way back
        drops the instant `cur` returns to the cover, well before the book
@@ -708,7 +708,7 @@
   }
   .book.active .nav.on{ opacity:1; pointer-events:auto; }
   .nav button{
-    font-size:22px;font-weight:300;width:44px;height:44px;
+    font-size:22px;font-weight:300;width:44px;height:40px;
     transition:opacity .25s;
   }
   .nav button:hover{opacity:.5;}
@@ -720,7 +720,7 @@
      jumpTo/tickIndexAt), which is also why .hover exists as its own class
      rather than reusing .now — one tracks the mouse, the other the actual
      page, and they should be free to disagree. */
-  .ticks{display:flex;align-items:center;gap:5px;height:44px;cursor:pointer;}
+  .ticks{display:flex;align-items:center;gap:5px;height:40px;cursor:pointer;}
   .ticks i{
     display:block;width:1px;height:8px;background:var(--line);
     transition:height .3s, background .3s;
@@ -741,7 +741,7 @@
      checkout button. */
   footer{
     position:relative;z-index:110;
-    text-align:center;padding:26px 0 34px;
+    text-align:center;padding:16px 0 22px;
     font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);
     /* Riding above the product window means this bar also lies across the
        bottom of it, and the thumbnails live exactly there. It has no
@@ -1575,17 +1575,23 @@
     position:absolute; left:-4px; top:-4px; width:100%; height:100%; display:block;
     fill:var(--ink); stroke:var(--panel);
     stroke-width:1; stroke-linejoin:round;
-    filter:drop-shadow(0 2px 4px rgba(35,31,32,.26));
     opacity:var(--morph,0);
   }
   /* Big, on purpose: the glass is the one thing on the opening page that
      has to be seen, so it is drawn at a size no drawing competes with —
      and it still swells to twice this on entry (see the paint) */
   .intro-cursor .glass{
-    position:absolute; left:-46px; top:-46px; width:120px; height:120px; display:block;
-    filter:drop-shadow(0 2px 5px rgba(35,31,32,.22));
+    position:absolute; left:-61px; top:-61px; width:160px; height:160px; display:block;
     opacity:calc(1 - var(--morph,0));
   }
+  /* Neither face carries a CSS filter: a drop-shadow on a face that is at
+     opacity 0 left a faint box on screen (the filter's own layer edges),
+     and a face that is fully faded is hidden outright below. The halo that
+     keeps an ink pointer legible over ink drawings is drawn in the SVG
+     itself instead — a paper stroke under the ink one. */
+  .intro-cursor.at-glass .arrow{ visibility:hidden; }
+  .intro-cursor.at-arrow .glass{ visibility:hidden; }
+  .intro-cursor .glass .halo{ fill:none; stroke:var(--panel); stroke-width:2; stroke-linecap:round; }
   .intro-cursor .glass circle{
     fill:rgba(255,255,255,.55); stroke:var(--ink); stroke-width:.6;
   }
@@ -1594,7 +1600,7 @@
      thing on the page */
   @media (max-width:600px){
     .intro-cursor{ width:34px; height:51px; }
-    .intro-cursor .glass{ left:-31px; top:-31px; width:80px; height:80px; }
+    .intro-cursor .glass{ left:-38px; top:-38px; width:100px; height:100px; }
   }
   .intro-cursor .glass line{
     stroke:var(--ink); stroke-width:1.15; stroke-linecap:round;
@@ -1769,7 +1775,7 @@
      the shop's darker rear read as a grey slab standing over the page rather
      than as the back of something you had just lifted. */
   .demo-cover .back{
-    background:linear-gradient(#cfc6b6 0%, #cac1b1 55%, #c3baa9 100%);
+    background:linear-gradient(#cac5bb 0%, #c5c0b6 55%, #bfbab0 100%);
     transform:rotateY(180deg);
   }
   .demo-cover img{
@@ -2122,7 +2128,7 @@
            at .brand path) -->
       <h1 class="intro-mark" id="introMark"><svg class="mark-svg" viewBox="0 0 138.1 40.5" aria-hidden="true"><path d="M18.2,6c0,1.7-3.2,1-4.4,1.2-4.6.6-8.4,5.8-10.5,9.6s-1.2,3.7-1.9,5.4c.8.3,1.6.2,2.5.3,2.9.4,6.1,1,9.1,1.4,2.9.4,5.8,1.3,8.7.2l-.2-2.9c-3.6.3-.7-3,.5-1.8s.4,2.4.5,3.1c.3,1.6.9,3.8,1.1,5.4.3,2.4,0,4.9.3,7.3l1-.2c-.4,1.1-.2,2.2-.6,3.4s-1.8,3.5-1.9,1.3c-.2-4.7.9-9.6-.1-14.3-1.2,1.1-2.3.3-3.5.2s-2.6.1-3.8,0c-5-.5-9.9-2-15-2.2.4-1,.6-2,1-3,1.7-4.6,3.7-8.9,7.6-12.1s6.1-2.1,9.7-2.4Z"/><path d="M38.6,27.7l-.6.4c-.7-.1-.9-2.1-1.4-1.9s-.8.9-1.2,1.2c-1,.7-5.4,2-6.4,1.6s-.4-.3-.5-.5c1.4-1.9,2.4-3.5,4.5-4.8s5.6-3.3,5.7-1-.1.5-.1.6v4.6ZM37.1,24.2c.2-.3,0-1.1-.3-1.1-2.3.9-5.2,1.8-5.9,4.5,2.8,0,4.2-1.9,6.2-3.4Z"/><path d="M49.7,14.9c0,1.8-3.8.8-4.2,1.4-.7,1,.4,2.2.6,2.8s-.1,1.1,0,1.5c.2,1.2,1.2,2.3.3,3.5-.2,0-.6,0-.8,0-.6-.2-1-3.8-1.2-4.6-.3-1.5-1.3-3.2-.5-4.7s2.2-.3,3.1-.2,1.7-.4,2.8.2Z"/><path d="M56.6,22.8c1.3.1,1.8-.5,2.9.4s1.5,3.3,2.4,4.6h1c.1.6,0,1.4-.9,1.5-1.5.2-2.2-4.4-3.6-5l-2.7,1.4-.7-14.4c.7-.4,1.4,1.1,1.3,1.6s-.4.6-.4,1c-.2,3,1.2,5.9.7,9Z"/><path d="M71.2,16.8c.1.1-1.8,2-2.1,2.1-1.1.7-1.5.2-2.5.4-2.9.5-.3,2,1.2,2.4s4.6.2,4.7.9l-.2.8c-.2.1-3.9-.2-4.4-.3s-4-1.7-4.2-1.9c-.9-1.3.8-3,1.8-3.7,1.8-1.2,3.5-1.7,5.6-.8Z"/><path d="M78.8,11.4c1.6.9,3.4,2,5.1,2.9s.9,0,1.2.3c.5.3.8,1.7,1.1,1.8,3.2-.3,5.5-3.5,8.9-2.1.4,1.6,0,3.1,0,4.6s.4,1.2.4,1.5-.3,0-.4.3c-.2.4.3,1-.7.9-.9-.4,0-2.9,0-3.8,0-1.4,0-2.6-1.6-2.5-2.2,0-5.2,3.1-7.1,3.7s-.4-1.8-1.5-3-6.7-3.6-7.2-3.6-.8,1.3-.9,1.8c-.1,1,.2,5.3.6,6.1s0,.6.6.5l-.2-3.4.5-.4c1.4.4.6,1.5.6,2.2.1,1.6.2,2.7.2,4.3s.4,4.3-.4,5.2-.7.5-1.1.5c-.3-6-3.4-12.3-1.3-18.2.4-.2,2.4.3,2.9.6Z"/><path d="M100.3,19.4c0,1.3-.8,3.4.1,4.5s5.7,1.1,6.1,2.1c.5,1.6-1.6.7-2.3.6s-1,0-1.4,0-2.2-.8-2.4-.9c-.5-.3-1.7-2-1.7-2.6-.2-1.3,1.2-5.4,2-6.6,1.4-2.3,4.9-5.1,7.6-3.4s1.7,2.3,1.3,3.4-3.7,3.6-4.8,3.9-2.8.4-3.2.2-.5-1.2-1.2-1.1ZM107.9,14.2c-1.6-2-5.1,1.4-6.2,2.7s-1.3,1.9-1.2,2c1.1-.4,2.1.3,3.2.2,1.8-.2,5.7-3,4.2-5Z"/><path d="M112.3,25.4c3.2.5,3.9-.3,5.9,2.4.7,1,.7,2.1,2.1,2.5-2.4,2-1.9-.4-2.8-1.5s-1.5-1.4-1.6-1.5c-1.3-.6-2.6.3-3.9,0-.4-.2-.4-3.7-.5-4.4-.1-1-1.3-2.6.8-2.2l.2,4.7Z"/><path d="M125.2,0l.7,12.9c0,0,2.4-.9,2.4.4s-1.6.5-1.9.7c-1.2.9,0,4.2-.3,5.5,1,1,.9,2.4-.6,2.8-1-1.3-.2-3.1-.2-4.6s-.6-2.2-.4-3.3l-7.9-.7.4-1.2,7,.5c0-2.2.1-4.4,0-6.6s-.1-2.7-.3-3.8-.3-1.4-.7-2l1.7-.5Z"/><path d="M137,15.6c-1.2,2.7-3.6,2.1-1.5,5.5s2.2,3.3,2.6,5.3-.7,3.1-2.2,3.8-2.3.2-2-.8,1.6,0,2.3-.8c1.9-2.3-2-7.5-3.5-9.4,1.5-1,2.3-4.2,4.3-3.5Z"/></svg></h1>
       <div class="intro-cursor" id="introCursor" aria-hidden="true">
-        <svg class="glass" viewBox="0 0 34 34"><circle cx="13" cy="13" r="10"/><line x1="20.6" y1="20.6" x2="31" y2="31"/></svg>
+        <svg class="glass" viewBox="0 0 34 34"><circle class="halo" cx="13" cy="13" r="10"/><line class="halo" x1="20.6" y1="20.6" x2="31" y2="31"/><circle cx="13" cy="13" r="10"/><line x1="20.6" y1="20.6" x2="31" y2="31"/></svg>
         <svg class="arrow" viewBox="0 0 12 18"><path d="M1 1 L1 15 L4.6 11.6 L7 17 L9.4 16 L7 10.8 L11 10.6 Z"/></svg>
       </div>
 
@@ -2994,7 +3000,7 @@ const FLIP_MS = REDUCED ? 1 : 1250;
 /* Opening the cover is its own moment — heavy board, taken deliberately — so
    it runs far slower than the pages behind it. The contrast is the point: the
    slow one is getting into the book, the quick ones are the drawings. */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 1800 : FLIP_MS);
+const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 1300 : FLIP_MS);
 const EASE = 'cubic-bezier(.34,.08,.24,1)';
 let cur = 0;
 /* A cover turn is the one flip that cannot be cut short. Ordinary pages stay
@@ -3189,7 +3195,7 @@ function makeStrip(){
    units to texture pixels — the same on both axes, since the texture keeps the
    page's aspect ratio. */
 function drawHoles(x, s){
-  x.fillStyle = '#d2c9ba';       /* the board showing through — see --board-face */
+  x.fillStyle = '#ccc7bd';       /* the board showing through — see --board-face */
   x.strokeStyle = 'rgba(35,31,32,.2)';
   x.lineWidth = Math.max(1, .7 * s);
   holeXs.forEach(hx => {
@@ -3237,7 +3243,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#c9c0b0', '#c3baaa', '#bab19f']);
+    texCoverBack = paperTexture(['#c4bfb5', '#bdb8ae', '#b4afa5']);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -3319,7 +3325,7 @@ function pageTexture(i){
   const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
-    ? ['#d9d1c3', '#d2c9ba', '#c8bfae']
+    ? ['#d3cec5', '#ccc7bd', '#c3beb3']
     : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
@@ -3650,9 +3656,10 @@ function next(){
   if(flipLocked() || cur >= PAGES.length - 1) return;
   const i = cur;
   const board = PAGES[i].board;
-  /* the cover gets a short, deliberate pause before it starts moving; every
-     other page still flips the instant it's pressed */
-  const delay = board ? 250 : 0;
+  /* every page, the cover included, flips the instant it is pressed — the
+     cover used to wait a quarter second first, and that read as the click
+     not having landed */
+  const delay = 0;
   glSettle();
   lockIfBoard(i, delay);
   const fire = () => {
@@ -5351,7 +5358,7 @@ document.addEventListener('keydown', e => {
        overwritten by measure so that he is exactly under the lens on that
        frame. A shade darker than the rest, lifted to full ink once found;
        never wraps. */
-    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:61, y:100, h:40, o:.5, d:1.18, press:1},
+    {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:61, y:100, h:40, o:.5, d:1.65, press:1},
     /* upper middle */
     {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
     {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
@@ -5570,9 +5577,13 @@ document.addEventListener('keydown', e => {
   const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3900;
   let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 420000;
+  /* the sampling cell, in device pixels: 2 on a dense screen (one CSS
+     pixel), 1 otherwise — set with the canvas, see sizeDust */
+  let CELL = 1;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
     dpr = Math.min(2, window.devicePixelRatio || 1);
+    CELL = dpr >= 1.5 ? 2 : 1;
     dustW = Math.round(stageW * dpr); dustH = Math.round(stageH * dpr);
     dust.width = dustW; dust.height = dustH;
     dustImg = dctx.createImageData(dustW, dustH);
@@ -5601,32 +5612,50 @@ document.addEventListener('keydown', e => {
         x2.drawImage(img, -bx * sc, -by * sc, ART_SVG_W * sc, ART_SVG_H * sc);
         const data = x2.getImageData(0, 0, c.width, c.height).data;
         const o = fg.s.press ? 1 : fg.s.o;
+        /* counted in cells, the way the second pass walks them */
         let count = 0;
-        for(let j = 3; j < data.length; j += 4) if(data[j] >= 40) count++;
+        for(let py = 0; py < c.height - CELL + 1; py += CELL)
+          for(let px = 0; px < c.width - CELL + 1; px += CELL){
+            let hit = false;
+            for(let cy = 0; cy < CELL && !hit; cy++) for(let cx = 0; cx < CELL; cx++)
+              if(data[((py + cy) * c.width + px + cx) * 4 + 3] >= 40){ hit = true; break; }
+            if(hit) count++;
+          }
         grabs.push({fg, i, x, y, c, data, o, count});
         total += count;
       });
+      /* On a dense screen a mote is a 2×2 block of device pixels — one
+         CSS pixel — sampled as one, so the count is a quarter of the pixels
+         and each mote has a size to lose: it is drawn at its full block for
+         the first stretch of its flight and shrinks to a single pixel on
+         the way (see paintDust). On a 1× screen the cell is the pixel. */
       const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
       moteCap = Math.min(total, MOTE_CAP) + 16;
       mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
       mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
-      touched = new Int32Array(moteCap);
+      touched = new Int32Array(moteCap * CELL * CELL);   /* a block's every pixel */
       grabs.forEach(({fg, i, x, y, c, data, o}) => {
         const W = c.width, H = c.height, cx = W / 2, cy = H / 2;
         const half = Math.hypot(cx, cy);
         const seed = i * 7919, figD = .30 * hash(i + 41);
         let acc = 0;
-        for(let py = 0; py < H; py++){
-          for(let px = 0; px < W; px++){
-            const j = (py * W + px) * 4;
-            const a = data[j + 3];
-            if(a < 40) continue;
+        for(let py = 0; py < H - CELL + 1; py += CELL){
+          for(let px = 0; px < W - CELL + 1; px += CELL){
+            /* the cell's ink, averaged over its pixels */
+            let ink = 0, amax = 0;
+            for(let cy = 0; cy < CELL; cy++) for(let cx = 0; cx < CELL; cx++){
+              const j = ((py + cy) * W + px + cx) * 4;
+              const a = data[j + 3];
+              if(a > amax) amax = a;
+              const lum = (data[j] * .3 + data[j + 1] * .59 + data[j + 2] * .11);
+              ink += (a / 255) * (1 - lum / 255);
+            }
+            if(amax < 40) continue;
             acc += keep; if(acc < 1) continue; acc -= 1;
             if(moteN >= moteCap) return;
-            const lum = (data[j] * .3 + data[j + 1] * .59 + data[j + 2] * .11);
-            const ink = (a / 255) * (1 - lum / 255) * o;
+            ink = ink / (CELL * CELL) * o;
             if(ink < .06) continue;
             const n = seed + py * 977 + px;
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
@@ -5676,24 +5705,43 @@ document.addEventListener('keydown', e => {
     touchedN = 0;
     const fadeIn = seg(v, 0, .14);
     const W = dustW, H = dustH;
+    /* A mote's flight, its fading and its shrinking all run on the one
+       clock, so a mote is gone exactly as it stops: the fade is the share
+       of the flight still to go, the block it is drawn as (2×2 on a dense
+       screen) loses its other pixels over the middle of the flight, and
+       the last pixel thins to nothing as it arrives. Scattering and
+       vanishing are one motion rather than a scatter that then fades. */
     for(let i = 0; i < moteN; i++){
       const d = mD[i];
       const k = v <= d ? 0 : (v - d) / (1 - d);
-      const rem = 1 - k;
-      if(rem <= 0) continue;
-      /* out fast, then slower and slower: a cubic ease-out */
-      const ik = 1 - k, e = 1 - ik * ik * ik, bend = e * (1 - e);
+      const ik = 1 - k;
+      if(ik <= 0) continue;
+      /* out fast, then slower: a quadratic ease-out */
+      const e = 1 - ik * ik, bend = e * (1 - e);
       const x = mX[i] + mVX[i] * e + mWX[i] * bend;
       const y = mY[i] + mVY[i] * e + mWY[i] * bend;
-      if(x < 0 || y < 0 || x >= W || y >= H) continue;
-      const a = Math.sqrt(mA[i]) * rem * Math.sqrt(rem) * fadeIn * 255;
+      if(x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
+      const a = Math.sqrt(mA[i]) * ik * fadeIn * 255;
       if(a < 4) continue;
       const idx = (y | 0) * W + (x | 0);
-      const old = pix32[idx] >>> 24;
+      let old = pix32[idx] >>> 24;
       if(a > old){
         if(!old) touched[touchedN++] = idx;
         pix32[idx] = ((a | 0) << 24);      /* black, at its own alpha */
       }
+      if(CELL === 1) continue;
+      /* the rest of the block, fading away over the flight's middle */
+      const sh = ik > .75 ? 1 : ik < .35 ? 0 : (ik - .35) / .4;
+      if(sh <= 0) continue;
+      const a2 = a * sh;
+      if(a2 < 4) continue;
+      const j1 = idx + 1, j2 = idx + W, j3 = j2 + 1;
+      old = pix32[j1] >>> 24;
+      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24); }
+      old = pix32[j2] >>> 24;
+      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24); }
+      old = pix32[j3] >>> 24;
+      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24); }
     }
     dctx.putImageData(dustImg, 0, 0);
   }
@@ -5792,7 +5840,9 @@ document.addEventListener('keydown', e => {
          where he stops is where he stands then: his chest at 30% of the
          screen's height, standing down to about 70%. His start is worked
          back from that: far enough below to arrive there on that frame,
-         which lands him just under the fold at rest. */
+         which lands him a quarter of a screen under the fold at rest —
+         he rises faster than most of the scatter (d) so that he is still
+         out of sight for the first stretch of the scroll. */
       fg.left0 = fe.offsetLeft;
       fg.rise  = maxScroll * fg.s.d * FIG_RATE;
       fg.lockY = stageH * .30;
@@ -5807,7 +5857,7 @@ document.addEventListener('keydown', e => {
          circle, and back down onto him. */
       searchPath = [
         [-70,          stageH * .60],
-        [stageW * .22, stageH * .42],
+        [stageW * .26, stageH * .42],
         [stageW * .42, stageH * .64],
         [curTargetX,   curTargetY],
         [curTargetX + stageW * .12, curTargetY - stageH * .13]
@@ -5848,7 +5898,7 @@ document.addEventListener('keydown', e => {
      painted from a scroll listener instead of a permanent rAF loop: held
      still, the page now does no work at all, and every drawing sits exactly
      where its scroll offset says it should. */
-  let lastP = -1, lastEntering = false, lastHover = false, lastPress = false;
+  let lastP = -1, lastEntering = false, lastHover = false, lastPress = false, lastFace = null;
   const brandEl = document.getElementById('brand');
   function paintScroll(p){
     /* ---------- the search, the find, the press, the vanish ----------
@@ -5881,7 +5931,15 @@ document.addEventListener('keydown', e => {
     const hoverK = vanishNow < .5 ? seg(p, crossP, crossP + .02) : 0;
     const hover  = hoverK > 0;
     const press  = p >= .92 && p < .98;
-    cursor.style.setProperty('--morph', seg(p, LOCK_A, LOOP_A).toFixed(3));
+    const morph = seg(p, LOCK_A, LOOP_A);
+    cursor.style.setProperty('--morph', morph.toFixed(3));
+    /* a fully faded face is taken off screen outright, see .at-glass */
+    const face = morph <= 0 ? 'at-glass' : morph >= 1 ? 'at-arrow' : '';
+    if(face !== lastFace){
+      cursor.classList.toggle('at-glass', face === 'at-glass');
+      cursor.classList.toggle('at-arrow', face === 'at-arrow');
+      lastFace = face;
+    }
     if(pressFig){
       const cut = pressFig.cut;
       if(hover !== lastHover){ cut.classList.toggle('hover', hover); lastHover = hover; }
