@@ -1512,7 +1512,7 @@
      nine tenths of a screen of scrolling, and what follows — the dust and
      the sketchbook appearing — runs on its own clock (see play() in the
      opening sequence), so the wheel has nothing more to say to it. */
-  .intro-track{ height:320vh; position:relative; }
+  .intro-track{ height:520vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -5724,7 +5724,7 @@ document.addEventListener('keydown', e => {
       return;
     }
     if(motesFor !== 1){ sampleDust(); motesFor = 1; }
-    placeDust(pBg);
+    placeDust(pScroll);
     for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0;
     touchedN = 0;
     const fadeIn = seg(v, 0, .14);
@@ -5867,7 +5867,10 @@ document.addEventListener('keydown', e => {
          he rises faster than most of the scatter (d) so that he is still
          out of sight for the first stretch of the scroll. */
       fg.left0 = fe.offsetLeft;
-      fg.rise  = maxScroll * fg.s.d * FIG_RATE;
+      /* his climb is written against the screen, not the track: however
+         long the page, he rises two and a half screens over the whole of
+         the demonstration's progress — on screen from about a fifth of it */
+      fg.rise  = 2.6 * stageH;
       fg.lockY = stageH * .30;
       fg.startY = fg.lockY + fg.rise * crossP;
       curTargetX = fg.left0 + fe.offsetWidth * .5;
@@ -5988,7 +5991,7 @@ document.addEventListener('keydown', e => {
        wheel's own pace like everything else on this page. The masthead's
        small mark comes later, with the sketchbook. It is gone before the
        pointer reaches the drawing, so the press has the page to itself. */
-    const markK = seg(p, 0, .20);
+    const markK = seg(p, 0, .12);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     /* the masthead's small mark fades up with the sketchbook — an inline
        opacity that outranks the stylesheet's 0 while the opening page is
@@ -6226,16 +6229,16 @@ document.addEventListener('keydown', e => {
   function play(){
     if(playing || dismissed) return;
     playing = true;
-    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pBg); }
+    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pScroll); }
     const t0 = performance.now();
     const tick = now => {
       if(!playing) return;
       const t = now - t0;
       vanishNow = cl01(t / VANISH_MS);
       appearNow = io(cl01((t - APPEAR_AT) / APPEAR_MS));
-      paintScroll(pBg, 1);
+      paintScroll(pScroll, 1);
       if(t < END_MS) requestAnimationFrame(tick);
-      else { vanishNow = 1; appearNow = 1; paintScroll(pBg, 1); dismiss(); }
+      else { vanishNow = 1; appearNow = 1; paintScroll(pScroll, 1); dismiss(); }
     };
     requestAnimationFrame(tick);
   }
@@ -6251,8 +6254,8 @@ document.addEventListener('keydown', e => {
     clearTimeout(enterTimer);
     /* the demonstration is put where the scroll is, not left to run
        backwards from the end at its own pace under a page being revealed */
-    pScroll = pDemo = pBg = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
-    scrolledSince = 0; chasing = false; placedAt = -1;
+    pScroll = pDemo = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
+    chasing = false; placedAt = -1;
     lastP = -1;    /* nothing was painted while it was away — the next paint
                       puts the pads and their lift back where the scroll says */
   }
@@ -6267,7 +6270,7 @@ document.addEventListener('keydown', e => {
        sketchbook fully there */
     playing = false; vanishNow = 1; appearNow = 1;
     intro.scrollTop = maxScroll;
-    pScroll = pDemo = pBg = 1; scrolledSince = 0; chasing = false;
+    pScroll = pDemo = 1; chasing = false;
     paintScroll(1); lastP = 1;
     dismiss();
   };
@@ -6292,27 +6295,18 @@ document.addEventListener('keydown', e => {
      the scatter underneath until the ending's own clock takes over. */
   const FIX_LEAD = .06;
   const demoTarget = () => pDemo >= crossP - FIX_LEAD ? 1 : pScroll;
-  /* pBg is what the scatter and the mark are painted from. It answers the
-     wheel exactly, every notch, in both directions — and it never moves
-     SLOWER than the demonstration: while the demonstration is catching up
-     with a scroll that ran ahead of it, or running its fixed last beat,
-     the scatter keeps flowing past at the demonstration's own pace, as it
-     would have under a scroll at that speed. Each frame it advances by
-     the larger of the wheel's movement and the demonstration's. The
-     drawings wrap, so it is free to run past 1. */
-  let pScroll = 0, pDemo = 0, pBg = 0, scrolledSince = 0, chasing = false, chaseT = 0;
+  /* The scatter and the mark are painted from pScroll and nothing else:
+     the wheel, every notch, both ways. Only the demonstration has a pace
+     of its own. */
+  let pScroll = 0, pDemo = 0, chasing = false, chaseT = 0;
   function chase(now){
     if(!chasing) return;
     if(playing || dismissed){ chasing = false; return; }
     const dt = Math.min(.05, (now - chaseT) / 1000); chaseT = now;
     const target = demoTarget();
     const gap = target - pDemo, step = DEMO_RATE * dt;
-    const was = pDemo;
     pDemo = Math.abs(gap) <= step ? target : pDemo + (gap > 0 ? step : -step);
-    const dd = pDemo - was;
-    if(dd > 0){ const extra = dd - Math.max(0, scrolledSince); if(extra > 0) pBg += extra; }
-    scrolledSince = 0;
-    paintScroll(pBg, pDemo);
+    paintScroll(pScroll, pDemo);
     if(pDemo > .995){ chasing = false; play(); return; }
     if(pDemo !== demoTarget()) requestAnimationFrame(chase); else chasing = false;
   }
@@ -6332,9 +6326,8 @@ document.addEventListener('keydown', e => {
          something has already been written */
       const p = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
       if(playing) return;                /* the ending has its own clock */
-      const d = p - pScroll;
-      pScroll = p; pBg += d; scrolledSince += d;
-      if(p !== lastP){ paintScroll(pBg, pDemo); lastP = p; }
+      pScroll = p;
+      if(p !== lastP){ paintScroll(p, pDemo); lastP = p; }
       if(pDemo !== demoTarget()){
         if(!chasing){ chasing = true; chaseT = performance.now(); requestAnimationFrame(chase); }
       }else if(pDemo > .995) play();
