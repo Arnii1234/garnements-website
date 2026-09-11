@@ -5569,7 +5569,11 @@ document.addEventListener('keydown', e => {
      that bends a little as it goes, thinning to nothing. All of it a pure
      function of the vanish's progress, so scrolling back gathers the dust
      into the drawings again. */
-  let moteN = 0, moteCap = 0, motesFor = -1, dustOK = true, dpr = 1, dustW = 0, dustH = 0;
+  /* How everything leaves at the press. 'dust': pulverised, grain by
+     grain (the canvas below). 'fade': the drawings simply fade to nothing
+     over the same time, no dust at all. One word to switch between them. */
+  const VANISH_STYLE = 'fade';
+  let moteN = 0, moteCap = 0, motesFor = -1, dustOK = VANISH_STYLE === 'dust', dpr = 1, dustW = 0, dustH = 0;
   let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
   const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3900;
@@ -6009,7 +6013,7 @@ document.addEventListener('keydown', e => {
          stretch (the dust fades up over the same frames, see paintDust),
          so the moment the ink turns to grain is never seen as a cut;
          without the dust (a tainted canvas) they simply fade */
-      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - vanish;
+      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - io(vanish);
       /* the cowboy is the demonstration's, and keeps its pace */
       const {x, y} = figPos(fg, i, s.press ? q : p);
       if(s.press){
