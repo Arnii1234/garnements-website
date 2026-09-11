@@ -5576,7 +5576,15 @@ document.addEventListener('keydown', e => {
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = VANISH_STYLE === 'dust', dpr = 1, dustW = 0, dustH = 0;
   let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
-  const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3900;
+  /* Timed for the style. The dust takes its time to blow away; the fade
+     is the sketchbook's own arrival run backwards — a fade with a slight
+     shrink from the centre, the same ease — and quick, with the pad
+     already coming up as the drawings go, so the two read as one
+     cross-dissolve rather than a gap. */
+  const VANISH_MS = VANISH_STYLE === 'dust' ? 2600 : 800,
+        APPEAR_AT = VANISH_STYLE === 'dust' ? 1900 : 380,
+        APPEAR_MS = VANISH_STYLE === 'dust' ? 1500 : 900,
+        END_MS    = VANISH_STYLE === 'dust' ? 3900 : 1400;
   let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 520000;
   /* the sampling cell, in device pixels. One: every inked device pixel
@@ -5954,7 +5962,7 @@ document.addEventListener('keydown', e => {
     const pk  = seg(q, .13, .29);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
     const tap = seg(q, .90, 1);
-    cursor.style.opacity = (seg(q, .04, .09) * (1 - seg(vanishNow, 0, .2))).toFixed(3);
+    cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? 1 - seg(vanishNow, 0, .2) : 1 - io(vanishNow))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${((1 + 1.0 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
@@ -5983,6 +5991,14 @@ document.addEventListener('keydown', e => {
           away) */
     /* the vanish is not the scroll's: it is play()'s clock, read here */
     const vanish = vanishNow;
+    /* the fade's curve: the sketchbook's arrival, backwards — and with
+       the same slight scale, the whole scatter drawing in towards the
+       middle a little as it goes (the pad grows out of it) */
+    const vanishE = io(vanish);
+    if(!dustOK){
+      scatterEl.style.transform = vanish > 0 ? `scale(${(1 - .06 * vanishE).toFixed(4)})` : '';
+      scatterEl.style.transformOrigin = '50% 50%';
+    }
     /* sampled ahead of time — once the cowboy has locked every drawing's
        place at the end is known — so the first frame of the dust does not
        stall on a few hundred thousand pixels */
@@ -6013,7 +6029,7 @@ document.addEventListener('keydown', e => {
          stretch (the dust fades up over the same frames, see paintDust),
          so the moment the ink turns to grain is never seen as a cut;
          without the dust (a tainted canvas) they simply fade */
-      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - io(vanish);
+      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - vanishE;
       /* the cowboy is the demonstration's, and keeps its pace */
       const {x, y} = figPos(fg, i, s.press ? q : p);
       if(s.press){
@@ -6254,6 +6270,7 @@ document.addEventListener('keydown', e => {
     intro.classList.remove('done');
     ground.classList.remove('done');
     scatterEl.classList.remove('settled');
+    scatterEl.style.transform = '';
     document.body.classList.add('entry');         /* and leaves again */
     clearTimeout(enterTimer);
     /* the demonstration is put where the scroll is, not left to run
