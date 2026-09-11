@@ -184,29 +184,12 @@
        and box that would sit the wordmark off it. */
     cursor:pointer; width:max-content;
     grid-column:2;
-    /* Answers the pointer the way a drawing in the sketchbook does — the
-       same lift and the same collapse under a press, at the same speeds, so
-       the two pressable things on the page speak with one voice. It stands
-       in the middle of the row, so it grows from its middle. */
-    transform-origin:center center;
-    transition:transform .17s cubic-bezier(.22,.61,.36,1), filter .17s;
   }
   /* the drawn word, sized by height so it sits in the row like type. In
      the masthead the letters are spread out — each path is shifted along
      by 15.35 units in the markup, twice the word's natural width — so the
      small mark reads as a line across the top rather than a knot. */
   .brand svg{ display:block; height:26px; width:auto; }
-  .brand:hover{
-    transform:scale(1.0225);
-    filter:
-      drop-shadow(0 3px 5px rgba(35,31,32,.28))
-      drop-shadow(0 12px 20px rgba(35,31,32,.16));
-  }
-  .brand:active{
-    transform:scale(1);
-    transition:transform .1s ease-out, filter .1s ease-out;
-    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
-  }
   /* Each letter takes a colour off the clothes. White is deliberately absent —
      on this paper it would simply vanish. The rest are pitched close to the
      garments' own tints: a dusty pink, a sand beige, a soft brown, a slate
@@ -1529,7 +1512,7 @@
      nine tenths of a screen of scrolling, and what follows — the dust and
      the sketchbook appearing — runs on its own clock (see play() in the
      opening sequence), so the wheel has nothing more to say to it. */
-  .intro-track{ height:190vh; position:relative; }
+  .intro-track{ height:320vh; position:relative; }
   .intro-stage{
     position:sticky; top:0;
     height:100svh; overflow:hidden;
@@ -1941,21 +1924,31 @@
      line a 1× screen can draw */
   header{ border-bottom:.5px solid transparent; transition:border-color .5s; }
   body:not(.entry) header{ border-color:var(--ink); }
+  /* going back to the opening page the line has to be gone at once — a
+     fade would still be running when the veil lifts, and be seen */
+  body.entry header{ transition:none; }
+  /* a drawer from the left, the mirror of the cart's from the right, with
+     the pages listed down from the top */
   .menu{
-    position:absolute; left:44px; top:100%;
-    background:var(--bg); border:1px solid var(--ink);
-    padding:6px 0; min-width:150px;
+    position:fixed; top:0; left:-440px; width:min(420px,94vw); height:100%;
+    background:#fff; z-index:160; transition:left .45s cubic-bezier(.3,.1,.25,1);
+    padding:46px 34px; display:flex; flex-direction:column;
+    box-shadow:14px 0 44px rgba(0,0,0,.14);
   }
+  .menu.open{ left:0; }
+  .menu h2{
+    font-family:'Bodoni Moda',serif; font-size:21px; font-weight:400;
+    letter-spacing:.1em; margin-bottom:30px;
+  }
+  .close-menu{ position:absolute; top:14px; right:20px; font-size:24px; font-weight:300; }
   .menu-item{
     display:block; width:100%; text-align:left;
-    padding:10px 18px;
-    font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    padding:16px 0; border-bottom:1px solid var(--line);
+    font-size:11px; letter-spacing:.24em; text-transform:uppercase;
     color:var(--ink);
+    transition:opacity .2s;
   }
-  .menu-item:hover{ background:var(--panel); }
-  @media(max-width:900px){
-    .menu{ left:20px; }
-  }
+  .menu-item:hover{ opacity:.5; }
 
   /* ---------- the catalogue ----------
      Every piece at once, on one grid ruled with hairlines: the page you
@@ -2178,7 +2171,9 @@
 
 <header>
   <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span class="lines"></span><span class="word">Menu</span></button>
-  <nav class="menu" id="menu" hidden>
+  <nav class="menu" id="menu" aria-hidden="true">
+    <button class="close-menu" onclick="toggleMenu(false)" aria-label="close">×</button>
+    <h2>Menu</h2>
     <button class="menu-item" onclick="goHomeFromMenu()">Home</button>
     <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
     <button class="menu-item" onclick="openSupport()">Support</button>
@@ -2432,7 +2427,7 @@ const PRODUCTS = {
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/beige tee drawing.svg", photos:[
     "assets/beige tee front cutout.webp","assets/beige tee back cutout.webp"]},
-  "white-tee":     {name:"White", type:"Tee",                       price:58.82,
+  "white-tee":     {name:"Spouky", type:"Tee",                       price:58.82,
                     desc:DESC.tee, sizeType:"tee", cutout:true,
                     img:"assets/white tee drawing.svg", photos:[
     "assets/white tee front cutout.webp","assets/white tee back cutout.webp"]},
@@ -5064,14 +5059,15 @@ relayout();
 const menuBtn = document.getElementById('menuBtn');
 const menuEl  = document.getElementById('menu');
 function toggleMenu(open){
-  const on = open === undefined ? menuEl.hidden : open;
-  menuEl.hidden = !on;
+  const on = open === undefined ? !menuEl.classList.contains('open') : open;
+  menuEl.classList.toggle('open', on);
+  menuEl.setAttribute('aria-hidden', on ? 'false' : 'true');
   menuBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
 }
 menuBtn.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
-/* a click anywhere else folds it away */
+/* a click anywhere else slides it away */
 document.addEventListener('click', e => {
-  if(!menuEl.hidden && !menuEl.contains(e.target)) toggleMenu(false);
+  if(menuEl.classList.contains('open') && !menuEl.contains(e.target)) toggleMenu(false);
 });
 /* One tile per photographed piece, in the order PRODUCTS lists them (a
    colourway's first shot, for the pieces that come in colours). Lazy, so
@@ -5262,7 +5258,7 @@ document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
   if(!supportEl.hidden){ closeSupport(); return; }
   if(!catalogueEl.hidden){ closeCatalogue(); return; }
-  if(!menuEl.hidden) toggleMenu(false);
+  if(menuEl.classList.contains('open')) toggleMenu(false);
 });
 
 /* ============================================================
@@ -5967,7 +5963,7 @@ document.addEventListener('keydown', e => {
        wheel's own pace like everything else on this page. The masthead's
        small mark comes later, with the sketchbook. It is gone before the
        pointer reaches the drawing, so the press has the page to itself. */
-    const markK = seg(p, 0, .40);
+    const markK = seg(p, 0, .20);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
     /* the masthead's small mark fades up with the sketchbook — an inline
        opacity that outranks the stylesheet's 0 while the opening page is
@@ -6263,16 +6259,24 @@ document.addEventListener('keydown', e => {
      The press (and the ending, see play) fires when the DEMONSTRATION
      reaches the end, not when the scroll does. */
   const DEMO_RATE = .38;
+  /* Once the lens is this close to the cowboy the rest is no longer the
+     scroll's to change: the find, the press and the vanish run to the end
+     on their own, at the same pace, whatever the wheel does — that part
+     is the point of the page, and it is seen whole. The scroll still moves
+     the scatter underneath until the ending's own clock takes over. */
+  const FIX_LEAD = .06;
+  const demoTarget = () => pDemo >= crossP - FIX_LEAD ? 1 : pScroll;
   let pScroll = 0, pDemo = 0, chasing = false, chaseT = 0;
   function chase(now){
     if(!chasing) return;
     if(playing || dismissed){ chasing = false; return; }
     const dt = Math.min(.05, (now - chaseT) / 1000); chaseT = now;
-    const gap = pScroll - pDemo, step = DEMO_RATE * dt;
-    pDemo = Math.abs(gap) <= step ? pScroll : pDemo + (gap > 0 ? step : -step);
+    const target = demoTarget();
+    const gap = target - pDemo, step = DEMO_RATE * dt;
+    pDemo = Math.abs(gap) <= step ? target : pDemo + (gap > 0 ? step : -step);
     paintScroll(pScroll, pDemo);
     if(pDemo > .995){ chasing = false; play(); return; }
-    if(pDemo !== pScroll) requestAnimationFrame(chase); else chasing = false;
+    if(pDemo !== demoTarget()) requestAnimationFrame(chase); else chasing = false;
   }
 
   /* Painted from the scroller rather than from a permanent rAF loop, now
@@ -6292,9 +6296,9 @@ document.addEventListener('keydown', e => {
       if(playing) return;                /* the ending has its own clock */
       pScroll = p;
       if(p !== lastP){ paintScroll(p, pDemo); lastP = p; }
-      if(pDemo !== pScroll){
+      if(pDemo !== demoTarget()){
         if(!chasing){ chasing = true; chaseT = performance.now(); requestAnimationFrame(chase); }
-      }else if(p > .995) play();
+      }else if(pDemo > .995) play();
     });
   }
   intro.addEventListener('scroll', onScroll, {passive:true});
