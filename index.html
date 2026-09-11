@@ -2093,7 +2093,7 @@
   }
 </style>
 </head>
-<body>
+<body class="entry">
 
 <!-- Covers the whole screen for the moment the masthead takes you home, so
      the page can be rebuilt behind it and revealed already composed rather
@@ -2389,7 +2389,7 @@ const PRODUCTS = {
   "pink-hoodie":  {name:"Head & Heart", type:"Zip Up",              price:124.12, img:"assets/prod-pink-hoodie.svg",
                    desc:DESC.hoodie, sizeType:"hoodie", cutout:true,
                    photos:["assets/pink hoodie front cutout.webp","assets/pink hoodie back cutout.webp"]},
-  "black-tee":    {name:"Kritzlich", type:"Tee",                    price:54.42,  img:"assets/prod-black-tee.svg",
+  "black-tee":    {name:"Gnarly", type:"Tee",                    price:54.42,  img:"assets/prod-black-tee.svg",
                    desc:DESC.tee, sizeType:"tee", cutout:true,
                    photos:["assets/black tee 1 front cutout.webp","assets/black tee 1 back cutout.webp"]},
   "rose-tee":     {name:"Verstähe", type:"Tee",                     price:56.82,  img:"assets/prod-rose-tee.svg",
@@ -2414,12 +2414,12 @@ const PRODUCTS = {
      with another garment, so there is no drawing that shows them alone and
      they open on their photographs instead. Their sheet is still in the
      book — it simply opens both pieces. */
-  "black-jeans":   {name:"Rigid Fig", type:"Denim",                 price:158.32,
+  "black-jeans":   {name:"Rigid", type:"Denim",                 price:158.32,
                     desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/black jeans drawing.svg", photos:[
     "assets/black jeans front cutout.webp","assets/black jeans back cutout.webp",
     "assets/black jeans left cutout.webp","assets/black jeans right cutout.webp"]},
-  "beige-jeans":   {name:"Beige", type:"Denim",                     price:142.01,
+  "beige-jeans":   {name:"Scribbled", type:"Denim",                     price:142.01,
                     desc:DESC.jeans, sizeType:"jeans", cutout:true,
                     img:"assets/beige jeans drawing 1.svg", photos:[
     "assets/beige jeans front cutout.webp","assets/beige jeans back cutout.webp",
@@ -2440,7 +2440,7 @@ const PRODUCTS = {
                     desc:DESC.shorts, sizeType:"shorts", cutout:true,
                     photos:[
     "assets/pink jorts front cutout.webp","assets/pink jorts back cutout.webp"]},
-  "beige-duffle":  {name:"Beige", type:"Duffle",                    price:104.39,
+  "beige-duffle":  {name:"Scribbled", type:"Duffle",                    price:104.39,
                     desc:DESC.bag, cutout:true,
                     img:"assets/beige bag drawing.svg", photos:[
     "assets/beige duffle bag cutout.webp"]},
@@ -5288,8 +5288,10 @@ document.addEventListener('keydown', e => {
      — the wordmark leaving and the sketchbook arriving */
   const DEMO = false;
   /* the cart belongs to the shop — hidden until the hand-over (see dismiss).
-     Set here, before the reduced-motion exit below, and cleared by it: a
-     visitor who never sees the opening page gets the cart at once */
+     The body is written with this class in the markup, so the masthead is
+     never seen for the frames before this script runs; set again here for
+     safety, and cleared by the reduced-motion exit below: a visitor who
+     never sees the opening page gets the cart at once */
   document.body.classList.add('entry');
   /* Asked for less motion: hand over the site itself rather than a quieter
      version of a scroll animation. The stylesheet hides this too — that is
@@ -5900,7 +5902,10 @@ document.addEventListener('keydown', e => {
      where its scroll offset says it should. */
   let lastP = -1, lastEntering = false, lastHover = false, lastPress = false, lastFace = null;
   const brandEl = document.getElementById('brand');
-  function paintScroll(p){
+  /* p is the scroll's own progress (the scatter and the mark answer it
+     exactly); q is the demonstration's — the glass, the cowboy, the press
+     — which follows p but no faster than DEMO_RATE, see chase() */
+  function paintScroll(p, q = p){
     /* ---------- the search, the find, the press, the vanish ----------
        The site's mechanic as a small story, while the drawings scroll
        past: a magnifying glass comes in — swelling as it arrives, then
@@ -5917,21 +5922,21 @@ document.addEventListener('keydown', e => {
           twice its (already big) size over the first stretch, once it is
           fully on screen, then rapidly back to one — and the press dip
           later, both on the same scale */
-    const [gx, gy] = glassAt(p);
-    const pk  = seg(p, .13, .29);
+    const [gx, gy] = glassAt(q);
+    const pk  = seg(q, .13, .29);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
-    const tap = seg(p, .90, 1);
-    cursor.style.opacity = (seg(p, .04, .09) * (1 - seg(vanishNow, 0, .2))).toFixed(3);
+    const tap = seg(q, .90, 1);
+    cursor.style.opacity = (seg(q, .04, .09) * (1 - seg(vanishNow, 0, .2))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${((1 + 1.0 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
     /* 2. found: the cowboy lifts and comes up to full ink the frame the
           lens crosses him (crossP, see measure); past him the glass
           becomes the arrow and loops back */
-    const hoverK = vanishNow < .5 ? seg(p, crossP, crossP + .02) : 0;
+    const hoverK = vanishNow < .5 ? seg(q, crossP, crossP + .02) : 0;
     const hover  = hoverK > 0;
-    const press  = p >= .92 && p < .98;
-    const morph = seg(p, LOCK_A, LOOP_A);
+    const press  = q >= .92 && q < .98;
+    const morph = seg(q, LOCK_A, LOOP_A);
     cursor.style.setProperty('--morph', morph.toFixed(3));
     /* a fully faded face is taken off screen outright, see .at-glass */
     const face = morph <= 0 ? 'at-glass' : morph >= 1 ? 'at-arrow' : '';
@@ -5953,7 +5958,7 @@ document.addEventListener('keydown', e => {
     /* sampled ahead of time — once the cowboy has locked every drawing's
        place at the end is known — so the first frame of the dust does not
        stall on a few hundred thousand pixels */
-    if(dustOK && motesFor !== 1 && p >= LOCK_A + .06 && !playing){ sampleDust(); motesFor = 1; }
+    if(dustOK && motesFor !== 1 && q >= LOCK_A + .06 && !playing){ sampleDust(); motesFor = 1; }
     if(dustOK) paintDust(vanish);
 
     /* 4. the mark: upward from the first pixel of scroll, and nothing else
@@ -5981,7 +5986,8 @@ document.addEventListener('keydown', e => {
          so the moment the ink turns to grain is never seen as a cut;
          without the dust (a tainted canvas) they simply fade */
       const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - vanish;
-      const {x, y} = figPos(fg, i, p);
+      /* the cowboy is the demonstration's, and keeps its pace */
+      const {x, y} = figPos(fg, i, s.press ? q : p);
       if(s.press){
         /* The pressed drawing: up the page with the scroll first, straight,
            like every other drawing — then, past the bend point, a curve
@@ -6221,6 +6227,10 @@ document.addEventListener('keydown', e => {
     scatterEl.classList.remove('settled');
     document.body.classList.add('entry');         /* and leaves again */
     clearTimeout(enterTimer);
+    /* the demonstration is put where the scroll is, not left to run
+       backwards from the end at its own pace under a page being revealed */
+    pScroll = pDemo = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
+    chasing = false;
     lastP = -1;    /* nothing was painted while it was away — the next paint
                       puts the pads and their lift back where the scroll says */
   }
@@ -6235,9 +6245,35 @@ document.addEventListener('keydown', e => {
        sketchbook fully there */
     playing = false; vanishNow = 1; appearNow = 1;
     intro.scrollTop = maxScroll;
+    pScroll = pDemo = 1; chasing = false;
     paintScroll(1); lastP = 1;
     dismiss();
   };
+
+  /* ---------- the demonstration's own pace ----------
+     The scatter and the mark answer the wheel exactly, at whatever speed
+     it turns — that sharpness is theirs to keep. The demonstration follows
+     the scroll too, but no faster than DEMO_RATE of its whole length per
+     second: a flick straight through the page still shows the search, the
+     find and the press in full, at a pace they can be read at, rather
+     than skipping them — and a slow, careful scroll is followed exactly.
+     Both ways, so scrolling back up runs it backwards at the same cap.
+     While the demonstration is behind the scroll a frame loop closes the
+     gap; it stops the moment the two agree, so a held page costs nothing.
+     The press (and the ending, see play) fires when the DEMONSTRATION
+     reaches the end, not when the scroll does. */
+  const DEMO_RATE = .38;
+  let pScroll = 0, pDemo = 0, chasing = false, chaseT = 0;
+  function chase(now){
+    if(!chasing) return;
+    if(playing || dismissed){ chasing = false; return; }
+    const dt = Math.min(.05, (now - chaseT) / 1000); chaseT = now;
+    const gap = pScroll - pDemo, step = DEMO_RATE * dt;
+    pDemo = Math.abs(gap) <= step ? pScroll : pDemo + (gap > 0 ? step : -step);
+    paintScroll(pScroll, pDemo);
+    if(pDemo > .995){ chasing = false; play(); return; }
+    if(pDemo !== pScroll) requestAnimationFrame(chase); else chasing = false;
+  }
 
   /* Painted from the scroller rather than from a permanent rAF loop, now
      that nothing on this page moves on its own. Coalesced into one frame:
@@ -6254,12 +6290,15 @@ document.addEventListener('keydown', e => {
          something has already been written */
       const p = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
       if(playing) return;                /* the ending has its own clock */
-      if(p !== lastP){ paintScroll(p); lastP = p; }
-      if(p > .995) play();
+      pScroll = p;
+      if(p !== lastP){ paintScroll(p, pDemo); lastP = p; }
+      if(pDemo !== pScroll){
+        if(!chasing){ chasing = true; chaseT = performance.now(); requestAnimationFrame(chase); }
+      }else if(p > .995) play();
     });
   }
   intro.addEventListener('scroll', onScroll, {passive:true});
-  paintScroll(0); lastP = 0;
+  paintScroll(0, 0); lastP = 0;
 
   /* No way back by scrolling. Once the shop is up, an upward wheel or a
      downward drag stays in the shop — the opening page is reached again
@@ -6310,8 +6349,10 @@ document.addEventListener('keydown', e => {
         books[activeIndex].closeRapidly();
         deselect();
       }
-      revive();
+      /* the scroll goes back first, so revive finds the demonstration's
+         place at the top rather than at the end it was left at */
       intro.scrollTop = 0;
+      revive();
       onScroll();
       /* A beat for the landing page to paint underneath before the cover
          comes off, or the first thing revealed is a half-built page. A
