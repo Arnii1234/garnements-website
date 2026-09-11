@@ -5570,23 +5570,28 @@ document.addEventListener('keydown', e => {
      function of the vanish's progress, so scrolling back gathers the dust
      into the drawings again. */
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = true, dpr = 1, dustW = 0, dustH = 0;
-  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, pix, pix32, touched, dustImg;
+  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
   const VANISH_MS = 2600, APPEAR_AT = 1900, APPEAR_MS = 1500, END_MS = 3900;
   let playing = false, vanishNow = 0, appearNow = 0;
-  const MOTE_CAP = 420000;
-  /* the sampling cell, in device pixels: 2 on a dense screen (one CSS
-     pixel), 1 otherwise — set with the canvas, see sizeDust */
+  const MOTE_CAP = 520000;
+  /* the sampling cell, in device pixels. One: every inked device pixel
+     is its own mote (a few hundred thousand on a retina screen), and each
+     is still drawn as a 2×2 block for the first stretch of its flight and
+     shrinks to its own pixel on the way — so the drawing thickens by half
+     a CSS pixel as it turns to grain, and the grain is as fine as the
+     screen. Set with the canvas, see sizeDust. */
   let CELL = 1;
+  const BLOCK = 2;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    CELL = dpr >= 1.5 ? 2 : 1;
+    CELL = 1;   /* every device pixel is a mote — see the block in paintDust */
     dustW = Math.round(stageW * dpr); dustH = Math.round(stageH * dpr);
     dust.width = dustW; dust.height = dustH;
     dustImg = dctx.createImageData(dustW, dustH);
     pix = dustImg.data; pix32 = new Uint32Array(pix.buffer);
-    motesFor = -1;                         /* sampled at the old size */
+    motesFor = -1; placedAt = -1;          /* sampled at the old size */
   }
   function sampleDust(){
     moteN = 0;
@@ -5599,7 +5604,7 @@ document.addEventListener('keydown', e => {
         if(!fg.hpx) return;
         const img = fg.el.querySelector('img');
         if(!img || !img.complete) return;
-        const {x, y} = figPos(fg, i, 1);
+        const x = 0, y = 0;   /* relative to the drawing; placed later, see placeDust */
         const w = fg.el.offsetWidth, h = fg.hpx;
         if(w < 2 || h < 2) return;
         const [bx, by, bw, bh] = fg.s.b;
@@ -5622,18 +5627,14 @@ document.addEventListener('keydown', e => {
         grabs.push({fg, i, x, y, c, data, o, count});
         total += count;
       });
-      /* On a dense screen a mote is a 2×2 block of device pixels — one
-         CSS pixel — sampled as one, so the count is a quarter of the pixels
-         and each mote has a size to lose: it is drawn at its full block for
-         the first stretch of its flight and shrinks to a single pixel on
-         the way (see paintDust). On a 1× screen the cell is the pixel. */
       const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
       moteCap = Math.min(total, MOTE_CAP) + 16;
       mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
       mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
-      touched = new Int32Array(moteCap * CELL * CELL);   /* a block's every pixel */
+      mF = new Uint8Array(moteCap);
+      touched = new Int32Array(moteCap * BLOCK * BLOCK);   /* a block's every pixel */
       grabs.forEach(({fg, i, x, y, c, data, o}) => {
         const W = c.width, H = c.height, cx = W / 2, cy = H / 2;
         const half = Math.hypot(cx, cy);
@@ -5668,7 +5669,7 @@ document.addEventListener('keydown', e => {
             let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
             const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
             const bend = (r1 - .5) * 9 * dpr;
-            mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py;
+            mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py; mF[moteN] = i;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
             /* from the middle outward, with grain and the drawing's own
@@ -5692,6 +5693,30 @@ document.addEventListener('keydown', e => {
   let touchedN = 0;
   /* a read-out for checking the dust in a console: how many motes, at what ratio */
   window.__dustStats = () => ({ moteN, moteCap, dpr, dustW, dustH });
+  /* Every mote's place on screen is its drawing's place plus its own
+     offset in it, and the drawing's place is only known at the press —
+     the scatter keeps moving until then. The pixels (the slow part) are
+     sampled ahead of time relative to each drawing; this one cheap pass
+     at the press adds where each drawing actually stands (the cowboy at
+     his lock, the rest wherever the scroll's flow has carried them). */
+  let placedAt = -1;
+  function placeDust(pBg){
+    if(motesFor !== 1 || placedAt === pBg) return;
+    const ox = new Float32Array(figures.length), oy = new Float32Array(figures.length);
+    figures.forEach((fg, i) => {
+      if(!fg.hpx) return;
+      const {x, y} = figPos(fg, i, fg.s.press ? 1 : pBg);
+      ox[i] = x * dpr; oy[i] = y * dpr;
+    });
+    if(placedAt >= 0){
+      /* placed once before (a resize can do that): take the old offsets off */
+      const px = oldOx, py = oldOy;
+      for(let i = 0; i < moteN; i++){ const f = mF[i]; mX[i] -= px[f]; mY[i] -= py[f]; }
+    }
+    for(let i = 0; i < moteN; i++){ const f = mF[i]; mX[i] += ox[f]; mY[i] += oy[f]; }
+    oldOx = ox; oldOy = oy; placedAt = pBg;
+  }
+  let oldOx = null, oldOy = null;
   function paintDust(v){
     if(v <= 0 || v >= 1){
       if(touchedN){ for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0; touchedN = 0; }
@@ -5699,6 +5724,7 @@ document.addEventListener('keydown', e => {
       return;
     }
     if(motesFor !== 1){ sampleDust(); motesFor = 1; }
+    placeDust(pBg);
     for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0;
     touchedN = 0;
     const fadeIn = seg(v, 0, .14);
@@ -5727,7 +5753,6 @@ document.addEventListener('keydown', e => {
         if(!old) touched[touchedN++] = idx;
         pix32[idx] = ((a | 0) << 24);      /* black, at its own alpha */
       }
-      if(CELL === 1) continue;
       /* the rest of the block, fading away over the flight's middle */
       const sh = ik > .75 ? 1 : ik < .35 ? 0 : (ik - .35) / .4;
       if(sh <= 0) continue;
@@ -6201,15 +6226,16 @@ document.addEventListener('keydown', e => {
   function play(){
     if(playing || dismissed) return;
     playing = true;
+    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pBg); }
     const t0 = performance.now();
     const tick = now => {
       if(!playing) return;
       const t = now - t0;
       vanishNow = cl01(t / VANISH_MS);
       appearNow = io(cl01((t - APPEAR_AT) / APPEAR_MS));
-      paintScroll(1);
+      paintScroll(pBg, 1);
       if(t < END_MS) requestAnimationFrame(tick);
-      else { vanishNow = 1; appearNow = 1; paintScroll(1); dismiss(); }
+      else { vanishNow = 1; appearNow = 1; paintScroll(pBg, 1); dismiss(); }
     };
     requestAnimationFrame(tick);
   }
@@ -6225,8 +6251,8 @@ document.addEventListener('keydown', e => {
     clearTimeout(enterTimer);
     /* the demonstration is put where the scroll is, not left to run
        backwards from the end at its own pace under a page being revealed */
-    pScroll = pDemo = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
-    chasing = false;
+    pScroll = pDemo = pBg = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
+    scrolledSince = 0; chasing = false; placedAt = -1;
     lastP = -1;    /* nothing was painted while it was away — the next paint
                       puts the pads and their lift back where the scroll says */
   }
@@ -6241,7 +6267,7 @@ document.addEventListener('keydown', e => {
        sketchbook fully there */
     playing = false; vanishNow = 1; appearNow = 1;
     intro.scrollTop = maxScroll;
-    pScroll = pDemo = 1; chasing = false;
+    pScroll = pDemo = pBg = 1; scrolledSince = 0; chasing = false;
     paintScroll(1); lastP = 1;
     dismiss();
   };
@@ -6266,15 +6292,27 @@ document.addEventListener('keydown', e => {
      the scatter underneath until the ending's own clock takes over. */
   const FIX_LEAD = .06;
   const demoTarget = () => pDemo >= crossP - FIX_LEAD ? 1 : pScroll;
-  let pScroll = 0, pDemo = 0, chasing = false, chaseT = 0;
+  /* pBg is what the scatter and the mark are painted from. It answers the
+     wheel exactly, every notch, in both directions — and it never moves
+     SLOWER than the demonstration: while the demonstration is catching up
+     with a scroll that ran ahead of it, or running its fixed last beat,
+     the scatter keeps flowing past at the demonstration's own pace, as it
+     would have under a scroll at that speed. Each frame it advances by
+     the larger of the wheel's movement and the demonstration's. The
+     drawings wrap, so it is free to run past 1. */
+  let pScroll = 0, pDemo = 0, pBg = 0, scrolledSince = 0, chasing = false, chaseT = 0;
   function chase(now){
     if(!chasing) return;
     if(playing || dismissed){ chasing = false; return; }
     const dt = Math.min(.05, (now - chaseT) / 1000); chaseT = now;
     const target = demoTarget();
     const gap = target - pDemo, step = DEMO_RATE * dt;
+    const was = pDemo;
     pDemo = Math.abs(gap) <= step ? target : pDemo + (gap > 0 ? step : -step);
-    paintScroll(pScroll, pDemo);
+    const dd = pDemo - was;
+    if(dd > 0){ const extra = dd - Math.max(0, scrolledSince); if(extra > 0) pBg += extra; }
+    scrolledSince = 0;
+    paintScroll(pBg, pDemo);
     if(pDemo > .995){ chasing = false; play(); return; }
     if(pDemo !== demoTarget()) requestAnimationFrame(chase); else chasing = false;
   }
@@ -6294,8 +6332,9 @@ document.addEventListener('keydown', e => {
          something has already been written */
       const p = maxScroll > 0 ? cl01(intro.scrollTop / maxScroll) : 0;
       if(playing) return;                /* the ending has its own clock */
-      pScroll = p;
-      if(p !== lastP){ paintScroll(p, pDemo); lastP = p; }
+      const d = p - pScroll;
+      pScroll = p; pBg += d; scrolledSince += d;
+      if(p !== lastP){ paintScroll(pBg, pDemo); lastP = p; }
       if(pDemo !== demoTarget()){
         if(!chasing){ chasing = true; chaseT = performance.now(); requestAnimationFrame(chase); }
       }else if(pDemo > .995) play();
