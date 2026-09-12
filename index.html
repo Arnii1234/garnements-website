@@ -5964,7 +5964,7 @@ document.addEventListener('keydown', e => {
           fully on screen, then rapidly back to one — and the press dip
           later, both on the same scale */
     const [gx, gy] = glassAt(q);
-    const pk  = seg(q, .13, .29);
+    const pk  = seg(q, POP_A, POP_B);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
     const tap = seg(q, .90, 1);
     cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? 1 - seg(vanishNow, 0, .2) : 1 - io(vanishNow))).toFixed(3);
@@ -6314,13 +6314,16 @@ document.addEventListener('keydown', e => {
      The press (and the ending, see play) fires when the DEMONSTRATION
      reaches the end, not when the scroll does. */
   const DEMO_RATE = .38;
-  /* Once the lens is this close to the cowboy the rest is no longer the
-     scroll's to change: the find, the press and the vanish run to the end
-     on their own, at the same pace, whatever the wheel does — that part
-     is the point of the page, and it is seen whole. The scroll still moves
-     the scatter underneath until the ending's own clock takes over. */
-  const FIX_LEAD = .06;
-  const demoTarget = () => pDemo >= crossP - FIX_LEAD ? 1 : pScroll;
+  /* The glass's swell on entry runs over this window of the
+     demonstration's progress, and peaks six tenths of the way through it
+     (see the paint). From that peak on, the demonstration is no longer
+     the scroll's to change: the search, the find, the press and the
+     vanish run to the end on their own, at the same pace, whatever the
+     wheel does — that is the point of the page, and it is seen whole.
+     The scroll still moves the scatter underneath until the ending's own
+     clock takes over. */
+  const POP_A = .13, POP_B = .29, POP_PEAK = POP_A + .6 * (POP_B - POP_A);
+  const demoTarget = () => pDemo >= POP_PEAK ? 1 : pScroll;
   /* The scatter and the mark are painted from pScroll and nothing else:
      the wheel, every notch, both ways. Only the demonstration has a pace
      of its own. */
