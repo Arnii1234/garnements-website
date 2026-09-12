@@ -2171,6 +2171,7 @@
     <button class="close-menu" onclick="toggleMenu(false)" aria-label="close">×</button>
     <h2>Menu</h2>
     <button class="menu-item" onclick="goHomeFromMenu()">Home</button>
+    <button class="menu-item" onclick="goShopFromMenu()">Sketchbooks / Shop</button>
     <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
     <button class="menu-item" onclick="openSupport()">Support</button>
   </nav>
@@ -5147,6 +5148,14 @@ document.getElementById('lbOpen').addEventListener('click', e => {
   openModal([lbId]);
 });
 /* Home, from the menu: the opening page, exactly as the wordmark gives it */
+/* the shop page: the sketchbooks, with nothing open over them. From the
+   opening page (the menu is not offered there, but the function is safe
+   to call) it hands straight over. */
+function goShopFromMenu(){
+  toggleMenu(false);
+  closeCatalogue(); closeSupport();
+  if(document.body.classList.contains('entry') && window.__enterShop) window.__enterShop();
+}
 function goHomeFromMenu(){
   toggleMenu(false);
   closeCatalogue(); closeSupport();
