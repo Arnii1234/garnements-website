@@ -787,10 +787,9 @@
        railShift's `reserve`), so it stays whole and on the right however the
        window is zoomed. */
     width:var(--panel-w);
-    /* the same white as the rest of the page — one paper everywhere, with
-       a hairline down the split where the panel meets the sketchbook */
+    /* the same white as the rest of the page — one paper everywhere, and
+       no line down the split: the panel simply meets the sketchbook */
     background:var(--bg);
-    border-right:.5px solid var(--ink);
     display:flex;flex-direction:column;
     transform:translateX(-100%);
     transition:transform .5s cubic-bezier(.3,.1,.25,1);
