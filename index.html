@@ -1922,11 +1922,8 @@
   body.entry .menu-btn{ opacity:0; pointer-events:none; }
   /* half a pixel: a true hairline on any retina screen, and the thinnest
      line a 1× screen can draw */
-  header{ border-bottom:.5px solid transparent; transition:border-color .5s; }
-  body:not(.entry) header{ border-color:var(--ink); }
-  /* going back to the opening page the line has to be gone at once — a
-     fade would still be running when the veil lifts, and be seen */
-  body.entry header{ transition:none; }
+  /* no line under the row any more, on either page */
+  header{ border-bottom:0; }
   /* a drawer from the left, the mirror of the cart's from the right, with
      the pages listed down from the top */
   .menu{
