@@ -5973,10 +5973,10 @@ document.addEventListener('keydown', e => {
          which lands him a quarter of a screen under the fold at rest —
          he rises faster than most of the scatter (d) so that he is still
          out of sight for the first stretch of the scroll. */
-      /* on a phone he stands in the middle of the screen rather than
-         right of it — the screen is too narrow for a column off to one
-         side to read as anything but cut off */
-      fe.style.left = PHONE ? (stageW / 2 - fe.offsetWidth / 2).toFixed(1) + 'px' : fg.s.x + '%';
+      /* on a phone he stands in the middle of the screen — too narrow
+         for a column off to one side to read as anything but cut off */
+      /* on a wider screen his column is the middle of the right half */
+      fe.style.left = ((PHONE ? .5 : .75) * stageW - fe.offsetWidth / 2).toFixed(1) + 'px';
       fg.left0 = fe.offsetLeft;
       /* his climb is written against the screen, not the track: however
          long the page, he rises two and a half screens over the whole of
