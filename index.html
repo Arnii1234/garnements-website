@@ -2254,7 +2254,6 @@
   </article>
 </div>
 <div class="catalogue support" id="support" hidden>
-  <h2 class="sheet-title">Support</h2>
   <form class="report" id="report" novalidate>
     <p class="report-lead">Something wrong? Tell us what happened and we will
       answer by e-mail, usually within two working days.</p>
@@ -2263,12 +2262,13 @@
       <div class="kinds" id="reportKinds">
         <button type="button" class="kind" data-kind="website">The website</button>
         <button type="button" class="kind" data-kind="payment">Payment</button>
-        <button type="button" class="kind" data-kind="damaged">A damaged or defective piece</button>
+        <button type="button" class="kind" data-kind="damaged">Damaged or defective piece</button>
       </div>
     </div>
-    <label class="field"><span class="label">Your name</span><input name="name" type="text" autocomplete="name"></label>
+    <label class="field"><span class="label">First name</span><input name="first" type="text" autocomplete="given-name"></label>
+    <label class="field"><span class="label">Last name</span><input name="last" type="text" autocomplete="family-name"></label>
     <label class="field"><span class="label">Your e-mail</span><input name="email" type="email" autocomplete="email" required></label>
-    <label class="field"><span class="label">Order number, if you have one</span><input name="order" type="text"></label>
+    <label class="field"><span class="label">Order number</span><input name="order" type="text"></label>
     <label class="field"><span class="label">What happened</span><textarea name="message" rows="6" required></textarea></label>
     <div class="field">
       <span class="label">Photographs or screenshots</span>
@@ -5264,7 +5264,7 @@ function closeCatalogue(){ catalogueEl.hidden = true; }
 const supportEl  = document.getElementById('support');
 const reportForm = document.getElementById('report');
 const reportNote = document.getElementById('reportNote');
-const KIND_LABEL = { website:'The website', payment:'Payment', damaged:'A damaged or defective piece' };
+const KIND_LABEL = { website:'The website', payment:'Payment', damaged:'Damaged or defective piece' };
 let reportKind = '';
 function setKind(k){
   reportKind = k;
@@ -5316,7 +5316,7 @@ reportForm.addEventListener('submit', async e => {
   const lines = [
     'Report — ' + KIND_LABEL[reportKind],
     '',
-    'Name:  ' + (f.name.value.trim() || '—'),
+    'Name:  ' + ((f.first.value.trim() + ' ' + f.last.value.trim()).trim() || '—'),
     'E-mail: ' + email,
     'Order: ' + (f.order.value.trim() || '—'),
     '',
