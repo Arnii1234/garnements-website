@@ -2072,10 +2072,12 @@
     .story{ padding:0 20px; margin-top:18px; }
     .frames.two{ grid-template-columns:1fr; }
   }
+  /* centred on the page, the title with it */
   .report{
-    max-width:520px; margin:26px 44px 60px;
+    max-width:520px; margin:26px auto 60px; padding:0 44px;
     font-size:12px; line-height:1.8; color:#4c4846;
   }
+  .support .sheet-title{ text-align:center; margin-left:0; margin-right:0; }
   .report-lead{ margin:6px 0 30px; max-width:46ch; }
   .report a{ color:var(--ink); }
   .field{ display:block; margin-bottom:26px; }
@@ -2114,7 +2116,7 @@
   .attach-list{ display:block; margin-top:8px; font-size:11px; color:var(--grey); }
   @media(max-width:900px){
     .sheet-title{ margin:22px 20px 0; }
-    .report{ margin:18px 20px 40px; }
+    .report{ margin:18px auto 40px; padding:0 20px; }
     .cat-grid{ grid-template-columns:repeat(2, 1fr); margin:6px; gap:6px; }
     .cat-tile{ padding:16px 8px 14px; }
     .cat-tile img{ height:min(32vh, 280px); }
