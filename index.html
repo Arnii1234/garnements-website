@@ -5777,8 +5777,10 @@ document.addEventListener('keydown', e => {
      screen. Set with the canvas, see sizeDust. */
   let CELL = 1;
   const BLOCK = 1;   /* one device pixel per mote, never a block: the dust is as fine as the screen */
-  /* the dust's colour: a dark beige, as ABGR for the pixel buffer (little-endian) */
-  const DUST_RGB = 0x4b5f6f;   /* b:4b g:5f r:6f  →  #6f5f4b */
+  /* the dust's colour: a dark beige (#6f5f4b). A grain starts as the ink it
+     was — black, at the drawing's own faintness — and takes this colour as
+     it breaks away, over the first quarter of its fall. */
+  const DUST_R = 0x6f, DUST_G = 0x5f, DUST_B = 0x4b;
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -5827,15 +5829,29 @@ document.addEventListener('keydown', e => {
         total += count;
       });
       const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
-      moteCap = Math.min(total, MOTE_CAP) + 16;
+      moteCap = Math.min(total, MOTE_CAP) + 24000;   /* room for the arrow's grains too */
       mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
       mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
       mF = new Uint8Array(moteCap);
       touched = new Int32Array(moteCap * BLOCK * BLOCK);   /* a block's every pixel */
-      grabs.forEach(({fg, i, x, y, c, data, o}) => {
-        const W = c.width, H = c.height, cx = W / 2, cy = H / 2;
+      grabs.forEach(({fg, i, x, y, c, data, o}) => grainFrom(data, c.width, c.height, x, y, o, i, keep));
+    }catch(e){
+      /* a tainted canvas (a page opened as a file) — the drawings simply
+         fade instead, see the figures loop */
+      dustOK = false; moteN = 0;
+      console.warn('intro: dust unavailable', e);
+    }
+  }
+  /* every inked pixel of one raster becomes a grain: `data` is the raster's
+     pixels, (x, y) where its top-left stands in CSS px (0,0 for a raster
+     placed later, see placeDust), `o` the ink's own faintness, `i` the
+     figure index the grain belongs to, `keep` the share kept under the cap */
+  function grainFrom(data, W, H, x, y, o, i, keep){
+    {
+      {
+        const cx = W / 2, cy = H / 2;
         const half = Math.hypot(cx, cy);
         const seed = i * 7919, figD = .30 * hash(i + 41);
         let acc = 0;
@@ -5862,7 +5878,7 @@ document.addEventListener('keydown', e => {
             /* the dust FALLS: straight down, give or take a little sideways
                drift of its own, a fall of its own length, and a slight sway
                on the way (the bend, at right angles) */
-            const ang = Math.PI / 2 + (r2 - .5) * .5, sp = (18 + 46 * r3) * dpr;
+            const ang = Math.PI / 2 + (r2 - .5) * .5, sp = (44 + 110 * r3) * dpr;
             const rl = Math.hypot(px - cx, py - cy) || 1;
             let ux = Math.cos(ang), uy = Math.sin(ang);
             const bend = (r1 - .5) * 6 * dpr;
@@ -5879,13 +5895,32 @@ document.addEventListener('keydown', e => {
             moteN++;
           }
         }
-      });
-    }catch(e){
-      /* a tainted canvas (a page opened as a file) — the drawings simply
-         fade instead, see the figures loop */
-      dustOK = false; moteN = 0;
-      console.warn('intro: dust unavailable', e);
+      }
     }
+  }
+  /* The arrow breaks up with everything else. It is drawn as an SVG, so it
+     is rasterised once into an image at start, and at the press drawn at
+     the size and place it stands on screen and grained like a drawing;
+     its grains are placed absolutely (figure slot figures.length carries
+     no offset in placeDust). */
+  const arrowImg = new Image();
+  {
+    const path = cursor.querySelector('.arrow path');
+    arrowImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 18"><path d="${path.getAttribute('d')}" fill="#231f20" stroke="#fff" stroke-width="1" stroke-linejoin="round"/></svg>`);
+  }
+  function sampleCursor(){
+    if(!dustOK || !arrowImg.complete || !arrowImg.naturalWidth) return;
+    try{
+      const r = cursor.querySelector('.arrow').getBoundingClientRect();
+      const w = Math.ceil(r.width * dpr), h = Math.ceil(r.height * dpr);
+      if(w < 2 || h < 2) return;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x2 = c.getContext('2d');
+      x2.drawImage(arrowImg, 0, 0, w, h);
+      const data = x2.getImageData(0, 0, w, h).data;
+      grainFrom(data, w, h, r.left, r.top, 1, figures.length, 1);
+    }catch(e){ /* the arrow simply fades */ }
   }
   let touchedN = 0;
   /* a read-out for checking the dust in a console: how many motes, at what ratio */
@@ -5899,7 +5934,7 @@ document.addEventListener('keydown', e => {
   let placedAt = -1;
   function placeDust(pBg){
     if(motesFor !== 1 || placedAt === pBg) return;
-    const ox = new Float32Array(figures.length), oy = new Float32Array(figures.length);
+    const ox = new Float32Array(figures.length + 1), oy = new Float32Array(figures.length + 1);
     figures.forEach((fg, i) => {
       if(!fg.hpx) return;
       const {x, y} = figPos(fg, i, fg.s.press ? 1 : pBg);
@@ -5939,7 +5974,7 @@ document.addEventListener('keydown', e => {
       if(ik <= 0) continue;
       /* falling: it gathers speed as it goes (ease-in), thinning to
          nothing as it lands */
-      const e = k * k, bend = e * (1 - e);
+      const e = k * k * (2 - k), bend = e * (1 - e);   /* quick off the mark, still gathering pace */
       const x = mX[i] + mVX[i] * e + mWX[i] * bend;
       const y = mY[i] + mVY[i] * e + mWY[i] * bend;
       if(x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
@@ -5949,7 +5984,10 @@ document.addEventListener('keydown', e => {
       let old = pix32[idx] >>> 24;
       if(a > old){
         if(!old) touched[touchedN++] = idx;
-        pix32[idx] = ((a | 0) << 24) | DUST_RGB;   /* dark beige, at its own alpha */
+        /* ink while it stands, beige once it has broken away */
+        const t = k < .25 ? k * 4 : 1;
+        const rgb = ((DUST_B * t) << 16) | ((DUST_G * t) << 8) | (DUST_R * t);
+        pix32[idx] = ((a | 0) << 24) | rgb;
       }
       if(BLOCK === 1) continue;
       /* the rest of the block, fading away over the flight's middle */
@@ -5959,11 +5997,11 @@ document.addEventListener('keydown', e => {
       if(a2 < 4) continue;
       const j1 = idx + 1, j2 = idx + W, j3 = j2 + 1;
       old = pix32[j1] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24) | DUST_RGB; }
+      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24); }
       old = pix32[j2] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24) | DUST_RGB; }
+      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24); }
       old = pix32[j3] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24) | DUST_RGB; }
+      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24); }
     }
     dctx.putImageData(dustImg, 0, 0);
   }
@@ -6160,7 +6198,7 @@ document.addEventListener('keydown', e => {
     const pk  = seg(q, POP_A, POP_B);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
     const tap = seg(q, .90, 1);
-    cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? 1 - seg(vanishNow, 0, .2) : 1 - io(vanishNow))).toFixed(3);
+    cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? 1 - seg(vanishNow, 0, .14) : 1 - io(vanishNow))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${((1 + 1.0 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
@@ -6450,7 +6488,7 @@ document.addEventListener('keydown', e => {
   function play(){
     if(playing || dismissed) return;
     playing = true;
-    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pScroll); }
+    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pScroll); sampleCursor(); }
     const t0 = performance.now();
     const tick = now => {
       if(!playing) return;
