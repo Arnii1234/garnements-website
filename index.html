@@ -1961,7 +1961,9 @@
      are left out; pressing one opens the piece in the shop.
      One gap of one pixel over an ink ground is the grid: lines that are
      exactly as thin as a line can be. */
+  @keyframes sheetIn{ from{ opacity:0; } to{ opacity:1; } }
   .catalogue{
+    animation:sheetIn .4s ease-out;
     position:fixed; top:var(--bar,48px); left:0; right:0; bottom:0;
     /* under the masthead (155) — the menu, the mark and the cart stay in
        place above this sheet and keep working — and above the opening page
@@ -3970,7 +3972,46 @@ updateNav();
 /* the keyboard is shared; the page decides which book it is talking to, and
    that follows which book is centred rather than where the pointer happens
    to be */
-return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0, closeRapidly, jumpTo};
+/* A raster of the pad as it stands on screen — the board, the page on
+   show (the same texture the turn draws, so it is exact), and the coil —
+   in device pixels, with where its top-left sits in CSS px. For the dust
+   that takes the sketchbook away when another sheet is asked for (see
+   leaveShop). Resolves null where it cannot be built (no three.js, or a
+   page whose drawing has not landed), and the caller simply cuts. */
+function snapshot(){
+  return new Promise(resolve => {
+    try{
+      if(!window.THREE) return resolve(null);
+      const tex = pageTexture(cur);
+      if(!tex || !tex.image) return resolve(null);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const bo = mount.querySelector('.board').getBoundingClientRect();
+      const cr = cal.getBoundingClientRect();
+      const br = bindEl.getBoundingClientRect();
+      const L = Math.min(bo.left, br.left), T = Math.min(bo.top, br.top);
+      const R = Math.max(bo.right, br.right), B = Math.max(bo.bottom, br.bottom);
+      const c = document.createElement('canvas');
+      c.width = Math.ceil((R - L) * dpr); c.height = Math.ceil((B - T) * dpr);
+      const x = c.getContext('2d');
+      x.scale(dpr, dpr); x.translate(-L, -T);
+      /* the board — and on the cover, the whole board IS the page texture */
+      x.fillStyle = '#ccc7bd';
+      x.fillRect(bo.left, bo.top, bo.width, bo.height);
+      if(PAGES[cur].board) x.drawImage(tex.image, bo.left, bo.top, bo.width, bo.height);
+      else x.drawImage(tex.image, cr.left, cr.top, cr.width, cr.height);
+      /* the coil, from its own SVG */
+      const svg = bindEl.querySelector('svg') || bindEl.firstElementChild;
+      let src = new XMLSerializer().serializeToString(svg);
+      if(!/xmlns=/.test(src)) src = src.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      const img = new Image();
+      const finish = () => resolve({canvas: c, left: L, top: T});
+      img.onload = () => { try{ x.drawImage(img, br.left, br.top, br.width, br.height); }catch(e){} finish(); };
+      img.onerror = finish;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+    }catch(e){ resolve(null); }
+  });
+}
+return {next, prev, mount, relayout: layoutOverlays, atCover: () => cur === 0, closeRapidly, jumpTo, snapshot};
 }   /* ---- end makeBook ---------------------------------------------------- */
 
 /* One sketchbook. The roster machinery below is still written against
@@ -5296,7 +5337,28 @@ function goHomeFromMenu(){
 /* and the wordmark itself folds the sheets away on its way home */
 document.getElementById('brand').addEventListener('click', () => { closeCatalogue(); closeSupport(); closeProcess(); });
 const catalogueEl = document.getElementById('catalogue');
-function openCatalogue(){
+/* Asking for another sheet while the sketchbook is on screen: the pad
+   turns to dust and falls (the opening page's own dust — see __dustAway),
+   and the sheet comes once it has. Straight through when there is nothing
+   to take away: on the opening page, or with a sheet already standing over
+   the shop, or where the dust cannot be built. */
+function leaveShop(then){
+  const padShowing = !document.body.classList.contains('entry') && !modalOpen
+    && catalogueEl.hidden && supportEl.hidden && processEl.hidden
+    && window.__dustAway && books.length;
+  if(!padShowing){ then(); return; }
+  toggleMenu(false);
+  const book = books[activeIndex >= 0 ? activeIndex : Math.max(0, browseIndex % books.length)];
+  let went = false;
+  const go = () => { if(went) return; went = true; then(); };
+  const timer = setTimeout(go, 2600);   /* whatever happens, the sheet comes */
+  book.snapshot().then(snap => {
+    if(!snap){ clearTimeout(timer); go(); return; }
+    window.__dustAway(snap, 1500, () => { clearTimeout(timer); go(); }, {minInk:.3, fade:.4});
+  }, () => { clearTimeout(timer); go(); });
+}
+function openCatalogue(){ leaveShop(showCatalogue); }
+function showCatalogue(){
   toggleMenu(false);
   closeSupport(); closeProcess();
   buildCatalogue();
@@ -5325,14 +5387,16 @@ document.getElementById('reportKinds').addEventListener('click', e => {
   if(b) setKind(b.dataset.kind);
 });
 const processEl = document.getElementById('process');
-function openProcess(){
+function openProcess(){ leaveShop(showProcess); }
+function showProcess(){
   toggleMenu(false);
   closeCatalogue(); closeSupport(); closeProcess();
   processEl.hidden = false;
   processEl.scrollTop = 0;
 }
 function closeProcess(){ processEl.hidden = true; }
-function openSupport(kind){
+function openSupport(kind){ leaveShop(() => showSupport(kind)); }
+function showSupport(kind){
   toggleMenu(false);
   closeCatalogue(); closeProcess();
   reportNote.hidden = true;
@@ -5848,7 +5912,7 @@ document.addEventListener('keydown', e => {
      pixels, (x, y) where its top-left stands in CSS px (0,0 for a raster
      placed later, see placeDust), `o` the ink's own faintness, `i` the
      figure index the grain belongs to, `keep` the share kept under the cap */
-  function grainFrom(data, W, H, x, y, o, i, keep){
+  function grainFrom(data, W, H, x, y, o, i, keep, minInk = .06){
     {
       {
         const cx = W / 2, cy = H / 2;
@@ -5870,7 +5934,7 @@ document.addEventListener('keydown', e => {
             acc += keep; if(acc < 1) continue; acc -= 1;
             if(moteN >= moteCap) return;
             ink = ink / (CELL * CELL) * o;
-            if(ink < .06) continue;
+            if(ink < minInk) continue;
             const n = seed + py * 977 + px;
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
             /* any direction, one speed range; a bend at right angles to it
@@ -5955,8 +6019,10 @@ document.addEventListener('keydown', e => {
       dctx.clearRect(0, 0, dustW, dustH);
       return;
     }
-    if(motesFor !== 1){ sampleDust(); motesFor = 1; }
-    placeDust(pScroll);
+    if(dustMode === 'intro'){
+      if(motesFor !== 1){ sampleDust(); motesFor = 1; }
+      placeDust(pScroll);
+    }
     for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0;
     touchedN = 0;
     const fadeIn = seg(v, 0, .14);
@@ -6524,6 +6590,54 @@ document.addEventListener('keydown', e => {
      The one exception is the catalogue, which can open a piece from the
      opening page: it jumps the scroller to its end so the page's state
      matches, and hands over. */
+  /* The same dust for anything else on the page: hand it a raster (device
+     pixels) and where it stands, and it is grained, falls over `ms`, and
+     `done` is called as it settles. #fit is faded out under the grain over
+     the first stretch (the cross-fade the drawings get) and restored after
+     `done`, by which time whatever asked for this is standing over it. Used
+     by leaveShop for the sketchbook. */
+  let dustMode = 'intro';
+  window.__dustAway = (snap, ms, done, opt = {}) => {
+    /* minInk: how dark a pixel has to be to become a grain — the pad's
+       paper and board are left to the fade beneath, its ink pours down;
+       fade: the share of `ms` over which #fit fades out under the grain */
+    const minInk = opt.minInk ?? .06, fadeOver = opt.fade ?? .14;
+    if(!dustOK || !snap || playing){ done(); return; }
+    try{
+      const {canvas, left, top} = snap;
+      const W = canvas.width, H = canvas.height;
+      const data = canvas.getContext('2d').getImageData(0, 0, W, H).data;
+      let total = 0;
+      for(let j = 3; j < data.length; j += 4) if(data[j] >= 40) total++;
+      const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
+      moteCap = Math.min(total, MOTE_CAP) + 16; moteN = 0;
+      mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
+      mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
+      mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
+      mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
+      mF = new Uint8Array(moteCap);
+      touched = new Int32Array(moteCap * BLOCK * BLOCK);
+      grainFrom(data, W, H, left, top, 1, figures.length, keep, minInk);
+      /* not the intro's motes any more: it samples afresh next time */
+      dustMode = 'pad'; motesFor = -1; placedAt = -1;
+    }catch(e){ done(); return; }
+    const t0 = performance.now();
+    const finish = () => {
+      try{ paintDust(1); }catch(e){}
+      dustMode = 'intro';
+      done();
+      fitEntry.style.opacity = '';
+    };
+    const tick = now => {
+      const v = cl01((now - t0) / ms);
+      fitEntry.style.opacity = (1 - seg(v, 0, fadeOver)).toFixed(3);
+      try{ paintDust(v); }
+      catch(e){ console.warn('dust: stopped', e); finish(); return; }
+      if(v < 1){ requestAnimationFrame(tick); return; }
+      finish();
+    };
+    requestAnimationFrame(tick);
+  };
   window.__enterShop = () => {
     if(dismissed) return;
     /* straight to the end state: no dust to play, the drawings gone, the
