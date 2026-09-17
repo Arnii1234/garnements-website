@@ -2988,12 +2988,12 @@ addEventListener('resize', () => {
 });
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const FLIP_MS = REDUCED ? 1 : 1250;
+const FLIP_MS = REDUCED ? 1 : 950;
 /* Opening the cover is its own moment — heavy board, taken deliberately — so
    it runs far slower than the pages behind it. The contrast is the point: the
    slow one is getting into the book, the quick ones are the drawings. */
-const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 1300 : FLIP_MS);
-const EASE = 'cubic-bezier(.34,.08,.24,1)';
+const flipMs = i => REDUCED ? 1 : (PAGES[i].board ? 1100 : FLIP_MS);
+const EASE = 'cubic-bezier(.3,0,.16,1)';
 let cur = 0;
 /* A cover turn is the one flip that cannot be cut short. Ordinary pages stay
    interruptible — a second click lands the running one and starts the next, so
@@ -3162,7 +3162,7 @@ function bezierEase(x1, y1, x2, y2){
     return ((ay*t+by)*t+cy)*t;
   };
 }
-const glEase = bezierEase(.34, .08, .24, 1);
+const glEase = bezierEase(.3, 0, .16, 1);
 
 function makeStrip(){
   const g = new THREE.BufferGeometry();
@@ -3287,11 +3287,12 @@ function layoutGL(){
   /* the drawing buffer still has to come out in REAL screen pixels, and those
      are s smaller than the units everything above is written in — so the scale
      rides here instead, leaving the buffer exactly the size it always was */
-  /* 1.5 rather than 2 on a phone: the sheet is only ever seen in motion,
-     over about a second, and the difference is invisible there while the
-     pixel count is not — a third fewer fragments on the hardware with the
-     least to spare. */
-  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2) * s);
+  /* 1.5 rather than 2, and 1.25 on a phone: the sheet is only ever seen
+     in motion, over about a second, and the difference is invisible there
+     while the pixel count is not — the canvas is well over twice the
+     pad's area, and every one of its pixels is composited over the page
+     every frame of the turn. */
+  glR.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile() ? 1.25 : 1.5) * s);
   glR.setSize(w, h, false);
   glCam.fov = 2 * Math.atan(hh / PERSP) * 180 / Math.PI;
   glCam.aspect = hw / hh;
@@ -3566,8 +3567,14 @@ function trimTextures(){
    next tap finds the texture already made and starts immediately. */
 function warmNeighbours(){
   const idle = window.requestIdleCallback || (f => setTimeout(f, 200));
-  idle(() => { [cur + 1, cur - 1].forEach(n => {
-    if(n >= 0 && n < PAGES.length && !(n in glTex)) pageTexture(n);
+  idle(() => { [cur, cur + 1, cur - 1].forEach(n => {
+    if(n < 0 || n >= PAGES.length) return;
+    const t = n in glTex ? glTex[n] : pageTexture(n);
+    /* rasterising was only half of it: the first frame that draws a
+       texture also uploads it to the GPU — several megabytes, inside the
+       first frame of the turn, which is the hitch at the start of every
+       first turn onto a page. Uploaded here instead, in idle time. */
+    if(t && glR && glR.initTexture) glR.initTexture(t);
   }); });
 }
 function glFlip(i, dir, done){
@@ -3746,7 +3753,10 @@ layoutOverlays();
 function startGL(){
   if(glOK || !window.THREE) return;
   glOK = initGL();
-  if(glOK) layoutOverlays();
+  /* the cover and the first page, before the first tap — now, and again
+     once every image is in, since a page whose drawing has not landed yet
+     cannot be rasterised and is skipped */
+  if(glOK){ layoutOverlays(); warmNeighbours(); addEventListener('load', warmNeighbours, {once:true}); }
 }
 if(window.THREE) startGL();
 else addEventListener('DOMContentLoaded', startGL);
@@ -3808,9 +3818,14 @@ cal.addEventListener('click', e => {
   if(!e.target.closest('.page-art')) return;
   if(p && p.products && p.products.length) openModalSmooth(p.products);
 });
-/* touch swipe — bound to this book's own pad, so each answers only to itself */
+/* touch swipe — bound to this book's own pad, so each answers only to itself.
+   OFF: a swipe no longer turns a page; only the arrows do. A swipe read as
+   a turn kept firing flips a reader did not mean, and a flip started under
+   a moving finger is the one that stutters. The handlers stay, gated, in
+   case it is ever wanted back. */
+const SWIPE_FLIPS = false;
 let ty = null;
-cal.addEventListener('touchstart', e => {
+if(SWIPE_FLIPS) cal.addEventListener('touchstart', e => {
   /* one finger only: a second one means a pinch or a system gesture, and
      reading either as a page turn is how a book flips while someone is
      trying to zoom */
@@ -3822,12 +3837,12 @@ cal.addEventListener('touchstart', e => {
    left-edge back-swipe, the notification shade), so without this the page
    turns as the reader leaves — and a second finger arriving mid-drag has
    the same effect. */
-cal.addEventListener('touchmove', e => {
+if(SWIPE_FLIPS) cal.addEventListener('touchmove', e => {
   if(ty === null) return;
   if(e.touches.length !== 1) ty = null;
 }, {passive:true});
-cal.addEventListener('touchcancel', () => { ty = null; }, {passive:true});
-cal.addEventListener('touchend', e => {
+if(SWIPE_FLIPS) cal.addEventListener('touchcancel', () => { ty = null; }, {passive:true});
+if(SWIPE_FLIPS) cal.addEventListener('touchend', e => {
   if(ty === null) return;
   const dy = e.changedTouches[0].clientY - ty;
   if(dy < -46) next(); else if(dy > 46) prev();
