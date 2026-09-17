@@ -2080,7 +2080,8 @@
     font-size:12px; line-height:1.8; color:#4c4846;
   }
   .support .sheet-title{ margin-left:25%; margin-right:25%; }
-  .report-lead{ margin:6px 0 30px; max-width:46ch; }
+  .report-lead{ margin:6px 0 30px; max-width:none; white-space:nowrap; }
+  @media(max-width:900px){ .report-lead{ white-space:normal; } }
   .report a{ color:var(--ink); }
   .field{ display:block; margin-bottom:26px; }
   .label{
