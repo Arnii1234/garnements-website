@@ -1619,14 +1619,10 @@
   }
   .intro-sketch .cut.hover{
     transform:scale(1.06);
-    filter:
-      drop-shadow(0 3px 5px rgba(35,31,32,.26))
-      drop-shadow(0 12px 20px rgba(35,31,32,.15));
   }
   .intro-sketch .cut.press{
     transform:scale(1);
-    transition:transform .1s ease-out, filter .1s ease-out;
-    filter:drop-shadow(0 1px 2px rgba(35,31,32,.24));
+    transition:transform .1s ease-out;
   }
   /* ---------- the scattered sketches ----------
      Every drawing on this page is one of these. There is no second kind,
@@ -5841,7 +5837,7 @@ document.addEventListener('keydown', e => {
         END_MS    = VANISH_STYLE === 'dust' ? 3900 : 1400,
         /* how long the crumble takes to run through the drawings; the
            fall of the last grains follows it inside VANISH_MS */
-        CRUMBLE_MS = 1900;
+        CRUMBLE_MS = 1100;
   let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 520000;
   /* the sampling cell, in device pixels. One: every inked device pixel
@@ -5866,8 +5862,9 @@ document.addEventListener('keydown', e => {
     pix = dustImg.data; pix32 = new Uint32Array(pix.buffer);
     motesFor = -1; placedAt = -1;          /* sampled at the old size */
   }
+  let dustComplete = true;
   function sampleDust(){
-    moteN = 0;
+    moteN = 0; dustComplete = true;
     try{
       /* first pass: how many, so the arrays are sized once — and if the
          page would exceed the cap, every k-th pixel is kept, evenly */
@@ -5876,7 +5873,7 @@ document.addEventListener('keydown', e => {
       figures.forEach((fg, i) => {
         if(!fg.hpx) return;
         const img = fg.el.querySelector('img');
-        if(!img || !img.complete) return;
+        if(!img || !img.complete || !img.naturalWidth){ dustComplete = false; return; }
         const x = 0, y = 0;   /* relative to the drawing; placed later, see placeDust */
         const w = fg.el.offsetWidth, h = fg.hpx;
         if(w < 2 || h < 2) return;
@@ -5904,7 +5901,7 @@ document.addEventListener('keydown', e => {
         total += count;
       });
       const keep = total > MOTE_CAP ? MOTE_CAP / total : 1;
-      moteCap = Math.min(total, MOTE_CAP) + 24000;   /* room for the arrow's grains too */
+      moteCap = Math.min(total, MOTE_CAP) + 160000;   /* room for the arrow's and the mark's grains too */
       mX = new Float32Array(moteCap); mY = new Float32Array(moteCap);
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
@@ -5989,6 +5986,30 @@ document.addEventListener('keydown', e => {
     arrowImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 18"><path d="${path.getAttribute('d')}" fill="#231f20" stroke="#fff" stroke-width="1" stroke-linejoin="round"/></svg>`);
   }
+  /* the big mark, the same way as the arrow, where it stands on screen */
+  const markImg = new Image();
+  {
+    const svg = mark.querySelector('svg');
+    if(svg){
+      let src = new XMLSerializer().serializeToString(svg);
+      if(!/xmlns=/.test(src)) src = src.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      markImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+    }
+  }
+  function sampleMark(){
+    if(!dustOK || !markImg.complete || !markImg.naturalWidth) return;
+    try{
+      const r = mark.getBoundingClientRect();
+      if(r.bottom <= 0 || r.top >= stageH) return;          /* already off the top */
+      const w = Math.ceil(r.width * dpr), h = Math.ceil(r.height * dpr);
+      if(w < 2 || h < 2) return;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x2 = c.getContext('2d');
+      x2.drawImage(markImg, 0, 0, w, h);
+      const data = x2.getImageData(0, 0, w, h).data;
+      grainFrom(data, w, h, r.left, r.top, 1, figures.length, 1);
+    }catch(e){ /* the mark simply goes */ }
+  }
   function sampleCursor(){
     if(!dustOK || !arrowImg.complete || !arrowImg.naturalWidth) return;
     try{
@@ -6064,7 +6085,7 @@ document.addEventListener('keydown', e => {
     let dt = (t - simT) / 1000; simT = t;
     if(dt > .05) dt = .05;                            /* a stalled frame buys no more than this */
     const G = 2200 * dpr;                             /* px/s², what a fall looks like at this scale */
-    const fadeIn = seg(v, 0, .14);
+    const fadeIn = 1;
     pix32.fill(0);
     for(let i = 0; i < moteN; i++){
       const st = mS[i];
@@ -6076,7 +6097,8 @@ document.addEventListener('keydown', e => {
              drawing itself cross-fades out beneath */
           const x = mX[i], y = mY[i];
           if(x < 0 || y < 0 || x >= W || y >= H) continue;
-          const a = Math.sqrt(mA[i]) * figO[mF[i]] * fadeIn * 255;
+          /* standing: the outline, at full ink whatever its drawing's faintness */
+          const a = Math.sqrt(mA[i]) * 255;
           if(a < 4) continue;
           const idx = (y | 0) * W + (x | 0);
           if(a > (pix32[idx] >>> 24)) pix32[idx] = (a | 0) << 24;
@@ -6311,7 +6333,7 @@ document.addEventListener('keydown', e => {
     const pk  = seg(q, POP_A, POP_B);
     const pop = pk < .6 ? Math.sin(pk / .6 * Math.PI / 2) : Math.cos((pk - .6) / .4 * Math.PI / 2);
     const tap = seg(q, .90, 1);
-    cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? 1 - seg(vanishNow, 0, .14) : 1 - io(vanishNow))).toFixed(3);
+    cursor.style.opacity = (seg(q, .04, .09) * (dustOK ? (vanishNow > 0 ? 0 : 1) : 1 - io(vanishNow))).toFixed(3);
     cursor.style.transform =
       `translate3d(${(gx - curTargetX).toFixed(1)}px,${(gy - curTargetY).toFixed(1)}px,0)` +
       ` scale(${((1 + 1.0 * pop) * (1 - .17 * Math.sin(tap * Math.PI))).toFixed(3)})`;
@@ -6365,6 +6387,7 @@ document.addEventListener('keydown', e => {
        pointer reaches the drawing, so the press has the page to itself. */
     const markK = seg(p, 0, .12);
     mark.style.setProperty('--mark-y', (-markTravel * markK).toFixed(1) + 'px');
+    mark.style.opacity = dustOK && vanishNow > 0 ? '0' : '';
     /* the masthead's small mark fades up with the sketchbook — an inline
        opacity that outranks the stylesheet's 0 while the opening page is
        up, and is cleared at the hand-over so the stylesheet takes over */
@@ -6381,7 +6404,10 @@ document.addEventListener('keydown', e => {
          stretch (the dust fades up over the same frames, see paintDust),
          so the moment the ink turns to grain is never seen as a cut;
          without the dust (a tainted canvas) they simply fade */
-      const shown = dustOK ? 1 - seg(vanish, 0, .14) : 1 - vanishE;
+      /* with the dust, a drawing is gone the frame the fall begins — its
+         grains stand in its place at full ink, the outline, until each
+         drops; without it, it fades */
+      const shown = dustOK ? (vanish > 0 ? 0 : 1) : 1 - vanishE;
       /* the cowboy is the demonstration's, and keeps its pace */
       const {x, y} = figPos(fg, i, s.press ? q : p);
       if(s.press){
@@ -6601,7 +6627,12 @@ document.addEventListener('keydown', e => {
   function play(){
     if(playing || dismissed) return;
     playing = true;
-    if(dustOK){ if(motesFor !== 1){ sampleDust(); motesFor = 1; } placeDust(pScroll); sampleCursor(); }
+    if(dustOK){
+      /* sampled ahead of time where possible; again now if a drawing's
+         image had not landed then, so nothing on screen is left out */
+      if(motesFor !== 1 || !dustComplete){ sampleDust(); motesFor = 1; placedAt = -1; }
+      placeDust(pScroll); sampleCursor(); sampleMark();
+    }
     const t0 = performance.now();
     const tick = now => {
       if(!playing) return;
