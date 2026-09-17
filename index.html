@@ -5754,7 +5754,7 @@ document.addEventListener('keydown', e => {
   /* How everything leaves at the press. 'dust': pulverised, grain by
      grain (the canvas below). 'fade': the drawings simply fade to nothing
      over the same time, no dust at all. One word to switch between them. */
-  const VANISH_STYLE = 'fade';
+  const VANISH_STYLE = 'dust';
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = VANISH_STYLE === 'dust', dpr = 1, dustW = 0, dustH = 0;
   let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
@@ -5776,7 +5776,9 @@ document.addEventListener('keydown', e => {
      a CSS pixel as it turns to grain, and the grain is as fine as the
      screen. Set with the canvas, see sizeDust. */
   let CELL = 1;
-  const BLOCK = 2;
+  const BLOCK = 1;   /* one device pixel per mote, never a block: the dust is as fine as the screen */
+  /* the dust's colour: a dark beige, as ABGR for the pixel buffer (little-endian) */
+  const DUST_RGB = 0x4b5f6f;   /* b:4b g:5f r:6f  →  #6f5f4b */
   const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
   function sizeDust(){
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -5857,15 +5859,13 @@ document.addEventListener('keydown', e => {
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
             /* any direction, one speed range; a bend at right angles to it
                so no mote flies straight */
-            /* half a random direction, half straight out from the drawing's
-               middle — so the puff expands towards the viewer as much as it
-               scatters — and a speed of its own */
-            const ang = r2 * 6.28318, sp = (6.5 + 21 * r3) * dpr;
+            /* the dust FALLS: straight down, give or take a little sideways
+               drift of its own, a fall of its own length, and a slight sway
+               on the way (the bend, at right angles) */
+            const ang = Math.PI / 2 + (r2 - .5) * .5, sp = (18 + 46 * r3) * dpr;
             const rl = Math.hypot(px - cx, py - cy) || 1;
-            let ux = Math.cos(ang) * .5 + (px - cx) / rl * .5;
-            let uy = Math.sin(ang) * .5 + (py - cy) / rl * .5;
-            const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
-            const bend = (r1 - .5) * 9 * dpr;
+            let ux = Math.cos(ang), uy = Math.sin(ang);
+            const bend = (r1 - .5) * 6 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py; mF[moteN] = i;
             mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
             mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
@@ -5937,8 +5937,9 @@ document.addEventListener('keydown', e => {
       const k = v <= d ? 0 : (v - d) / (1 - d);
       const ik = 1 - k;
       if(ik <= 0) continue;
-      /* out fast, then slower: a quadratic ease-out */
-      const e = 1 - ik * ik, bend = e * (1 - e);
+      /* falling: it gathers speed as it goes (ease-in), thinning to
+         nothing as it lands */
+      const e = k * k, bend = e * (1 - e);
       const x = mX[i] + mVX[i] * e + mWX[i] * bend;
       const y = mY[i] + mVY[i] * e + mWY[i] * bend;
       if(x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
@@ -5948,8 +5949,9 @@ document.addEventListener('keydown', e => {
       let old = pix32[idx] >>> 24;
       if(a > old){
         if(!old) touched[touchedN++] = idx;
-        pix32[idx] = ((a | 0) << 24);      /* black, at its own alpha */
+        pix32[idx] = ((a | 0) << 24) | DUST_RGB;   /* dark beige, at its own alpha */
       }
+      if(BLOCK === 1) continue;
       /* the rest of the block, fading away over the flight's middle */
       const sh = ik > .75 ? 1 : ik < .35 ? 0 : (ik - .35) / .4;
       if(sh <= 0) continue;
@@ -5957,11 +5959,11 @@ document.addEventListener('keydown', e => {
       if(a2 < 4) continue;
       const j1 = idx + 1, j2 = idx + W, j3 = j2 + 1;
       old = pix32[j1] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24); }
+      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24) | DUST_RGB; }
       old = pix32[j2] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24); }
+      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24) | DUST_RGB; }
       old = pix32[j3] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24); }
+      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24) | DUST_RGB; }
     }
     dctx.putImageData(dustImg, 0, 0);
   }
