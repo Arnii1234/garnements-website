@@ -2030,6 +2030,48 @@
      The same sheet as the catalogue, carrying a short form instead of a
      grid: the house's small uppercase labels over hairlined fields, and the
      shop's own black button to send. Narrow, and left, like a letter. */
+  /* ---------- the process of creation ----------
+     An article: one column to read down, chapters in order, each with its
+     pictures. The pictures are placeholders until the photographs come —
+     framed in the pad's own board tone, captioned with what will stand
+     there — so the page already reads as the page it will be. */
+  .story{
+    max-width:640px; margin:26px auto 90px; padding:0 44px;
+    font-size:13px; line-height:1.85; color:#4c4846;
+  }
+  .story-lead{
+    font-family:'Bodoni Moda',serif; font-weight:400;
+    font-size:clamp(22px, 3vw, 30px); line-height:1.3; color:var(--ink);
+    margin:8px 0 46px; max-width:22ch;
+  }
+  .chapter{ margin:0 0 64px; }
+  .chapter-n{
+    display:block; font-family:'Bodoni Moda',serif; font-size:13px; letter-spacing:.2em;
+    color:var(--grey); margin-bottom:10px;
+  }
+  .chapter h3{
+    font-family:'Bodoni Moda',serif; font-weight:400; font-size:21px;
+    letter-spacing:.02em; color:var(--ink); margin:0 0 16px;
+  }
+  .chapter p{ margin:0 0 16px; max-width:58ch; }
+  .frames{ display:grid; gap:12px; margin:26px 0 8px; }
+  .frames.two{ grid-template-columns:1fr 1fr; }
+  .frame{
+    display:block; background:var(--board-face); border:.5px solid var(--ink);
+    aspect-ratio:4/5; position:relative; overflow:hidden;
+  }
+  .frame.wide{ aspect-ratio:3/2; }
+  .frame.page{ aspect-ratio:210/297; background:#fff; }
+  .frame img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  .frame .soon{
+    position:absolute; left:14px; bottom:12px; right:14px;
+    font-size:9px; letter-spacing:.24em; text-transform:uppercase; color:var(--ink); opacity:.55;
+  }
+  .caption{ font-size:10.5px; letter-spacing:.06em; color:var(--grey); margin:0 0 6px; }
+  @media(max-width:600px){
+    .story{ padding:0 20px; margin-top:18px; }
+    .frames.two{ grid-template-columns:1fr; }
+  }
   .report{
     max-width:520px; margin:26px 44px 60px;
     font-size:12px; line-height:1.8; color:#4c4846;
@@ -2173,6 +2215,7 @@
     <button class="menu-item" onclick="goHomeFromMenu()">Home</button>
     <button class="menu-item" onclick="goShopFromMenu()">Sketchbooks / Shop</button>
     <button class="menu-item" onclick="openCatalogue()">Catalogue</button>
+    <button class="menu-item" onclick="openProcess()">Process of creation</button>
     <button class="menu-item" onclick="openSupport()">Support</button>
   </nav>
   <!-- the drawn wordmark, the same file the opening page shows big -->
@@ -2195,6 +2238,67 @@
 <!-- support: a report form. There is no server behind the site, so the
      report goes the way an order does — composed into an e-mail to the
      house address and handed to the visitor's mail app. -->
+<div class="catalogue process" id="process" hidden>
+  <h2 class="sheet-title">Process of creation</h2>
+  <article class="story">
+    <p class="story-lead">Every piece starts as a drawing. This is how a drawing becomes a garment.</p>
+
+    <section class="chapter">
+      <span class="chapter-n">I</span>
+      <h3>Where the drawings come from</h3>
+      <p>The drawings are a reflection of my life. They come out of nights in Berlin, out of techno, out of love and out of trying to be honest about all of it. I do not plan them. They arrive when they arrive, and the sketchbook is where they land.</p>
+      <p>This chapter will grow once the first samples are here and the first photographs and videos are made. For now, a few of the pages.</p>
+      <div class="frames two">
+        <span class="frame"><span class="soon">Photograph to come</span></span>
+        <span class="frame"><span class="soon">Photograph to come</span></span>
+      </div>
+      <p class="caption">Berlin, nights and mornings. Pictures to follow.</p>
+    </section>
+
+    <section class="chapter">
+      <span class="chapter-n">II</span>
+      <h3>The sketchbook</h3>
+      <p>Pen on paper, nothing else. A page is done in one sitting and never corrected. What you see in the sketchbooks on this site is exactly what is in the books on my table, page for page.</p>
+      <div class="frames two">
+        <span class="frame page"><img src="assets/S1P1.svg" alt="A page from the first sketchbook"></span>
+        <span class="frame page"><img src="assets/S1P5.svg" alt="A page from the first sketchbook"></span>
+      </div>
+      <p class="caption">Two pages from Season 1.</p>
+    </section>
+
+    <section class="chapter">
+      <span class="chapter-n">III</span>
+      <h3>From the page to the garment</h3>
+      <p>A drawing is traced into Adobe Illustrator line by line, keeping every wobble of the pen. Then it is placed on the piece it belongs to: the chest of a tee, the back of a hoodie, the leg of a pair of jeans. The placement is the design. Nothing is added to the drawing itself.</p>
+      <div class="frames two">
+        <span class="frame page"><img src="assets/S1P2 beige hoodie design.svg" alt="The cowboy, traced for the Cowboy Shootout sweater"></span>
+        <span class="frame"><span class="soon">Screen recording to come</span></span>
+      </div>
+      <p class="caption">The cowboy from page 2, traced for the Cowboy Shootout sweater.</p>
+    </section>
+
+    <section class="chapter">
+      <span class="chapter-n">IV</span>
+      <h3>Made in Istanbul</h3>
+      <p>The garments are made together with manufacturers in Istanbul who know cloth and thread better than anyone I have met. The drawings are embroidered, not printed: thread worked into the fabric, so the line has weight and catches the light the way ink on paper never could.</p>
+      <div class="frames">
+        <span class="frame wide"><span class="soon">Photograph to come</span></span>
+      </div>
+      <p class="caption">The workshop, the embroidery machines, the first threads. Pictures to follow.</p>
+    </section>
+
+    <section class="chapter">
+      <span class="chapter-n">V</span>
+      <h3>The first drop</h3>
+      <p>The samples for the first drop are on their way. When they arrive, this page gets the photographs and the videos of the pieces on real people, and the story above gets told properly, in pictures rather than words.</p>
+      <div class="frames two">
+        <span class="frame"><span class="soon">Photograph to come</span></span>
+        <span class="frame"><span class="soon">Video to come</span></span>
+      </div>
+      <p class="caption">Season 1, soon.</p>
+    </section>
+  </article>
+</div>
 <div class="catalogue support" id="support" hidden>
   <h2 class="sheet-title">Support</h2>
   <form class="report" id="report" novalidate>
@@ -5168,19 +5272,20 @@ document.getElementById('lbOpen').addEventListener('click', e => {
    to call) it hands straight over. */
 function goShopFromMenu(){
   toggleMenu(false);
-  closeCatalogue(); closeSupport();
+  closeCatalogue(); closeSupport(); closeProcess();
   if(document.body.classList.contains('entry') && window.__enterShop) window.__enterShop();
 }
 function goHomeFromMenu(){
   toggleMenu(false);
-  closeCatalogue(); closeSupport();
+  closeCatalogue(); closeSupport(); closeProcess();
   document.getElementById('brand').click();
 }
 /* and the wordmark itself folds the sheets away on its way home */
-document.getElementById('brand').addEventListener('click', () => { closeCatalogue(); closeSupport(); });
+document.getElementById('brand').addEventListener('click', () => { closeCatalogue(); closeSupport(); closeProcess(); });
 const catalogueEl = document.getElementById('catalogue');
 function openCatalogue(){
   toggleMenu(false);
+  closeSupport(); closeProcess();
   buildCatalogue();
   catalogueEl.hidden = false;
   catalogueEl.scrollTop = 0;
@@ -5206,8 +5311,17 @@ document.getElementById('reportKinds').addEventListener('click', e => {
   const b = e.target.closest('.kind');
   if(b) setKind(b.dataset.kind);
 });
+const processEl = document.getElementById('process');
+function openProcess(){
+  toggleMenu(false);
+  closeCatalogue(); closeSupport(); closeProcess();
+  processEl.hidden = false;
+  processEl.scrollTop = 0;
+}
+function closeProcess(){ processEl.hidden = true; }
 function openSupport(kind){
   toggleMenu(false);
+  closeCatalogue(); closeProcess();
   reportNote.hidden = true;
   if(kind) setKind(kind);
   supportEl.hidden = false;
@@ -5277,6 +5391,7 @@ document.addEventListener('keydown', e => {
   }
   if(e.key !== 'Escape') return;
   if(!supportEl.hidden){ closeSupport(); return; }
+  if(!processEl.hidden){ closeProcess(); return; }
   if(!catalogueEl.hidden){ closeCatalogue(); return; }
   if(menuEl.classList.contains('open')) toggleMenu(false);
 });
