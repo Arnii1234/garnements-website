@@ -3277,16 +3277,20 @@ function drawHoles(x, s){
 /* reverse of a sheet: plain paper, but it carries the same punched holes, so
    they stay with the sheet as it comes over the top. Needs the page's real
    proportions now (a 2px-wide gradient strip could not hold the hole row). */
-function paperTexture(stops){
+function paperTexture(stops, board){
   const TW = 512, TH = Math.round(TW * PAGE_H / PAGE_W);
+  /* a board's reverse is built at the board's size, like its face */
+  const tox = board ? Math.round(TW * BOARD_OVER / PAGE_W) : 0;
+  const toy = board ? Math.round(TH * BOARD_OVER / PAGE_H) : 0;
   const c = document.createElement('canvas');
-  c.width = TW; c.height = TH;
+  c.width = TW + 2 * tox; c.height = TH + 2 * toy;
   const x = c.getContext('2d');
   /* the reverse of a sheet is the same paper as its face — see .leaf-face.rear */
   const s = stops || ['#f8f7f5', '#f4f3f1', '#eeedea'];
-  const g = x.createLinearGradient(0, 0, 0, TH);
+  const g = x.createLinearGradient(0, 0, 0, c.height);
   g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
-  x.fillStyle = g; x.fillRect(0, 0, TW, TH);
+  x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
+  x.translate(tox, toy);
   drawHoles(x, TW / PAGE_W);
   const t = new THREE.CanvasTexture(c);
   t.minFilter = t.magFilter = THREE.LinearFilter;
@@ -3314,7 +3318,7 @@ function initGL(){
     mFront = new THREE.Mesh(gFront, new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.FrontSide }));
     texPaperBack = paperTexture();
-    texCoverBack = paperTexture(['#c4bfb5', '#bdb8ae', '#b4afa5']);
+    texCoverBack = paperTexture(['#c4bfb5', '#bdb8ae', '#b4afa5'], true);
     mBack  = new THREE.Mesh(gBack,  new THREE.MeshBasicMaterial({
       vertexColors:true, side:THREE.BackSide, map:texPaperBack }));
     glScene.add(mFront, mBack);
@@ -3387,21 +3391,28 @@ function pageTexture(i){
   let drewImage = false;
   const TW = Math.min(1536, Math.round(cal.offsetWidth * Math.min(window.devicePixelRatio||1, 2) * 1.15));
   const TH = Math.round(TW * PAGE_H / PAGE_W);
+  /* a cover's texture covers the whole board — BOARD_OVER past the sheet
+     on every side, matching shapeSheet — with the page's own content
+     drawn inset by that much, exactly where it sits on the DOM cover */
+  const tox = p.board ? Math.round(TW * BOARD_OVER / PAGE_W) : 0;
+  const toy = p.board ? Math.round(TH * BOARD_OVER / PAGE_H) : 0;
   const c = document.createElement('canvas');
-  c.width = TW; c.height = TH;
+  c.width = TW + 2 * tox; c.height = TH + 2 * toy;
+  const cw = c.width, ch = c.height;
   const x = c.getContext('2d');
   /* paper: the same radial gradient as .leaf-face, squashed into an ellipse */
   x.save();
-  x.translate(TW*.5, TH*.10);
-  x.scale(1, (TH*.92) / (TW*1.28));
-  const g = x.createRadialGradient(0, 0, 0, 0, 0, TW*1.28);
+  x.translate(cw*.5, ch*.10);
+  x.scale(1, (ch*.92) / (cw*1.28));
+  const g = x.createRadialGradient(0, 0, 0, 0, 0, cw*1.28);
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
     ? ['#d3cec5', '#ccc7bd', '#c3beb3']
     : ['#f8f7f5', '#f4f3f1', '#eeedea'];   /* the same stops as .leaf-face */
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
-  x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
+  x.fillStyle = g; x.fillRect(-cw*2, -ch*3, cw*4, ch*6);
   x.restore();
+  x.translate(tox, toy);   /* everything below is in the page's own space */
 
   if(p.type === 'colophon'){
     /* Measured off the live sheet rather than guessed. This is the only page
@@ -3522,7 +3533,8 @@ function simInit(i, e){
          tp: new Float32Array(ROWS+1).fill(A),   /* at rest: no phantom kick */
          /* enough driven rows to pin direction as well as position, however
             few happen to sit above the hinge */
-         jPin: Math.max(2, Math.ceil(glBox.hOff / glBox.ph * ROWS) + 1),
+         jPin: Math.max(2, Math.ceil((glBox.hOff + (PAGES[i].board ? glBox.ph * BOARD_OVER / PAGE_H : 0))
+                                     / (glBox.ph + (PAGES[i].board ? 2 * glBox.ph * BOARD_OVER / PAGE_H : 0)) * ROWS) + 1),
          last: performance.now(), acc: 0};
 }
 function simStep(dt, A, gw){
@@ -3559,7 +3571,14 @@ function simAdvance(now, e){
 /* write the sheet's shape and shading for a progress value e ∈ [0,1] */
 function shapeSheet(i, e){
   const A = e * Math.PI * 2;
-  const H = glBox.ph, W = glBox.pw;
+  /* A cover is BOARD_OVER larger than a sheet on every side (see
+     .board-over), so its turn is built at the board's size — the sheet's
+     plus the overhang all round — or the cover would shrink to sheet size
+     the moment it lifted and pop back to board size as it landed. */
+  const board = PAGES[i].board;
+  const ovx = board ? glBox.pw * BOARD_OVER / PAGE_W : 0;
+  const ovy = board ? glBox.ph * BOARD_OVER / PAGE_H : 0;
+  const H = glBox.ph + 2 * ovy, W = glBox.pw + 2 * ovx;
   const z = leafZ(i) + (backZ(i) - leafZ(i)) * smoothstep(.45, .62, e);
   const x0 = glBox.hx - glBox.ox, y0 = glBox.hy - glBox.oy;
   const pf = gFront.attributes, pb = gBack.attributes;
@@ -3573,8 +3592,8 @@ function shapeSheet(i, e){
   const ang = j => th ? A + (th[j] - A) * w : A;
   /* walk out from the hinge, which sits hOff back along the first row's
      own direction — the sheet's top edge is above it, at negative s */
-  let py = -glBox.hOff * Math.cos(ang(0));
-  let pz = -glBox.hOff * Math.sin(ang(0));
+  let py = -(glBox.hOff + ovy) * Math.cos(ang(0));
+  let pz = -(glBox.hOff + ovy) * Math.sin(ang(0));
   for(let j = 0; j <= ROWS; j++){
     const psi = ang(j);
     /* CSS space has y pointing down; three.js has it up */
