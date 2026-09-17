@@ -175,6 +175,13 @@
        demonstration alike, and it is the one wordmark the page has. Below
        the cart drawer (160), which slides over its corner. */
     position:relative; z-index:155;
+  }
+  /* While a sheet is turning it swings up over the masthead's row, and it
+     should pass in FRONT of the wordmark, not behind it: for the length
+     of the turn the masthead drops beneath the pads (#fit is 5). Only
+     ever in the shop — the opening page (150) is gone by then. */
+  body.flipping header{
+    z-index:4;
     background:transparent;
   }
   .brand{
@@ -335,10 +342,12 @@
     background-size:140px 140px;
     opacity:.05;   /* no mix-blend-mode: it would flatten the 3D context */
   }
-  /* reverse side of a page — plain paper, seen as it comes over the top */
+  /* reverse side of a page — the same paper as the face, so a sheet keeps
+     its colour as it comes over the top (the texture the WebGL turn draws
+     for it uses these same stops, see paperTexture) */
   .leaf-face.rear{
     transform:rotateX(180deg) translateZ(.2px);
-    background:linear-gradient(#e3e2e0 0%, #dcdbd8 55%, #d5d4d1 100%);
+    background:linear-gradient(#f8f7f5 0%, #f4f3f1 55%, #eeedea 100%);
   }
   .leaf-face.rear::after{
     content:'';position:absolute;inset:0;
@@ -3271,7 +3280,8 @@ function paperTexture(stops){
   const c = document.createElement('canvas');
   c.width = TW; c.height = TH;
   const x = c.getContext('2d');
-  const s = stops || ['#e3e2e0', '#dcdbd8', '#d5d4d1'];
+  /* the reverse of a sheet is the same paper as its face — see .leaf-face.rear */
+  const s = stops || ['#f8f7f5', '#f4f3f1', '#eeedea'];
   const g = x.createLinearGradient(0, 0, 0, TH);
   g.addColorStop(0, s[0]); g.addColorStop(.55, s[1]); g.addColorStop(1, s[2]);
   x.fillStyle = g; x.fillRect(0, 0, TW, TH);
@@ -3386,7 +3396,7 @@ function pageTexture(i){
   /* the cover is card, not paper — same stops as .leaf.cover .leaf-face */
   const st = p.board
     ? ['#d3cec5', '#ccc7bd', '#c3beb3']
-    : ['#f1f0ee', '#eae9e7', '#e1e0dd'];
+    : ['#f8f7f5', '#f4f3f1', '#eeedea'];   /* the same stops as .leaf-face */
   g.addColorStop(0, st[0]); g.addColorStop(.44, st[1]); g.addColorStop(1, st[2]);
   x.fillStyle = g; x.fillRect(-TW*2, -TH*3, TW*4, TH*6);
   x.restore();
@@ -3667,6 +3677,11 @@ function glFlip(i, dir, done){
 }
 
 /* ---------- one flip, whichever engine is available ---------- */
+/* how many sheets are in the air, whichever engine is turning them — while
+   any is, body.flipping puts the masthead beneath them (see the CSS) */
+let flipsRunning = 0;
+function flipBegan(){ flipsRunning++; document.body.classList.add('flipping'); }
+function flipEnded(){ if(--flipsRunning <= 0){ flipsRunning = 0; document.body.classList.remove('flipping'); } }
 function flipLeaf(i, dir){
   const leaf = leaves[i];
   leaf.getAnimations().forEach(a => a.cancel());
@@ -3676,16 +3691,19 @@ function flipLeaf(i, dir){
       ? `translateZ(${backZ(i)}px) rotateX(360deg)`
       : `translateZ(${leafZ(i)}px)`;
     leaf.style.visibility = '';
+    flipEnded();
   };
-  if(REDUCED){ land(); return; }
+  if(REDUCED){ flipBegan(); land(); return; }
+  flipBegan();
   if(glOK){
     leaf.style.visibility = 'hidden';
     if(glFlip(i, dir, land)) return;
     leaf.style.visibility = '';          /* texture not ready — use CSS instead */
   }
   const kf = flipKeyframes(i);
-  leaf.animate(dir > 0 ? kf : reverseKeyframes(kf),
+  const anim = leaf.animate(dir > 0 ? kf : reverseKeyframes(kf),
                {duration:flipMs(i), easing:EASE, fill:'forwards'});
+  anim.finished.then(flipEnded, flipEnded);
 }
 /* hold off every input until a board sheet has finished turning, and put the
    nav buttons back once it lands. `delay` is a pause BEFORE the sheet even
