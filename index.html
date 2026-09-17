@@ -5465,10 +5465,12 @@ document.addEventListener('keydown', e => {
      down" actually means in code.)
 
      x/y are where the drawing's own top-left sits, in % of the stage; h is
-     its height in vh (see .intro-sketch for why height and not width). b is
-     the drawing's box on its A4 artboard — [x, y, w, h] in the same 2480 ×
-     3508 units mountDesignArt measures the real hotspots in — and it is
-     what crops the sheet back to the drawing. Several deliberately hang off
+     its height in vh (see .intro-sketch for why height and not width). a is
+     the file's own coordinate space and b the part of it to show — a home
+     drawing carries just `a` (its viewBox, since the file is already cut to
+     its artwork), a garment cutout carries `b` as well, [x, y, w, h] in the
+     same 2480 × 3508 units mountDesignArt measures the real hotspots in, to
+     crop the A4 sheet back to the one drawing on it. Several hang off
      an edge: a scatter that stops politely inside the frame reads as a
      border, not a scattering. d is parallax depth: how fast it rides the
      scroll (see FIG_RATE). opt drops out on phones,
@@ -5481,19 +5483,35 @@ document.addEventListener('keydown', e => {
      biggest at the edges and the smallest nearer the middle; an even
      scatter of same-size marks reads as a pattern, and a scatter of very
      different sizes reads as depth. */
+  /* The home drawings, by their own viewBox — these files are already cut to
+     their artwork by the export, so their artboard IS their box and the
+     builder's crop resolves to "show the whole file". Listed once here so a
+     drawing standing in several slots is one set of numbers, not three
+     copies of them that can drift apart. */
+  const HOMED = {
+    1:[453,456],      2:[398.7,539],    3:[307.1,622.8],  4:[225,644.1],
+    5:[255.3,717],    6:[302.7,688.5],  7:[1113.3,489.2], 8:[589.4,913.5],
+    9:[1444.5,1266.4],10:[357.7,602.6]
+  };
+  const hd = n => ({f:`homed${n}.svg`, a:HOMED[n]});
+
   const FIGURES = [
-    /* The fifteen drawings you can actually press, and nothing else. Not the
-       sheets they are drawn on — those carry two or three drawings apiece
-       plus a lot of empty paper, so a page standing in the scatter was
-       showing you mostly margin and asking you to find the garment in it.
-       These ARE the garments: the same cutouts the sketchbook lifts under
-       your cursor, so the thing scattered across the landing page and the
-       thing you go on to press are literally the same drawing. */
+    /* The scatter is the home drawings now — drawn for this page and nothing
+       else, rather than borrowed from the sketchbook. The one exception is
+       the cowboy below, and he is an exception for a reason: he is the
+       drawing the demonstration presses, so he has to be a real garment
+       cutout or the whole point of the sequence (press a drawing, meet the
+       piece) would be a promise the page cannot keep.
+
+       Ten drawings across eighteen places, so some stand more than once —
+       far apart, at different sizes and depths, which is the same thing the
+       wrap below already does to every drawing over a long scroll. More are
+       coming; each one added thins the repeats out on its own. */
     /* top band */
-    {f:'S1P4 pink hoodie design.svg',   b:[439,50,1912,3407],   x:1,  y:3,  h:44, o:.28, d:1.00},
-    {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
-    {f:'S1P2 pink tee design.svg',      b:[1652,5,478,1213],    x:56, y:5,  h:14, o:.24, d:1.45},
-    {f:'S1P3 black jeans design.svg',   b:[1181,207,1046,3301], x:83, y:3,  h:38, o:.26, d:1.35},
+    {...hd(4),  x:1,  y:3,  h:44, o:.28, d:1.00},
+    {...hd(1),  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
+    {...hd(10), x:56, y:5,  h:14, o:.24, d:1.45},
+    {...hd(5),  x:83, y:3,  h:38, o:.26, d:1.35},
     /* the one the glass finds and the arrow presses: the cowboy, the
        drawing stitched on the Cowboy Shootout sweater. It starts just under
        the fold, right of the middle, and comes straight UP the page with
@@ -5505,23 +5523,27 @@ document.addEventListener('keydown', e => {
        frame. A shade darker than the rest, lifted to full ink once found;
        never wraps. */
     {f:'S1P2 beige hoodie design.svg',  b:[115,148,859,2035],   x:61, y:100, h:40, o:.5, d:1.65, press:1},
-    /* upper middle */
-    {f:'S1P9 black tee 1 design.svg',   b:[461,673,1934,2270],  x:14, y:27, h:9, o:.32, d:1.15},
-    {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:88, y:24, h:30, o:.26, d:.85},
-    /* the flanks, either side of where the mark stands */
-    {f:'S1P11 beige duffle design.svg', b:[428,354,1692,3143],  x:-2, y:50, h:34, o:.22, d:.70, opt:1},
-    {f:'S1P10 beige hoodie design.svg', b:[194,34,1634,3474],   x:93, y:49, h:20, o:.22, d:.60, opt:1},
-    /* bottom band */
-    {f:'S1P5 black vest design.svg',    b:[637,531,1206,2742],  x:24, y:60, h:42, o:.38, d:1.30},
-    {f:'S1P7 Black Tee 2 design.svg',   b:[285,25,2193,3483],   x:66, y:63, h:12, o:.25, d:1.20},
+    /* upper middle. The wide one goes here and small: at 2.3 to 1 it is the
+       only drawing in the set that reads as a horizontal, and up here it
+       spreads without reaching the middle where the demonstration stands. */
+    {...hd(7),  x:14, y:27, h:9,  o:.32, d:1.15},
+    {...hd(6),  x:88, y:24, h:30, o:.26, d:.85},
+    /* the flanks, either side of where the demonstration stands */
+    {...hd(8),  x:-2, y:50, h:34, o:.22, d:.70, opt:1},
+    {...hd(2),  x:93, y:49, h:20, o:.22, d:.60, opt:1},
+    /* bottom band. The biggest and most worked drawing of the set takes the
+       most opaque slot on the page, low and left of the middle — far enough
+       down that its width runs under the demonstration rather than into it. */
+    {...hd(9),  x:24, y:60, h:36, o:.38, d:1.30},
+    {...hd(1),  x:66, y:63, h:12, o:.25, d:1.20},
     /* the bottom row hangs OFF the bottom edge, deliberately and by a lot:
        a drawing cut through the middle by the frame is what says there is
        more page below this, now that nothing on the page says "scroll" in
        words */
-    {f:'S1P6 pink tee design.svg',      b:[686,260,421,1244],   x:76, y:87, h:16, o:.22, d:1.60},
-    {f:'S1P1 backpack design.svg',      b:[286,528,1781,2980],  x:7,  y:90, h:24, o:.24, d:1.55},
-    {f:'S1P3 beige hoodie design.svg',  b:[361,1495,815,1197],  x:91, y:85, h:10, o:.20, d:1.75, opt:1},
-    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:44, y:16, h:8, o:.18, d:1.85, opt:1},
+    {...hd(3),  x:76, y:87, h:16, o:.22, d:1.60},
+    {...hd(10), x:7,  y:90, h:24, o:.24, d:1.55},
+    {...hd(2),  x:91, y:85, h:10, o:.20, d:1.75, opt:1},
+    {...hd(1),  x:44, y:16, h:8,  o:.18, d:1.85, opt:1},
     /* three more waiting just BELOW the fold. Every drawing starts on the
        first screen and every one of them moves up, so without these the
        band coming in from the bottom was empty until the first ones had
@@ -5529,10 +5551,10 @@ document.addEventListener('keydown', e => {
        four are already in the band, spread down to 116%, so it is never
        empty. Kept inside the wrap's range (see measure's gap floor) so they
        are not folded to the top. */
-    {f:'S1P8 black tee 1 design.svg',   b:[132,552,2047,2749],  x:40, y:103, h:18, o:.22, d:1.25},
-    {f:'S1P6 pink jorts design.svg',    b:[244,445,2028,2948],  x:60, y:107, h:26, o:.24, d:1.55, opt:1},
-    {f:'S1P9 beige tee design .svg',    b:[193,2279,596,827],   x:28, y:109, h:12, o:.20, d:1.70},
-    {f:'S1P7 Black Tee 2 design.svg',   b:[285,25,2193,3483],   x:48, y:116, h:22, o:.24, d:1.10}
+    {...hd(6),  x:40, y:103, h:18, o:.22, d:1.25},
+    {...hd(8),  x:60, y:107, h:26, o:.24, d:1.55, opt:1},
+    {...hd(10), x:28, y:109, h:12, o:.20, d:1.70},
+    {...hd(3),  x:48, y:116, h:22, o:.24, d:1.10}
   ];
   /* How fast the scatter rides the scroll: a drawing moves this many
      pixels for every pixel scrolled, times its own `d`. Written against the
@@ -5647,16 +5669,28 @@ document.addEventListener('keydown', e => {
        changing — and --py is a share of the HEIGHT, which is what a `top`
        percentage resolves against, so it comes off the box's height and not
        its width. */
-    const [bx, by, bw, bh] = s.b;
+    /* Two kinds of file stand in this scatter and the crop is what tells
+       them apart. A garment cutout is a whole A4 artboard with one drawing
+       somewhere on it, so it has to be blown up and slid until that drawing
+       fills the box (b, against the A4 artboard). A home drawing is already
+       its own file, cropped to itself by the export — no artboard around it
+       to take off. Rather than branch, both are normalised here to the same
+       pair: `art`, the whole file's coordinate space, and `box`, the part of
+       it to show. For a home drawing those two are simply the same
+       rectangle, and every line below — and sampleDust's canvas — then does
+       the identical arithmetic on both without knowing which it has. */
+    const art = s.a || [ART_SVG_W, ART_SVG_H];
+    const box = s.b || [0, 0, art[0], art[1]];
+    const [bx, by, bw, bh] = box;
     el.style.cssText =
       `left:${s.x}%;top:${s.y}%;opacity:${s.o};` +
       `--h:${s.h}vh;--ar:${bw}/${bh};` +
-      `--pw:${(ART_SVG_W / bw * 100).toFixed(2)}%;` +
+      `--pw:${(art[0] / bw * 100).toFixed(2)}%;` +
       `--px:${(-bx / bw * 100).toFixed(2)}%;` +
       `--py:${(-by / bh * 100).toFixed(2)}%`;
     el.innerHTML = `<span class="cut"><img src="${url(s.f)}" alt=""></span>`;
     scatterEl.appendChild(el);
-    return {el, s, cut: el.firstElementChild};
+    return {el, s, art, box, cut: el.firstElementChild};
   });
   const pressFig = figures.find(fg => fg.s.press);
 
@@ -5767,12 +5801,15 @@ document.addEventListener('keydown', e => {
         const x = 0, y = 0;   /* relative to the drawing; placed later, see placeDust */
         const w = fg.el.offsetWidth, h = fg.hpx;
         if(w < 2 || h < 2) return;
-        const [bx, by, bw, bh] = fg.s.b;
+        const [bx, by, bw] = fg.box;
         const sc = w / bw * dpr;           /* artboard unit → device px */
         const c = document.createElement('canvas');
         c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
         const x2 = c.getContext('2d');
-        x2.drawImage(img, -bx * sc, -by * sc, ART_SVG_W * sc, ART_SVG_H * sc);
+        /* the whole file drawn at the size that makes its cropped part fill
+           the canvas, then slid so that part lands on the origin — the same
+           crop the CSS above does, in canvas terms (see the builder) */
+        x2.drawImage(img, -bx * sc, -by * sc, fg.art[0] * sc, fg.art[1] * sc);
         const data = x2.getImageData(0, 0, c.width, c.height).data;
         const o = fg.s.press ? 1 : fg.s.o;
         /* counted in cells, the way the second pass walks them */
