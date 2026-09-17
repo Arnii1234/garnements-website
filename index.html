@@ -81,7 +81,7 @@
     /* the lift a waiting book takes under the pointer — well clear of --idle,
        so "this is the one you'd press" is legible from across the page
        instead of something you confirm by looking twice */
-    --idle-hover:1;
+    --idle-hover:1.01;   /* a hair, under the pointer */
     /* the covers' board tone — shared at :root rather than scoped to
        .leaf.cover so .board (a sibling of the leaves, not a descendant of
        any one of them) can paint the exact same colour behind them. Kept
@@ -1538,6 +1538,11 @@
     width:clamp(220px, 48vw, 780px);
     z-index:3; pointer-events:none;
     will-change:transform;
+  }
+  /* on a phone the mark stands higher: just under the middle of the upper
+     half of the screen (MARK_TOP in the script says the same) */
+  @media(max-width:600px){
+    .intro-mark{ top:30%; }
   }
   .intro-mark svg{ display:block; width:100%; height:auto; }
   /* ---------- the pointer that presses a drawing ----------
@@ -5351,10 +5356,10 @@ function leaveShop(then){
   const book = books[activeIndex >= 0 ? activeIndex : Math.max(0, browseIndex % books.length)];
   let went = false;
   const go = () => { if(went) return; went = true; then(); };
-  const timer = setTimeout(go, 2600);   /* whatever happens, the sheet comes */
+  const timer = setTimeout(go, 3400);   /* whatever happens, the sheet comes */
   book.snapshot().then(snap => {
     if(!snap){ clearTimeout(timer); go(); return; }
-    window.__dustAway(snap, 1500, () => { clearTimeout(timer); go(); }, {minInk:.3, fade:.4});
+    window.__dustAway(snap, 2400, () => { clearTimeout(timer); go(); }, {minInk:.3, fade:.3, crumble:900});
   }, () => { clearTimeout(timer); go(); });
 }
 function openCatalogue(){ leaveShop(showCatalogue); }
@@ -5555,7 +5560,9 @@ document.addEventListener('keydown', e => {
   const HOMED = {
     1:[453,456],      2:[398.7,539],    3:[307.1,622.8],  4:[225,644.1],
     5:[255.3,717],    6:[302.7,688.5],  7:[1113.3,489.2], 8:[589.4,913.5],
-    9:[1444.5,1266.4],10:[357.7,602.6]
+    9:[1444.5,1266.4],10:[357.7,602.6], 11:[581.4,1017.3],12:[917.1,1095],
+    13:[300.6,339],   14:[376.5,909.6], 15:[335.6,400.2], 16:[688,1098.2],
+    17:[600.3,987.1], 18:[119.7,125.7], 19:[158.2,485],   20:[410.9,570]
   };
   const hd = n => ({f:`homed${n}.svg`, a:HOMED[n]});
 
@@ -5567,10 +5574,9 @@ document.addEventListener('keydown', e => {
        cutout or the whole point of the sequence (press a drawing, meet the
        piece) would be a promise the page cannot keep.
 
-       Ten drawings across eighteen places, so some stand more than once —
-       far apart, at different sizes and depths, which is the same thing the
-       wrap below already does to every drawing over a long scroll. More are
-       coming; each one added thins the repeats out on its own. */
+       Twenty drawings across twenty places, each standing once on the
+       first screen; the wrap below is what brings them round again over a
+       long scroll, at other sideways spots. */
     /* top band */
     {...hd(4),  x:1,  y:3,  h:44, o:.28, d:1.00},
     {...hd(1),  x:26, y:2,  h:11, o:.20, d:1.70, opt:1},
@@ -5599,15 +5605,15 @@ document.addEventListener('keydown', e => {
        most opaque slot on the page, low and left of the middle — far enough
        down that its width runs under the demonstration rather than into it. */
     {...hd(9),  x:24, y:60, h:36, o:.38, d:1.30},
-    {...hd(1),  x:66, y:63, h:12, o:.25, d:1.20},
+    {...hd(11), x:66, y:63, h:12, o:.25, d:1.20},
     /* the bottom row hangs OFF the bottom edge, deliberately and by a lot:
        a drawing cut through the middle by the frame is what says there is
        more page below this, now that nothing on the page says "scroll" in
        words */
     {...hd(3),  x:76, y:87, h:16, o:.22, d:1.60},
-    {...hd(10), x:7,  y:90, h:24, o:.24, d:1.55},
-    {...hd(2),  x:91, y:85, h:10, o:.20, d:1.75, opt:1},
-    {...hd(1),  x:44, y:16, h:8,  o:.18, d:1.85, opt:1},
+    {...hd(12), x:7,  y:90, h:24, o:.24, d:1.55},
+    {...hd(13), x:91, y:85, h:10, o:.20, d:1.75, opt:1},
+    {...hd(18), x:44, y:16, h:8,  o:.18, d:1.85, opt:1},
     /* three more waiting just BELOW the fold. Every drawing starts on the
        first screen and every one of them moves up, so without these the
        band coming in from the bottom was empty until the first ones had
@@ -5615,10 +5621,12 @@ document.addEventListener('keydown', e => {
        four are already in the band, spread down to 116%, so it is never
        empty. Kept inside the wrap's range (see measure's gap floor) so they
        are not folded to the top. */
-    {...hd(6),  x:40, y:103, h:18, o:.22, d:1.25},
-    {...hd(8),  x:60, y:107, h:26, o:.24, d:1.55, opt:1},
-    {...hd(10), x:28, y:109, h:12, o:.20, d:1.70},
-    {...hd(3),  x:48, y:116, h:22, o:.24, d:1.10}
+    {...hd(14), x:40, y:103, h:18, o:.22, d:1.25},
+    {...hd(16), x:60, y:107, h:26, o:.24, d:1.55, opt:1},
+    {...hd(15), x:28, y:109, h:12, o:.20, d:1.70},
+    {...hd(17), x:48, y:116, h:22, o:.24, d:1.10},
+    {...hd(19), x:82, y:112, h:16, o:.22, d:1.40, opt:1},
+    {...hd(20), x:12, y:114, h:14, o:.24, d:1.30}
   ];
   /* How fast the scatter rides the scroll: a drawing moves this many
      pixels for every pixel scrolled, times its own `d`. Written against the
@@ -5769,7 +5777,7 @@ document.addEventListener('keydown', e => {
   let maxScroll = 0, stageH = 0, stageW = 0, markTravel = 0;
   /* where the mark's centre stands, as a share of the screen's height —
      the same 47% .intro-mark's `top` puts it at */
-  const MARK_TOP = .47;
+  const MARK_TOP = () => PHONE ? .30 : .47;
   const mark   = document.getElementById('introMark');
   const dust = document.getElementById('introDust');
   const dctx = dust.getContext('2d');
@@ -5820,17 +5828,20 @@ document.addEventListener('keydown', e => {
      over the same time, no dust at all. One word to switch between them. */
   const VANISH_STYLE = 'dust';
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = VANISH_STYLE === 'dust', dpr = 1, dustW = 0, dustH = 0;
-  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, pix, pix32, touched, dustImg;
+  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, mS, mT, settled, pile, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
   /* Timed for the style. The dust takes its time to blow away; the fade
      is the sketchbook's own arrival run backwards — a fade with a slight
      shrink from the centre, the same ease — and quick, with the pad
      already coming up as the drawings go, so the two read as one
      cross-dissolve rather than a gap. */
-  const VANISH_MS = VANISH_STYLE === 'dust' ? 2600 : 800,
-        APPEAR_AT = VANISH_STYLE === 'dust' ? 1900 : 380,
-        APPEAR_MS = VANISH_STYLE === 'dust' ? 1500 : 900,
-        END_MS    = VANISH_STYLE === 'dust' ? 3900 : 1400;
+  const VANISH_MS = VANISH_STYLE === 'dust' ? 3600 : 800,
+        APPEAR_AT = VANISH_STYLE === 'dust' ? 2600 : 380,
+        APPEAR_MS = VANISH_STYLE === 'dust' ? 1100 : 900,
+        END_MS    = VANISH_STYLE === 'dust' ? 3900 : 1400,
+        /* how long the crumble takes to run through the drawings; the
+           fall of the last grains follows it inside VANISH_MS */
+        CRUMBLE_MS = 1900;
   let playing = false, vanishNow = 0, appearNow = 0;
   const MOTE_CAP = 520000;
   /* the sampling cell, in device pixels. One: every inked device pixel
@@ -5898,8 +5909,8 @@ document.addEventListener('keydown', e => {
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
       mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
-      mF = new Uint8Array(moteCap);
-      touched = new Int32Array(moteCap * BLOCK * BLOCK);   /* a block's every pixel */
+      mF = new Uint8Array(moteCap); mS = new Uint8Array(moteCap); mT = new Float32Array(moteCap);
+      curMs = VANISH_MS; curCrumble = CRUMBLE_MS;
       grabs.forEach(({fg, i, x, y, c, data, o}) => grainFrom(data, c.width, c.height, x, y, o, i, keep));
     }catch(e){
       /* a tainted canvas (a page opened as a file) — the drawings simply
@@ -5942,19 +5953,20 @@ document.addEventListener('keydown', e => {
             /* the dust FALLS: straight down, give or take a little sideways
                drift of its own, a fall of its own length, and a slight sway
                on the way (the bend, at right angles) */
-            const ang = Math.PI / 2 + (r2 - .5) * .5, sp = (44 + 110 * r3) * dpr;
+            /* each grain's own sideways drift (px/s) and sway (amplitude,
+               phase) for the fall; the fall itself is gravity, see paintDust */
             const rl = Math.hypot(px - cx, py - cy) || 1;
-            let ux = Math.cos(ang), uy = Math.sin(ang);
-            const bend = (r1 - .5) * 6 * dpr;
             mX[moteN] = x * dpr + px; mY[moteN] = y * dpr + py; mF[moteN] = i;
-            mVX[moteN] = ux * sp; mVY[moteN] = uy * sp;
-            mWX[moteN] = -uy * bend; mWY[moteN] = ux * bend;
+            mVX[moteN] = (r2 - .5) * 26 * dpr; mVY[moteN] = 0;
+            mWX[moteN] = r3 * 14 * dpr; mWY[moteN] = r1 * 6.28318;
+            mS[moteN] = 0;
             /* from the middle outward, with grain and the drawing's own
                offset — the delays span the first six tenths of the vanish */
             /* from the middle outward, with grain, and a ripple across the
                drawing so the dissolve runs through it in waves */
             mD[moteN] = .55 * (figD + .35 * r1 + .25 * (rl / half))
                       + .10 * (.5 + .5 * Math.sin(px * .045 + py * .03));
+            mT[moteN] = mD[moteN] / .65 * curCrumble;   /* its turn, in ms */
             mA[moteN] = ink;
             moteN++;
           }
@@ -6013,63 +6025,127 @@ document.addEventListener('keydown', e => {
     oldOx = ox; oldOy = oy; placedAt = pBg;
   }
   let oldOx = null, oldOy = null;
+  /* ---------- the fall ----------
+     A simulation, not a curve. Every grain waits its turn (the crumble
+     runs through a drawing in waves, see mT), then drops under gravity
+     with a little sideways drift and sway, until it reaches the floor —
+     the bottom edge of the screen — or the sand already lying there: a
+     height per column (pile). A grain landing on a slope rolls down it
+     until it finds a level place, which is what heaps the sand into
+     banks rather than towers. Landed grains are written once into a
+     settled buffer that every frame starts from, so the pile costs
+     nothing to keep; only grains still in the air are moved and drawn.
+     `v` is the share of curMs elapsed (the ending's clock, or the pad's).
+     At 1 the sand stays until the canvas is faded off. */
+  let simT = -1, curMs = 1, curCrumble = 1, dustDirty = false;
+  function simReset(){
+    simT = -1;
+    if(settled) settled.fill(0);
+    if(pile) pile.fill(0);
+    if(mS) mS.fill(0);
+    if(mVY) mVY.fill(0);
+  }
   function paintDust(v){
-    if(v <= 0 || v >= 1){
-      if(touchedN){ for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0; touchedN = 0; }
+    if(v <= 0){
+      if(!dustDirty) return;
+      dustDirty = false;
+      simReset();
+      if(pix32) pix32.fill(0);
       dctx.clearRect(0, 0, dustW, dustH);
       return;
     }
+    dustDirty = true;
     if(dustMode === 'intro'){
       if(motesFor !== 1){ sampleDust(); motesFor = 1; }
       placeDust(pScroll);
     }
-    for(let i = 0; i < touchedN; i++) pix32[touched[i]] = 0;
-    touchedN = 0;
-    const fadeIn = seg(v, 0, .14);
+    if(!settled || settled.length !== pix32.length){ settled = new Uint32Array(pix32.length); pile = new Int32Array(dustW); }
     const W = dustW, H = dustH;
-    /* A mote's flight, its fading and its shrinking all run on the one
-       clock, so a mote is gone exactly as it stops: the fade is the share
-       of the flight still to go, the block it is drawn as (2×2 on a dense
-       screen) loses its other pixels over the middle of the flight, and
-       the last pixel thins to nothing as it arrives. Scattering and
-       vanishing are one motion rather than a scatter that then fades. */
+    const t = Math.min(v, 1) * curMs;                /* ms into the fall */
+    if(simT < 0) simT = t;
+    let dt = (t - simT) / 1000; simT = t;
+    if(dt > .05) dt = .05;                            /* a stalled frame buys no more than this */
+    const G = 2200 * dpr;                             /* px/s², what a fall looks like at this scale */
+    const fadeIn = seg(v, 0, .14);
+    pix32.set(settled);
     for(let i = 0; i < moteN; i++){
-      const d = mD[i];
-      const k = v <= d ? 0 : (v - d) / (1 - d);
-      const ik = 1 - k;
-      if(ik <= 0) continue;
-      /* falling: it gathers speed as it goes (ease-in), thinning to
-         nothing as it lands */
-      const e = k * k * (2 - k), bend = e * (1 - e);   /* quick off the mark, still gathering pace */
-      const x = mX[i] + mVX[i] * e + mWX[i] * bend;
-      const y = mY[i] + mVY[i] * e + mWY[i] * bend;
-      if(x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
-      const a = Math.sqrt(mA[i]) * ik * fadeIn * 255;
-      if(a < 4) continue;
-      const idx = (y | 0) * W + (x | 0);
-      let old = pix32[idx] >>> 24;
-      if(a > old){
-        if(!old) touched[touchedN++] = idx;
-        /* ink while it stands, beige once it has broken away */
-        const t = k < .25 ? k * 4 : 1;
-        const rgb = ((DUST_B * t) << 16) | ((DUST_G * t) << 8) | (DUST_R * t);
-        pix32[idx] = ((a | 0) << 24) | rgb;
+      const st = mS[i];
+      if(st === 2) continue;
+      const rel = mT[i];
+      if(st === 0){
+        if(t < rel){
+          /* still standing in the drawing: drawn as its own ink while the
+             drawing itself cross-fades out beneath */
+          const x = mX[i], y = mY[i];
+          if(x < 0 || y < 0 || x >= W || y >= H) continue;
+          const a = Math.sqrt(mA[i]) * fadeIn * 255;
+          if(a < 4) continue;
+          const idx = (y | 0) * W + (x | 0);
+          if(a > (pix32[idx] >>> 24)) pix32[idx] = (a | 0) << 24;
+          continue;
+        }
+        mS[i] = 1;
       }
-      if(BLOCK === 1) continue;
-      /* the rest of the block, fading away over the flight's middle */
-      const sh = ik > .75 ? 1 : ik < .35 ? 0 : (ik - .35) / .4;
-      if(sh <= 0) continue;
-      const a2 = a * sh;
-      if(a2 < 4) continue;
-      const j1 = idx + 1, j2 = idx + W, j3 = j2 + 1;
-      old = pix32[j1] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j1; pix32[j1] = ((a2 | 0) << 24); }
-      old = pix32[j2] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j2; pix32[j2] = ((a2 | 0) << 24); }
-      old = pix32[j3] >>> 24;
-      if(a2 > old){ if(!old) touched[touchedN++] = j3; pix32[j3] = ((a2 | 0) << 24); }
+      /* in the air */
+      const age = (t - rel) / 1000;
+      mVY[i] += G * dt;
+      const sway = mWX[i] * Math.sin(age * 5.5 + mWY[i]);
+      let x = mX[i] + (mVX[i] + sway) * dt;
+      let y = mY[i] + mVY[i] * dt;
+      if(x < 0) x = 0; else if(x > W - 1) x = W - 1;
+      mX[i] = x; mY[i] = y;
+      let c = x | 0;
+      const floorY = H - 1 - pile[c];
+      if(y >= floorY){
+        /* landed: roll down the slope — always off a step of two, and
+           usually off a step of one, which settles the sand at a bank's
+           own angle rather than a pyramid's — then lie there. Fine sand
+           compacts: only every third grain raises the pile it lands on,
+           the rest fill in. */
+        for(let n = 0; n < 120; n++){
+          const h = pile[c];
+          const l = c > 0 ? pile[c - 1] : 1e9, r = c < W - 1 ? pile[c + 1] : 1e9;
+          const loose = ((i * 2654435761 + n * 40503) >>> 0) & 7;   /* cheap grain-and-step noise */
+          const dl = l < h - 1 || (l < h && loose < 5), dr = r < h - 1 || (r < h && loose > 2);
+          if(dl && (!dr || (loose & 1))) c--;
+          else if(dr) c++;
+          else break;
+        }
+        const yy = H - 1 - pile[c];
+        if(i % 3 === 0) pile[c]++;
+        mS[i] = 2;
+        if(yy >= 0){
+          const a = Math.max(.42, Math.sqrt(mA[i])) * 255;
+          const idx = yy * W + c;
+          if(a > (settled[idx] >>> 24)){
+            const px = ((a | 0) << 24) | (DUST_B << 16) | (DUST_G << 8) | DUST_R;
+            settled[idx] = px; pix32[idx] = px;
+          }
+        }
+        continue;
+      }
+      if(y < 0) continue;
+      const a = Math.sqrt(mA[i]) * 255;
+      if(a < 4) continue;
+      const idx = (y | 0) * W + c;
+      if(a > (pix32[idx] >>> 24)){
+        /* ink as it breaks away, beige within a quarter second of falling */
+        const bt = age < .25 ? age * 4 : 1;
+        pix32[idx] = ((a | 0) << 24) | ((DUST_B * bt) << 16) | ((DUST_G * bt) << 8) | (DUST_R * bt);
+      }
     }
     dctx.putImageData(dustImg, 0, 0);
+  }
+  /* the sand stays on the floor until this: the canvas fades off over a
+     second and is cleared behind it */
+  function fadeDustOff(){
+    dust.style.transition = 'opacity 1.1s ease-out';
+    dust.style.opacity = '0';
+    clearTimeout(fadeDustOff.t);
+    fadeDustOff.t = setTimeout(() => {
+      paintDust(0);
+      dust.style.transition = ''; dust.style.opacity = '';
+    }, 1200);
   }
   /* where a drawing stands at a given p — the same arithmetic the paint
      uses, so the dust is sampled exactly where the drawings are */
@@ -6161,7 +6237,7 @@ document.addEventListener('keydown', e => {
        over on. Measured, because the height comes off a font-size clamped
        against the WIDTH while the distance is a share of the HEIGHT. */
     const h = mark.offsetHeight, vh = intro.clientHeight;
-    markTravel = MARK_TOP * vh + 0.6 * h;
+    markTravel = MARK_TOP() * vh + 0.6 * h;
     /* The glass comes to rest on the pressed drawing, at its middle and a
        little above its centre line (a standing figure's chest) — where the
        drawing WILL be once it has arrived (LOCK_A). Its search path runs
@@ -6563,7 +6639,7 @@ document.addEventListener('keydown', e => {
       appearNow = io(cl01((t - APPEAR_AT) / APPEAR_MS));
       paintScroll(pScroll, 1);
       if(t < END_MS) requestAnimationFrame(tick);
-      else { vanishNow = 1; appearNow = 1; paintScroll(pScroll, 1); dismiss(); }
+      else { vanishNow = 1; appearNow = 1; paintScroll(pScroll, 1); dismiss(); fadeDustOff(); }
     };
     requestAnimationFrame(tick);
   }
@@ -6576,6 +6652,8 @@ document.addEventListener('keydown', e => {
     ground.classList.remove('done');
     scatterEl.classList.remove('settled');
     scatterEl.style.transform = '';
+    clearTimeout(fadeDustOff.t);
+    dust.style.transition = ''; dust.style.opacity = '';
     document.body.classList.add('entry');         /* and leaves again */
     clearTimeout(enterTimer);
     /* the demonstration is put where the scroll is, not left to run
@@ -6615,8 +6693,9 @@ document.addEventListener('keydown', e => {
       mVX = new Float32Array(moteCap); mVY = new Float32Array(moteCap);
       mWX = new Float32Array(moteCap); mWY = new Float32Array(moteCap);
       mD = new Float32Array(moteCap); mA = new Float32Array(moteCap);
-      mF = new Uint8Array(moteCap);
-      touched = new Int32Array(moteCap * BLOCK * BLOCK);
+      mF = new Uint8Array(moteCap); mS = new Uint8Array(moteCap); mT = new Float32Array(moteCap);
+      curMs = ms; curCrumble = opt.crumble ?? Math.round(ms * .4);
+      simReset();
       grainFrom(data, W, H, left, top, 1, figures.length, keep, minInk);
       /* not the intro's motes any more: it samples afresh next time */
       dustMode = 'pad'; motesFor = -1; placedAt = -1;
@@ -6624,9 +6703,10 @@ document.addEventListener('keydown', e => {
     const t0 = performance.now();
     const finish = () => {
       try{ paintDust(1); }catch(e){}
-      dustMode = 'intro';
       done();
       fitEntry.style.opacity = '';
+      fadeDustOff();
+      dustMode = 'intro';
     };
     const tick = now => {
       const v = cl01((now - t0) / ms);
