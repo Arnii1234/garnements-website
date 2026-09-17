@@ -5828,7 +5828,7 @@ document.addEventListener('keydown', e => {
      over the same time, no dust at all. One word to switch between them. */
   const VANISH_STYLE = 'dust';
   let moteN = 0, moteCap = 0, motesFor = -1, dustOK = VANISH_STYLE === 'dust', dpr = 1, dustW = 0, dustH = 0;
-  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, mS, mT, settled, pile, pix, pix32, touched, dustImg;
+  let mX, mY, mVX, mVY, mWX, mWY, mD, mA, mF, mS, mT, pix, pix32, touched, dustImg;
   /* the ending, on a clock (ms): the dust, then the sketchbook over it */
   /* Timed for the style. The dust takes its time to blow away; the fade
      is the sketchbook's own arrival run backwards — a fade with a slight
@@ -5923,7 +5923,11 @@ document.addEventListener('keydown', e => {
      pixels, (x, y) where its top-left stands in CSS px (0,0 for a raster
      placed later, see placeDust), `o` the ink's own faintness, `i` the
      figure index the grain belongs to, `keep` the share kept under the cap */
+  /* each figure's own faintness, by index (the arrow's slot is 1): a grain
+     stands at this, and falls at full strength */
+  const figO = new Float32Array(figures.length + 1).fill(1);
   function grainFrom(data, W, H, x, y, o, i, keep, minInk = .06){
+    figO[i] = o;
     {
       {
         const cx = W / 2, cy = H / 2;
@@ -5944,8 +5948,8 @@ document.addEventListener('keydown', e => {
             if(amax < 40) continue;
             acc += keep; if(acc < 1) continue; acc -= 1;
             if(moteN >= moteCap) return;
-            ink = ink / (CELL * CELL) * o;
-            if(ink < minInk) continue;
+            ink = ink / (CELL * CELL);          /* the ink itself; `o` is kept aside, see figO */
+            if(ink * o < minInk) continue;
             const n = seed + py * 977 + px;
             const r1 = hash(n), r2 = hash(n + 1), r3 = hash(n + 2);
             /* any direction, one speed range; a bend at right angles to it
@@ -6028,20 +6032,15 @@ document.addEventListener('keydown', e => {
   /* ---------- the fall ----------
      A simulation, not a curve. Every grain waits its turn (the crumble
      runs through a drawing in waves, see mT), then drops under gravity
-     with a little sideways drift and sway, until it reaches the floor —
-     the bottom edge of the screen — or the sand already lying there: a
-     height per column (pile). A grain landing on a slope rolls down it
-     until it finds a level place, which is what heaps the sand into
-     banks rather than towers. Landed grains are written once into a
-     settled buffer that every frame starts from, so the pile costs
-     nothing to keep; only grains still in the air are moved and drawn.
+     with a little sideways drift and sway, and falls straight out through
+     the bottom of the screen — there is no floor and nothing collects.
      `v` is the share of curMs elapsed (the ending's clock, or the pad's).
-     At 1 the sand stays until the canvas is faded off. */
+     A grain stands at its drawing's own faintness until it breaks away,
+     then falls at full strength, so a faint drawing crumbles into grain
+     that can be seen falling rather than simply thinning out. */
   let simT = -1, curMs = 1, curCrumble = 1, dustDirty = false;
   function simReset(){
     simT = -1;
-    if(settled) settled.fill(0);
-    if(pile) pile.fill(0);
     if(mS) mS.fill(0);
     if(mVY) mVY.fill(0);
   }
@@ -6059,7 +6058,6 @@ document.addEventListener('keydown', e => {
       if(motesFor !== 1){ sampleDust(); motesFor = 1; }
       placeDust(pScroll);
     }
-    if(!settled || settled.length !== pix32.length){ settled = new Uint32Array(pix32.length); pile = new Int32Array(dustW); }
     const W = dustW, H = dustH;
     const t = Math.min(v, 1) * curMs;                /* ms into the fall */
     if(simT < 0) simT = t;
@@ -6067,7 +6065,7 @@ document.addEventListener('keydown', e => {
     if(dt > .05) dt = .05;                            /* a stalled frame buys no more than this */
     const G = 2200 * dpr;                             /* px/s², what a fall looks like at this scale */
     const fadeIn = seg(v, 0, .14);
-    pix32.set(settled);
+    pix32.fill(0);
     for(let i = 0; i < moteN; i++){
       const st = mS[i];
       if(st === 2) continue;
@@ -6078,7 +6076,7 @@ document.addEventListener('keydown', e => {
              drawing itself cross-fades out beneath */
           const x = mX[i], y = mY[i];
           if(x < 0 || y < 0 || x >= W || y >= H) continue;
-          const a = Math.sqrt(mA[i]) * fadeIn * 255;
+          const a = Math.sqrt(mA[i]) * figO[mF[i]] * fadeIn * 255;
           if(a < 4) continue;
           const idx = (y | 0) * W + (x | 0);
           if(a > (pix32[idx] >>> 24)) pix32[idx] = (a | 0) << 24;
@@ -6094,37 +6092,10 @@ document.addEventListener('keydown', e => {
       let y = mY[i] + mVY[i] * dt;
       if(x < 0) x = 0; else if(x > W - 1) x = W - 1;
       mX[i] = x; mY[i] = y;
-      let c = x | 0;
-      const floorY = H - 1 - pile[c];
-      if(y >= floorY){
-        /* landed: roll down the slope — always off a step of two, and
-           usually off a step of one, which settles the sand at a bank's
-           own angle rather than a pyramid's — then lie there. Fine sand
-           compacts: only every third grain raises the pile it lands on,
-           the rest fill in. */
-        for(let n = 0; n < 120; n++){
-          const h = pile[c];
-          const l = c > 0 ? pile[c - 1] : 1e9, r = c < W - 1 ? pile[c + 1] : 1e9;
-          const loose = ((i * 2654435761 + n * 40503) >>> 0) & 7;   /* cheap grain-and-step noise */
-          const dl = l < h - 1 || (l < h && loose < 5), dr = r < h - 1 || (r < h && loose > 2);
-          if(dl && (!dr || (loose & 1))) c--;
-          else if(dr) c++;
-          else break;
-        }
-        const yy = H - 1 - pile[c];
-        if(i % 3 === 0) pile[c]++;
-        mS[i] = 2;
-        if(yy >= 0){
-          const a = Math.max(.42, Math.sqrt(mA[i])) * 255;
-          const idx = yy * W + c;
-          if(a > (settled[idx] >>> 24)){
-            const px = ((a | 0) << 24) | (DUST_B << 16) | (DUST_G << 8) | DUST_R;
-            settled[idx] = px; pix32[idx] = px;
-          }
-        }
-        continue;
-      }
+      const c = x | 0;
+      if(y >= H){ mS[i] = 2; continue; }        /* out through the bottom, gone */
       if(y < 0) continue;
+      /* full strength once it is falling, whatever its drawing's faintness */
       const a = Math.sqrt(mA[i]) * 255;
       if(a < 4) continue;
       const idx = (y | 0) * W + c;
