@@ -77,11 +77,11 @@
        the script needs the same number to park a book at the screen's edge
        (see IDLE_SCALE) — two copies of it drifting apart would put the parked
        book slightly wrong. */
-    --idle:.94;
+    --idle:1;
     /* the lift a waiting book takes under the pointer — well clear of --idle,
        so "this is the one you'd press" is legible from across the page
        instead of something you confirm by looking twice */
-    --idle-hover:.968;
+    --idle-hover:1.02;
     /* the covers' board tone — shared at :root rather than scoped to
        .leaf.cover so .board (a sibling of the leaves, not a descendant of
        any one of them) can paint the exact same colour behind them. Kept
@@ -180,6 +180,8 @@
      should pass in FRONT of the wordmark, not behind it: for the length
      of the turn the masthead drops beneath the pads (#fit is 5). Only
      ever in the shop — the opening page (150) is gone by then. */
+  body.flipping .brand{ opacity:0; }
+  .brand{ transition:opacity .12s; }
   body.flipping header{
     z-index:4;
     background:transparent;
@@ -3807,11 +3809,27 @@ function waveTo(target){
   const lo = Math.min(cur, target), hi = Math.max(cur, target);
   const toBack = target > cur;
   const n = hi - lo, mine = ++riffleT;
-  const dur = 450;
-  const stagger = n > 1 ? Math.max(28, Math.min(60, 650 / n)) : 0;
+  const dur = 420;
+  /* A dozen sheets turning at once, each its own 3D layer, is what made
+     closing a book from deep inside stutter. Only the last few are turned
+     on screen; the ones before them are simply put where they are going,
+     under the sheets that are still to turn. */
+  const WAVE_MAX = 4;
+  const snap = n - WAVE_MAX;
+  const m = Math.min(n, WAVE_MAX);
+  const stagger = m > 1 ? Math.max(40, Math.min(70, 260 / m)) : 0;
   for(let k = 0; k < n; k++){
     const i = toBack ? lo + k : hi - 1 - k;
-    setTimeout(() => { if(mine === riffleT) waveLeaf(i, toBack, dur); }, k * stagger);
+    if(k < snap){
+      const leaf = leaves[i];
+      leaf.getAnimations().forEach(a => a.cancel());
+      leaf.classList.toggle('flipped', toBack);
+      leaf.style.transform = toBack
+        ? `translateZ(${backZ(i)}px) rotateX(360deg)`
+        : `translateZ(${leafZ(i)}px)`;
+      continue;
+    }
+    setTimeout(() => { if(mine === riffleT) waveLeaf(i, toBack, dur); }, (k - snap) * stagger);
   }
   cur = target;
   updateNav();
@@ -5912,7 +5930,11 @@ document.addEventListener('keydown', e => {
     const k     = Math.floor((raw - lo) / range);
     const top   = ((raw - lo) % range + range) % range + lo;
     const dx    = k === 0 ? 0 : noise(i, k) * stageW * .2;
-    return {x: fg.left0 + dx, y: top};
+    /* kept whole inside the screen sideways, on every pass: only the
+       bottom edge is ever crossed, since that is the edge that says there
+       is more to scroll to */
+    const x = Math.max(6, Math.min(stageW - fg.wpx - 6, fg.left0 + dx));
+    return {x, y: top};
   }
   /* the glass's place at a given p, along the search path and then the
      loop — used by the paint, and by measure() to find the frame it first
@@ -5969,6 +5991,7 @@ document.addEventListener('keydown', e => {
        to the top of the first screen. */
     figures.forEach((fg, i) => {
       fg.hpx  = fg.el.offsetHeight;
+      fg.wpx  = fg.el.offsetWidth;
       fg.top0 = fg.s.y / 100 * stageH;
       fg.left0 = fg.el.offsetLeft;
       fg.marg = 16;
