@@ -3099,6 +3099,11 @@ function reverseKeyframes(kf){
   return kf.map(k => ({ transform:k.transform, offset:+(1 - k.offset).toFixed(4) })).reverse();
 }
 function animateShade(leafBelow, from, to, ms){
+  /* off, for the same reason as LIT above: the page underneath used to
+     darken under a cast shadow while a sheet turned over it, and that is
+     the other half of what read as pages changing colour. Kept, so it is
+     one line to bring back. */
+  return;
   if(!leafBelow) return;
   const sh = leafBelow.querySelector('.shade');
   if(sh) sh.animate([{opacity:from},{opacity:to}], {duration:(ms||FLIP_MS)*.62, easing:'ease-out', fill:'forwards'});
@@ -3188,7 +3193,12 @@ const bendWindow = e => smoothstep(0, .12, e) * (1 - smoothstep(.80, 1, e));
    dead flat with lam=1 for every row, so that sum is what replaces the resting
    page, and anything under 1 makes the page visibly dim the instant it moves.
    These five numbers are the whole look; they are safe to tune in pairs. */
-const LIT = {base:0.84, gain:0.16, backBase:0.80, backGain:0.16, wrap:0.6};
+/* No lighting on the turning sheet: the paper keeps exactly its own
+   colour through the whole turn (base 1, gain 0 — the vertex colour the
+   texture is multiplied by is a flat white). It used to shade with the
+   curve, and read as a page changing colour as it turned rather than as
+   the same paper moving. The back of the sheet the same. */
+const LIT = {base:1, gain:0, backBase:1, backGain:0, wrap:0.6};
 const wrapLit = t => Math.max(0, (t + LIT.wrap) / (1 + LIT.wrap));
 let glOK = false, glR, glScene, glCam, mFront, mBack, gFront, gBack, glBox = null;
 let glRun = null;
@@ -5902,8 +5912,10 @@ document.addEventListener('keydown', e => {
     const t = seg(p, LOOP_A, LOOP_B);
     return spline(loopPath, 1 - (1 - t) * (1 - t));
   }
+  let PHONE = false;
   const measure = () => {
     maxScroll = intro.scrollHeight - intro.clientHeight;
+    PHONE = intro.clientWidth <= 600;
     cursorRun = Math.min(300, intro.clientWidth  * .30);
     bookRise  = Math.min(190, intro.clientHeight * .24);
     /* Each pointer starts the same distance OUTSIDE the pad — cursorRun past
@@ -5962,6 +5974,10 @@ document.addEventListener('keydown', e => {
          which lands him a quarter of a screen under the fold at rest —
          he rises faster than most of the scatter (d) so that he is still
          out of sight for the first stretch of the scroll. */
+      /* on a phone he stands in the middle of the screen rather than
+         right of it — the screen is too narrow for a column off to one
+         side to read as anything but cut off */
+      fe.style.left = PHONE ? (stageW / 2 - fe.offsetWidth / 2).toFixed(1) + 'px' : fg.s.x + '%';
       fg.left0 = fe.offsetLeft;
       /* his climb is written against the screen, not the track: however
          long the page, he rises two and a half screens over the whole of
@@ -6056,7 +6072,10 @@ document.addEventListener('keydown', e => {
     const hoverK = vanishNow < .5 ? seg(q, crossP, crossP + .02) : 0;
     const hover  = hoverK > 0;
     const press  = q >= .92 && q < .98;
-    const morph = seg(q, LOCK_A, LOOP_A);
+    /* on a phone the glass becomes the arrow the moment it crosses him
+       (crossP), and goes on along the same path and loop as the arrow; on
+       a wider screen it stays a glass until it has passed him */
+    const morph = PHONE ? seg(q, crossP, crossP + .07) : seg(q, LOCK_A, LOOP_A);
     cursor.style.setProperty('--morph', morph.toFixed(3));
     /* a fully faded face is taken off screen outright, see .at-glass */
     const face = morph <= 0 ? 'at-glass' : morph >= 1 ? 'at-arrow' : '';
